@@ -1,0 +1,44 @@
+/**
+ * App stylesheet. Pulls in the shared warm theme from @revido/ui, then adds a
+ * few app-only conveniences. `@source` tells Tailwind v4 to also scan the UI
+ * package's source so its component class strings are included in the build.
+ */
+@import '@revido/ui/styles.css';
+
+@source '../../../packages/ui/src';
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  #root {
+    isolation: isolate;
+  }
+}
+
+/* Sanitized email HTML rendered in-app gets minimal, readable defaults. */
+@layer components {
+  .email-body {
+    @apply text-sm leading-relaxed text-foreground;
+  }
+  .email-body p {
+    @apply my-3;
+  }
+  .email-body a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .email-body ol {
+    @apply my-3 list-decimal space-y-1 pl-5;
+  }
+  .email-body ul {
+    @apply my-3 list-disc space-y-1 pl-5;
+  }
+  .email-body strong {
+    @apply font-semibold;
+  }
+  .email-body code {
+    @apply rounded-md bg-muted px-1.5 py-0.5 text-xs;
+  }
+}

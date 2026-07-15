@@ -1,0 +1,184 @@
+/**
+ * Revido Mail — warm consumer theme.
+ *
+ * Design tokens are CSS variables (OKLCH) so light/dark swap by overriding the
+ * variable, not the utility. Semantic colors map through `@theme inline` so
+ * `.dark` cascades correctly; static scales (fonts, radius, shadow) live in a
+ * plain `@theme` block. Style with token utilities only — see DESIGN.md.
+ *
+ * Fonts (Fraunces display + Inter UI) are loaded via <link> in index.html.
+ */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Warm neutrals — a hint of cream, never clinical gray */
+  --background: oklch(0.994 0.005 85);
+  --foreground: oklch(0.26 0.02 55);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.26 0.02 55);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.26 0.02 55);
+  --muted: oklch(0.965 0.008 80);
+  --muted-foreground: oklch(0.53 0.02 60);
+  --subtle: oklch(0.975 0.007 82);
+  --border: oklch(0.915 0.01 75);
+  --input: oklch(0.9 0.012 75);
+  --ring: oklch(0.67 0.18 25);
+
+  /* Coral primary + amber accent — the warm signature */
+  --primary: oklch(0.67 0.19 25);
+  --primary-foreground: oklch(0.99 0.01 80);
+  --accent: oklch(0.83 0.13 72);
+  --accent-foreground: oklch(0.32 0.05 55);
+  --secondary: oklch(0.955 0.012 78);
+  --secondary-foreground: oklch(0.32 0.03 55);
+
+  --success: oklch(0.66 0.15 150);
+  --warning: oklch(0.78 0.15 70);
+  --destructive: oklch(0.58 0.2 22);
+  --destructive-foreground: oklch(0.99 0.01 80);
+
+  /* Sparkle — marks every AI-generated element */
+  --ai: oklch(0.62 0.19 300);
+  --ai-foreground: oklch(0.99 0.01 300);
+
+  /* 8-color category system + calendar blue */
+  --cat-to-reply: oklch(0.66 0.19 25);
+  --cat-awaiting-reply: oklch(0.76 0.15 68);
+  --cat-fyi: oklch(0.62 0.02 255);
+  --cat-newsletters: oklch(0.64 0.14 300);
+  --cat-notifications: oklch(0.58 0.06 250);
+  --cat-promotions: oklch(0.68 0.18 350);
+  --cat-receipts: oklch(0.64 0.15 152);
+  --cat-calendar: oklch(0.62 0.16 245);
+  --cat-personal: oklch(0.68 0.12 190);
+}
+
+.dark {
+  --background: oklch(0.2 0.012 55);
+  --foreground: oklch(0.94 0.008 82);
+  --card: oklch(0.24 0.014 55);
+  --card-foreground: oklch(0.94 0.008 82);
+  --popover: oklch(0.24 0.014 55);
+  --popover-foreground: oklch(0.94 0.008 82);
+  --muted: oklch(0.28 0.014 55);
+  --muted-foreground: oklch(0.72 0.02 70);
+  --subtle: oklch(0.255 0.014 55);
+  --border: oklch(0.33 0.016 58);
+  --input: oklch(0.36 0.016 58);
+  --ring: oklch(0.7 0.17 27);
+
+  --primary: oklch(0.71 0.17 28);
+  --primary-foreground: oklch(0.2 0.02 40);
+  --accent: oklch(0.78 0.13 72);
+  --accent-foreground: oklch(0.24 0.04 55);
+  --secondary: oklch(0.3 0.016 58);
+  --secondary-foreground: oklch(0.92 0.01 80);
+
+  --success: oklch(0.72 0.15 150);
+  --warning: oklch(0.8 0.14 72);
+  --destructive: oklch(0.66 0.19 22);
+  --destructive-foreground: oklch(0.99 0.01 80);
+
+  --ai: oklch(0.72 0.17 300);
+  --ai-foreground: oklch(0.18 0.02 300);
+
+  --cat-to-reply: oklch(0.72 0.18 27);
+  --cat-awaiting-reply: oklch(0.82 0.14 70);
+  --cat-fyi: oklch(0.72 0.02 255);
+  --cat-newsletters: oklch(0.74 0.13 300);
+  --cat-notifications: oklch(0.7 0.06 250);
+  --cat-promotions: oklch(0.76 0.16 350);
+  --cat-receipts: oklch(0.74 0.14 152);
+  --cat-calendar: oklch(0.72 0.15 245);
+  --cat-personal: oklch(0.76 0.11 190);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-ai: var(--ai);
+  --color-ai-foreground: var(--ai-foreground);
+
+  --color-cat-to-reply: var(--cat-to-reply);
+  --color-cat-awaiting-reply: var(--cat-awaiting-reply);
+  --color-cat-fyi: var(--cat-fyi);
+  --color-cat-newsletters: var(--cat-newsletters);
+  --color-cat-notifications: var(--cat-notifications);
+  --color-cat-promotions: var(--cat-promotions);
+  --color-cat-receipts: var(--cat-receipts);
+  --color-cat-calendar: var(--cat-calendar);
+  --color-cat-personal: var(--cat-personal);
+}
+
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+
+  /* Extra-small label size (badges, meta) */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /* Warm, generous corners */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  /* Soft, warm-tinted elevation */
+  --shadow-soft: 0 1px 2px oklch(0.5 0.05 40 / 0.04), 0 8px 24px -12px oklch(0.5 0.08 40 / 0.16);
+  --shadow-pop:
+    0 4px 12px -2px oklch(0.5 0.05 40 / 0.08), 0 16px 40px -12px oklch(0.5 0.08 40 / 0.22);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 24%, transparent);
+  }
+  /* Thin, warm scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}

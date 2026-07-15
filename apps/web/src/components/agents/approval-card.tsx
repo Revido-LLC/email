@@ -34,7 +34,7 @@ export function ApprovalCard({
   onReject: () => void
 }) {
   return (
-    <div className="relative rounded-2xl border border-border bg-card p-5 shadow-pop duration-200 animate-in fade-in-0 slide-in-from-bottom-2">
+    <div className="relative rounded-2xl border border-border bg-card p-5 shadow-soft duration-200 animate-in fade-in-0 slide-in-from-bottom-2">
       <div className="flex items-start gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
           <Icon name={approval.agentIcon} className="size-5" />
@@ -46,7 +46,7 @@ export function ApprovalCard({
               <Clock /> Needs approval
             </Badge>
           </div>
-          <h3 className="mt-1 font-display text-xl font-semibold tracking-tight">
+          <h3 className="mt-1 text-xl font-semibold tracking-tight">
             {approval.action}
           </h3>
         </div>

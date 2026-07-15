@@ -202,7 +202,7 @@ function TypeScaleView() {
             </div>
           </div>
           <div
-            className={t.display ? 'truncate font-display' : 'truncate'}
+            className="truncate"
             style={{
               fontSize: `${t.size}px`,
               lineHeight: `${t.line}px`,

@@ -37,7 +37,7 @@ export function UndoToast({
           <p className="text-sm font-medium">Sending your message…</p>
           <div className="mt-1.5 flex items-center gap-2">
             <Progress value={remaining / seconds} className="h-1.5 flex-1" />
-            <span className="w-6 text-right font-display text-sm font-semibold tabular-nums text-muted-foreground">
+            <span className="w-6 text-right text-sm font-semibold tabular-nums text-muted-foreground">
               {remaining}s
             </span>
           </div>

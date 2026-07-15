@@ -46,13 +46,13 @@ function RemindersScreen() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
+      <header className="glass-thin sticky top-0 z-10 border-x-0 border-t-0">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4 sm:px-6">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
             <Bell className="size-4" />
           </div>
           <div>
-            <h1 className="font-display text-xl font-semibold tracking-tight">Reminders</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Reminders</h1>
             <p className="text-sm text-muted-foreground">
               Nothing falls through — follow-ups, deadlines and snoozed threads in one place.
             </p>
@@ -60,7 +60,7 @@ function RemindersScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="space-y-6">
           {GROUPS.map((group) => {
             const items = reminders.filter((r) => r.kind === group.kind)
@@ -78,7 +78,7 @@ function ReminderGroup({ group, items }: { group: (typeof GROUPS)[number]; items
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
         <div className="flex items-center gap-2">
           <span className={chipText(group.token)}>{group.icon}</span>
-          <h2 className="font-display text-lg font-semibold">{group.title}</h2>
+          <h2 className="text-lg font-semibold">{group.title}</h2>
           <Badge variant="outline">{items.length}</Badge>
         </div>
       </div>

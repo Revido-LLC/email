@@ -32,7 +32,7 @@ interface Props {
 export function ThreadTopBar({ thread, onBack, onArchive }: Props) {
   const meta = CATEGORIES[thread.category]
   return (
-    <header className="flex shrink-0 items-center gap-2 border-b border-border bg-background/90 px-3 py-2.5 backdrop-blur">
+    <header className="glass-thin flex shrink-0 items-center gap-2 border-x-0 border-t-0 px-3 py-2.5">
       <SimpleTooltip label="Back · esc" side="bottom">
         <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="Back to inbox">
           <ArrowLeft className="size-4" />
@@ -40,7 +40,7 @@ export function ThreadTopBar({ thread, onBack, onArchive }: Props) {
       </SimpleTooltip>
 
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        <h1 className="truncate font-display text-base font-semibold tracking-tight">
+        <h1 className="truncate text-base font-semibold tracking-tight">
           {thread.subject}
         </h1>
         <CategoryChip

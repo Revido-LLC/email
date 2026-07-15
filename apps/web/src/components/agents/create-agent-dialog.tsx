@@ -139,7 +139,7 @@ function WizardBody({
             <Wand2 className="size-4" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-semibold leading-none">
+            <h2 className="text-lg font-semibold leading-none">
               {fromAgent ? seed.agent.name : 'New agent'}
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -381,8 +381,8 @@ function DryRun({
   return (
     <div className="space-y-3">
       <AiTag label="Dry-run · last 30 days" />
-      <div className="rounded-2xl border border-ai/25 bg-gradient-to-br from-ai/10 to-card p-4 text-center">
-        <div className="font-display text-4xl font-semibold text-ai">{matches.length}</div>
+      <div className="rounded-2xl border border-ai/20 bg-ai/5 p-4 text-center">
+        <div className="text-2xl font-semibold tabular-nums text-ai">{matches.length}</div>
         <p className="mt-1 text-sm text-muted-foreground">
           {matches.length === 1 ? 'email' : 'emails'} this would have handled — {plan.matchLabel}
         </p>

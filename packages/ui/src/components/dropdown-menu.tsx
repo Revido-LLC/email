@@ -17,7 +17,7 @@ export const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 min-w-44 overflow-hidden rounded-xl p-1.5 text-popover-foreground shadow-pop glass-thin',
+        'z-50 min-w-40 overflow-hidden rounded-xl p-1 text-popover-foreground shadow-pop glass-thin',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         className,
       )}
@@ -34,7 +34,7 @@ export const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none transition-colors [&_svg]:size-4 [&_svg]:text-muted-foreground',
+      'relative flex cursor-pointer select-none items-center gap-2 rounded-md px-2.5 py-1 text-sm outline-none transition-colors [&_svg]:size-4 [&_svg]:text-muted-foreground',
       'focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       inset && 'pl-8',
       className,
@@ -52,7 +52,7 @@ export const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     checked={checked}
     className={cn(
-      'relative flex cursor-pointer select-none items-center gap-2 rounded-lg py-1.5 pl-8 pr-2.5 text-sm outline-none transition-colors focus:bg-muted',
+      'relative flex cursor-pointer select-none items-center gap-2 rounded-md py-1 pl-8 pr-2.5 text-sm outline-none transition-colors focus:bg-muted',
       className,
     )}
     {...props}
@@ -73,7 +73,7 @@ export function DropdownMenuLabel({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label>) {
   return (
     <DropdownMenuPrimitive.Label
-      className={cn('px-2.5 py-1.5 text-xs font-semibold text-muted-foreground', className)}
+      className={cn('px-2.5 py-1 text-xs font-semibold text-muted-foreground', className)}
       {...props}
     />
   )

@@ -58,11 +58,7 @@ function OnboardingScreen() {
   const goToInbox = () => navigate({ to: '/app' })
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-accent/10 via-background to-primary/8">
-      {/* Warm ambient blobs */}
-      <div className="pointer-events-none absolute -left-24 top-8 size-72 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 bottom-4 size-80 rounded-full bg-ai/10 blur-3xl" />
-
+    <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-8 sm:px-6">
         {/* Persistent header: wordmark + 4-stage indicator */}
         <header className="flex items-center justify-between">
@@ -70,7 +66,7 @@ function OnboardingScreen() {
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
               <Sparkles className="size-5" />
             </div>
-            <span className="font-display text-lg font-semibold tracking-tight">Revido Mail</span>
+            <span className="text-lg font-semibold tracking-tight">Revido Mail</span>
           </div>
           <div className="flex items-center gap-1.5" aria-label="Setup progress">
             {STAGES.map((s, i) => (
@@ -124,7 +120,7 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="w-full max-w-md"
     >
-      <Card className="rounded-3xl border-border/70 p-6 text-center shadow-soft sm:p-8">
+      <Card className="rounded-2xl border-border/70 p-6 text-center shadow-soft sm:p-8">
         <Orb stage={stage} connected={connected} />
 
         <AnimatePresence mode="wait">
@@ -137,27 +133,21 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
           >
             {beat === 'connecting' && (
               <>
-                <h1 className="font-display text-2xl font-semibold tracking-tight">
-                  Connecting your inbox…
-                </h1>
+                <h1 className="text-2xl font-semibold tracking-tight">Connecting your inbox…</h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">{USER.email}</p>
               </>
             )}
 
             {beat === 'connected' && (
               <>
-                <h1 className="font-display text-2xl font-semibold tracking-tight">
-                  Connected <span className="text-success">✓</span>
-                </h1>
+                <h1 className="text-2xl font-semibold tracking-tight">Connected</h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">Secure link to {USER.email}</p>
               </>
             )}
 
             {beat === 'reading' && (
               <>
-                <h1 className="font-display text-2xl font-semibold tracking-tight">
-                  Reading your recent mail…
-                </h1>
+                <h1 className="text-2xl font-semibold tracking-tight">Reading your recent mail…</h1>
                 <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                   <Sparkle className="size-3.5" />
                   Revido is triaging in real time
@@ -183,8 +173,8 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
 
             {beat === 'ready' && (
               <>
-                <h1 className="font-display text-2xl font-semibold tracking-tight">
-                  Preparing your first brief <span className="text-success">✓</span>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Preparing your first brief
                 </h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">
                   Everything’s sorted — here’s what we can take off your plate.
@@ -207,7 +197,7 @@ function Orb({ stage, connected }: { stage: Stage; connected: boolean }) {
         : 'bg-primary/12 text-primary'
 
   return (
-    <div className={cn('mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl', tone)}>
+    <div className={cn('mx-auto mb-5 flex size-12 items-center justify-center rounded-2xl', tone)}>
       <AnimatePresence mode="wait">
         {stage === 'connecting' && !connected && (
           <motion.span
@@ -257,7 +247,7 @@ function ScanStat({ token, value, label }: { token: string; value: number; label
   return (
     <span className="inline-flex items-center gap-1.5">
       <CategoryDot token={token} />
-      <span className="font-display font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="font-semibold tabular-nums text-foreground">{value}</span>
       <span className="text-muted-foreground">{label}</span>
     </span>
   )
@@ -282,10 +272,10 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
       className="w-full"
     >
       <div className="text-center">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-ai/12 text-ai">
+        <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-2xl bg-ai/12 text-ai">
           <Sparkles className="size-6" />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="text-xl font-semibold tracking-tight">
           We found a few things we can automate
         </h1>
         <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
@@ -307,7 +297,7 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
       </div>
 
       <div className="mt-7 flex flex-col items-center gap-3">
-        <Button size="lg" className="w-full" onClick={onContinue}>
+        <Button className="w-full" onClick={onContinue}>
           Continue to your inbox
           <ArrowRight className="size-4" />
         </Button>
@@ -358,7 +348,7 @@ function ProposalCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className={cn('font-display text-base font-semibold', cls.text)}>
+            <span className={cn('text-base font-semibold', cls.text)}>
               {proposal.metric}
             </span>
             <AiTag />

@@ -141,7 +141,7 @@ export function ThreadList({
     <div className="relative h-full">
       <div className="h-full overflow-y-auto">
         {/* Sticky header */}
-        <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
+        <header className="glass-thin sticky top-0 z-20 border-x-0 border-t-0">
           <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-3 py-3 sm:px-4">
             <div className="flex min-w-0 items-center gap-3">
               <div
@@ -154,7 +154,7 @@ export function ThreadList({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="truncate font-display text-lg font-semibold leading-none">
+                  <h1 className="truncate text-lg font-semibold leading-none">
                     {title}
                   </h1>
                   {category && (

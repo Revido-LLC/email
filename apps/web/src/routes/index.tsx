@@ -44,17 +44,17 @@ function LandingPage() {
 function Wordmark() {
   return (
     <Link to="/" className="flex items-center gap-2">
-      <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-soft">
+      <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
         <Mail className="size-4" />
       </span>
-      <span className="font-display text-lg font-semibold tracking-tight">Revido Mail</span>
+      <span className="text-lg font-semibold tracking-tight">Revido Mail</span>
     </Link>
   )
 }
 
 function TopBar() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 glass-thin border-x-0 border-t-0">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Wordmark />
         <OAuthButtons size="sm" className="hidden sm:flex" />
@@ -79,13 +79,6 @@ const fadeUp = {
 function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* Warm decorative wash */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -left-24 -top-24 size-96 rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute -right-24 top-12 size-96 rounded-full bg-accent/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 size-80 rounded-full bg-ai/10 blur-3xl" />
-      </div>
-
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:py-24">
         <motion.div
           variants={fadeUp}
@@ -98,11 +91,8 @@ function Hero() {
             AI-first email — free forever
           </div>
 
-          <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
-            Your inbox,{' '}
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              handled.
-            </span>
+          <h1 className="text-4xl font-medium leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            Your inbox, <span className="text-accent">handled.</span>
           </h1>
 
           <p className="mt-5 max-w-xl text-lg text-muted-foreground">
@@ -187,11 +177,11 @@ function HowItWorks() {
                 <span className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <step.icon className="size-5" />
                 </span>
-                <span className="font-display text-2xl font-semibold text-muted-foreground/40">
+                <span className="text-lg font-semibold text-muted-foreground/40">
                   {String(i + 1).padStart(2, '0')}
                 </span>
               </div>
-              <h3 className="font-display text-lg font-semibold">{step.title}</h3>
+              <h3 className="text-lg font-semibold">{step.title}</h3>
               <p className="mt-1.5 text-sm text-muted-foreground">{step.copy}</p>
             </div>
           ))}
@@ -259,7 +249,7 @@ function FeatureCard({
   copy: string
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-soft transition-shadow hover:shadow-pop">
+    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-soft transition-colors hover:border-border">
       <Sparkle className="absolute right-5 top-5 opacity-70" />
       <span
         className={cn(
@@ -269,7 +259,7 @@ function FeatureCard({
       >
         <Icon />
       </span>
-      <h3 className="font-display text-lg font-semibold">{title}</h3>
+      <h3 className="text-lg font-semibold">{title}</h3>
       <p className="mt-1.5 text-sm text-muted-foreground">{copy}</p>
     </div>
   )
@@ -323,10 +313,10 @@ function Privacy() {
   return (
     <section className="border-t border-border/60">
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-accent/10 to-card p-6 shadow-soft sm:p-12">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-12">
           <div className="mx-auto max-w-2xl text-center">
             <AiTag label="Privacy" />
-            <h2 className="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
               Nobody reads your email.
             </h2>
             <p className="mt-3 text-lg text-muted-foreground">
@@ -405,10 +395,10 @@ function SectionHeading({
 }) {
   return (
     <div className="max-w-2xl">
-      <div className="mb-3 text-2xs font-semibold uppercase tracking-widest text-primary">
+      <div className="mb-3 text-2xs font-semibold uppercase tracking-widest text-muted-foreground">
         {eyebrow}
       </div>
-      <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
+      <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
       {subtitle && <p className="mt-3 text-lg text-muted-foreground">{subtitle}</p>}
     </div>
   )

@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   Kbd,
-  Sparkle,
   cn,
 } from '@revido/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -115,11 +114,10 @@ function ApprovalsScreen() {
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-display text-2xl font-semibold tracking-tight">Approvals</h1>
+              <h1 className="text-lg font-semibold tracking-tight">Approvals</h1>
               {queue.length > 0 && <Badge variant="primary">{queue.length} waiting</Badge>}
             </div>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Sparkle />
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Consequential actions your agents drafted — you have the final say.
             </p>
           </div>
@@ -155,7 +153,7 @@ function ApprovalsScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
         {top ? (
           <>
             <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
@@ -201,7 +199,7 @@ function ApprovalsScreen() {
           </>
         ) : (
           <div className="animate-in fade-in-0 zoom-in-95">
-            <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-accent/10 to-card shadow-soft">
+            <div className="rounded-2xl border border-border bg-subtle shadow-soft">
               <EmptyState
                 icon={<PartyPopper />}
                 title="All caught up"

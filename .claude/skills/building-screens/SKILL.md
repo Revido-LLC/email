@@ -50,8 +50,8 @@ A new destination is not "done" until all of these point at it:
 - Token utilities only; the `tokens-only/no-arbitrary-values` ESLint rule fails the
   build on arbitrary values. No token for what you need? Add one to `theme.css`.
 - Every AI-generated element carries `<Sparkle/>` inline or an `<AiTag/>` pill.
-- `font-display` for greetings/titles/hero/empty-state headings; `<EmptyState>` for
-  every zero state.
+- Titles are Inter (the only family): screen titles are `text-lg font-semibold tracking-tight`; the
+  one big moment on a screen (e.g. a greeting) is `text-2xl`. `<EmptyState>` for every zero state.
 
 ## 6. Verify
 

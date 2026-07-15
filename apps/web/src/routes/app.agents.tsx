@@ -1,5 +1,5 @@
 import { AGENTS, type AgentDef } from '@revido/mock-data'
-import { Button, Input, Sparkle, Tabs, TabsContent, TabsList, TabsTrigger } from '@revido/ui'
+import { Button, Input, Tabs, TabsContent, TabsList, TabsTrigger } from '@revido/ui'
 import { createFileRoute } from '@tanstack/react-router'
 import { Activity, LayoutGrid, Sparkles } from 'lucide-react'
 import * as React from 'react'
@@ -44,9 +44,8 @@ function AgentsScreen() {
         <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
             <div>
-              <h1 className="font-display text-2xl font-semibold tracking-tight">Agents</h1>
-              <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Sparkle />
+              <h1 className="text-lg font-semibold tracking-tight">Agents</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 {activeCount} working quietly in the background
               </p>
             </div>
@@ -64,11 +63,8 @@ function AgentsScreen() {
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
           <TabsContent value="gallery" className="mt-0 space-y-6">
             {/* NL create hero */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-ai/15 via-accent/10 to-card p-6 shadow-soft">
-              <Sparkles className="absolute right-5 top-5 size-5 text-ai/50" />
-              <h2 className="font-display text-2xl font-semibold tracking-tight">
-                What should we automate?
-              </h2>
+            <div className="relative overflow-hidden rounded-2xl border border-ai/20 bg-ai/5 p-6 shadow-soft">
+              <h2 className="text-lg font-semibold tracking-tight">What should we automate?</h2>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 Describe a chore in plain English. We compile it into a plan, dry-run it against
                 your history, and only turn it on when you say so.
@@ -81,9 +77,9 @@ function AgentsScreen() {
                     if (e.key === 'Enter') openCreate()
                   }}
                   placeholder="Label every invoice and mark it FYI…"
-                  className="h-11 flex-1 bg-card"
+                  className="flex-1 bg-card"
                 />
-                <Button variant="ai" size="lg" onClick={openCreate}>
+                <Button variant="ai" onClick={openCreate}>
                   <Sparkles /> Create agent
                 </Button>
               </div>

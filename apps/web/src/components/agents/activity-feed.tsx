@@ -51,7 +51,7 @@ export function ActivityFeed() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 rounded-2xl border border-border bg-gradient-to-br from-ai/10 to-card p-4">
+      <div className="flex items-center gap-2 rounded-2xl border border-ai/20 bg-ai/5 p-4">
         <div className="flex size-10 items-center justify-center rounded-xl bg-ai/12 text-ai">
           <Mail className="size-5" />
         </div>

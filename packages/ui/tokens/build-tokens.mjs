@@ -151,9 +151,6 @@ const TYPE = {
   lg: { size: 18, line: 28, weight: 500, tracking: -0.1, use: 'lead paragraph, list titles' },
   xl: { size: 20, line: 28, weight: 600, tracking: -0.2, use: 'section heading (sans)' },
   '2xl': { size: 24, line: 32, weight: 600, tracking: -0.3, use: 'card / panel title' },
-  'display-sm': { size: 30, line: 36, weight: 600, tracking: -0.4, use: 'screen title (Fraunces)', family: 'display' },
-  'display-md': { size: 38, line: 44, weight: 600, tracking: -0.5, use: 'greeting (Fraunces)', family: 'display' },
-  'display-lg': { size: 52, line: 56, weight: 600, tracking: -1, use: 'hero (Fraunces)', family: 'display' },
 }
 
 /* ----------------------------------------------------------------------------
@@ -179,7 +176,6 @@ const primitive = {
   font: {
     family: {
       sans: { $type: 'fontFamily', $value: 'Inter, ui-sans-serif, system-ui, sans-serif' },
-      display: { $type: 'fontFamily', $value: 'Fraunces, Iowan Old Style, Georgia, serif' },
     },
     weight: {
       regular: { $type: 'fontWeight', $value: 400 },
@@ -193,7 +189,7 @@ const primitive = {
       {
         $type: 'typography',
         $value: {
-          fontFamily: t.family === 'display' ? '{primitive.font.family.display}' : '{primitive.font.family.sans}',
+          fontFamily: '{primitive.font.family.sans}',
           fontWeight: t.weight,
           fontSize: `${t.size}px`,
           lineHeight: `${t.line}px`,
@@ -204,8 +200,8 @@ const primitive = {
     ]),
   ),
   shadow: {
-    soft: { $type: 'shadow', $value: '0 1px 2px rgba(120,90,70,0.04), 0 8px 24px -12px rgba(120,90,70,0.16)' },
-    pop: { $type: 'shadow', $value: '0 4px 12px -2px rgba(120,90,70,0.08), 0 16px 40px -12px rgba(120,90,70,0.22)' },
+    soft: { $type: 'shadow', $value: '0 1px 2px rgba(120,90,70,0.03), 0 4px 12px -6px rgba(120,90,70,0.10)' },
+    pop: { $type: 'shadow', $value: '0 4px 12px -2px rgba(120,90,70,0.06), 0 12px 28px -8px rgba(120,90,70,0.14)' },
   },
 }
 

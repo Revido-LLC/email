@@ -22,7 +22,9 @@ node packages/ui/tokens/build-tokens.mjs
 ## Three tiers
 
 1. **Primitive** — the raw scales. `color.brand.700`, `space.4`, `radius.lg`,
-   `type.display-md`. OKLCH-defined, no meaning attached.
+   `type.lg`. OKLCH-defined, no meaning attached. Type is **Inter only** — one family, sized on
+   the Tailwind scale; there's no display serif and no `display-*` tier. Hierarchy comes from size
+   and weight (e.g. screen titles are `text-lg font-semibold`, the one big greeting is `text-2xl`).
 2. **Semantic** — roles that alias primitives, split into `light`/`dark` sets.
    This is where **emphasis** lives: `action.loud` / `action.quietFill`,
    `text.primary` / `text.muted`. Components ask for a role, never a raw step.

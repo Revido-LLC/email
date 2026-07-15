@@ -4,10 +4,10 @@ import { Sparkles } from 'lucide-react'
 export function ScreenPlaceholder({ title, note }: { title: string; note?: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-accent/25 text-accent-foreground">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
         <Sparkles className="size-7" />
       </div>
-      <h1 className="font-display text-2xl font-semibold">{title}</h1>
+      <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
       {note && <p className="max-w-md text-sm text-muted-foreground">{note}</p>}
       <p className="text-2xs uppercase tracking-wide text-muted-foreground/60">Coming together…</p>
     </div>

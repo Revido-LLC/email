@@ -150,7 +150,7 @@ function ComposeScreen() {
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div key={composeKey} className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+        <div key={composeKey} className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
           {/* Header */}
           <header className="mb-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
@@ -158,7 +158,7 @@ function ComposeScreen() {
                 <PenLine className="size-4.5" />
               </span>
               <div>
-                <h1 className="font-display text-2xl font-semibold tracking-tight">New message</h1>
+                <h1 className="text-lg font-semibold tracking-tight">New message</h1>
                 <p className="text-xs text-muted-foreground">
                   Draft it yourself, or let AI start you off.
                 </p>
@@ -220,7 +220,7 @@ function ComposeScreen() {
       </div>
 
       {/* Sticky bottom bar */}
-      <div className="border-t border-border bg-card/80 backdrop-blur">
+      <div className="glass-thin border-x-0 border-b-0">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <AttachButton onAttach={(file) => setAttachments((prev) => [...prev, file])} />
@@ -259,12 +259,12 @@ function ComposeScreen() {
 function SentConfirmation({ onCompose, onInbox }: { onCompose: () => void; onInbox: () => void }) {
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <div className="flex max-w-md flex-col items-center gap-4 rounded-3xl border border-border bg-gradient-to-br from-success/10 via-card to-card p-6 text-center shadow-soft sm:p-10 animate-in fade-in-0 zoom-in-95">
-        <span className="flex size-16 items-center justify-center rounded-3xl bg-success/15 text-success">
+      <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-card p-6 text-center shadow-soft sm:p-10 animate-in fade-in-0 zoom-in-95">
+        <span className="flex size-11 items-center justify-center rounded-2xl bg-success/15 text-success">
           <CheckCircle2 className="size-8" />
         </span>
         <div>
-          <h2 className="font-display text-2xl font-semibold tracking-tight">Message sent</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Message sent</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Your email is on its way. We’ll keep an eye out for a reply.
           </p>

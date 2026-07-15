@@ -603,33 +603,6 @@ export const TYPE_SCALE: { key: string; size: number; line: number; weight: numb
     "tracking": -0.3,
     "use": "card / panel title",
     "display": false
-  },
-  {
-    "key": "display-sm",
-    "size": 30,
-    "line": 36,
-    "weight": 600,
-    "tracking": -0.4,
-    "use": "screen title (Fraunces)",
-    "display": true
-  },
-  {
-    "key": "display-md",
-    "size": 38,
-    "line": 44,
-    "weight": 600,
-    "tracking": -0.5,
-    "use": "greeting (Fraunces)",
-    "display": true
-  },
-  {
-    "key": "display-lg",
-    "size": 52,
-    "line": 56,
-    "weight": 600,
-    "tracking": -1,
-    "use": "hero (Fraunces)",
-    "display": true
   }
 ]
 export const CONTRAST_REPORT = {

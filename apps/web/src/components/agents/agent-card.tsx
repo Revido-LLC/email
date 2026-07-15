@@ -33,8 +33,8 @@ export function AgentCard({
         }
       }}
       className={cn(
-        'group flex cursor-pointer flex-col rounded-2xl border border-border bg-card p-4 text-left shadow-soft transition-all',
-        'hover:-translate-y-0.5 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+        'group flex cursor-pointer flex-col rounded-2xl border border-border bg-card p-4 text-left transition-colors',
+        'hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}
     >
       <div className="flex items-start gap-3">
@@ -45,7 +45,7 @@ export function AgentCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-display text-base font-semibold">{agent.name}</h3>
+            <h3 className="truncate text-base font-semibold">{agent.name}</h3>
             {isNew && <Badge variant="ai">New</Badge>}
           </div>
           <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{agent.description}</p>

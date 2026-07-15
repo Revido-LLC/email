@@ -17,7 +17,7 @@ import * as React from 'react'
 import { useAppState } from '@/lib/app-state'
 
 const itemCls =
-  'flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[selected=true]:bg-muted [&_svg]:size-4 [&_svg]:text-muted-foreground'
+  'flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-foreground outline-none data-[selected=true]:bg-muted [&_svg]:size-4 [&_svg]:text-muted-foreground'
 const groupCls =
   '[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted-foreground/70'
 
@@ -59,7 +59,7 @@ export function CommandPalette() {
               value={query}
               onValueChange={setQuery}
               placeholder="Search or type a command…"
-              className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+              className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
             />
             <Kbd>esc</Kbd>
           </div>

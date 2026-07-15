@@ -33,7 +33,7 @@ function TodayScreen() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-6 py-8 lg:py-12">
+      <div className="mx-auto max-w-3xl px-6 py-6 lg:py-8">
         {/* Greeting */}
         <header className="mb-7 flex items-start justify-between gap-4">
           <div>
@@ -41,38 +41,22 @@ function TodayScreen() {
               <Sun className="size-4 text-accent" />
               {brief.date}
             </div>
-            <h1 className="font-display text-4xl font-semibold tracking-tight">{brief.greeting}</h1>
-            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Sparkle />
+            <h1 className="text-2xl font-semibold">{brief.greeting}</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Here’s what matters today — the rest is handled.
             </p>
-          </div>
-          <div className="hidden size-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-accent/40 to-primary/25 sm:flex">
-            <Sun className="size-9 text-primary" />
           </div>
         </header>
 
         {/* Stat strip */}
         <div className="mb-8 grid grid-cols-3 gap-3">
-          <StatPill
-            n={brief.stats.needYou}
-            label="need you"
-            tone="text-primary"
-            bg="from-primary/12"
-          />
+          <StatPill n={brief.stats.needYou} label="need you" tone="text-primary" />
           <StatPill
             n={brief.stats.promises}
             label="promises to keep"
             tone="text-cat-awaiting-reply"
-            bg="from-cat-awaiting-reply/15"
           />
-          <StatPill
-            n={brief.stats.agentsHandled}
-            label="handled by agents"
-            tone="text-ai"
-            bg="from-ai/12"
-            ai
-          />
+          <StatPill n={brief.stats.agentsHandled} label="handled by agents" tone="text-ai" ai />
         </div>
 
         {/* Needs You */}
@@ -180,24 +164,17 @@ function StatPill({
   n,
   label,
   tone,
-  bg,
   ai,
 }: {
   n: number
   label: string
   tone: string
-  bg: string
   ai?: boolean
 }) {
   return (
-    <div
-      className={cn(
-        'relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br to-card p-4',
-        bg,
-      )}
-    >
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-subtle p-4">
       {ai && <Sparkle className="absolute right-3 top-3" />}
-      <div className={cn('font-display text-3xl font-semibold', tone)}>{n}</div>
+      <div className={cn('text-2xl font-semibold tabular-nums', tone)}>{n}</div>
       <div className="mt-0.5 text-sm text-muted-foreground">{label}</div>
     </div>
   )
@@ -221,7 +198,7 @@ function Section({
       <div className="flex items-center justify-between px-5 pt-4">
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">{icon}</span>
-          <h2 className="font-display text-lg font-semibold">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
           {marked && <AiTag />}
         </div>
         {action}
@@ -248,10 +225,7 @@ function NeedsYouRow({ thread }: { thread: Thread }) {
           <span className="truncate text-sm font-medium">{sender.name}</span>
           <CategoryChip token={meta.token} label={meta.label} className="shrink-0" />
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <Sparkle className="size-3 shrink-0" />
-          <span className="truncate text-sm text-muted-foreground">{thread.tldr}</span>
-        </div>
+        <p className="mt-0.5 truncate text-sm text-muted-foreground">{thread.tldr}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {thread.badges.slice(0, 2).map((b, i) => (
@@ -319,7 +293,7 @@ function InlineApproval({ runId }: { runId: string }) {
 
 function RevidoFooter({ line }: { line: string }) {
   return (
-    <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/15 to-card p-6 text-center">
+    <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-border bg-subtle p-6 text-center">
       <p className="max-w-md text-sm text-muted-foreground">
         <span className="font-medium text-foreground">{line}</span>
       </p>

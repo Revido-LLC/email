@@ -59,13 +59,13 @@ function NavLink({
       activeOptions={{ exact }}
       activeProps={{ 'data-active': 'true' }}
       className={cn(
-        'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors',
+        'group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors',
         'hover:bg-muted hover:text-foreground',
         'data-[active=true]:bg-primary/12 data-[active=true]:text-primary',
         collapsed && 'justify-center px-0',
       )}
     >
-      <span className="relative flex size-5 shrink-0 items-center justify-center [&_svg]:size-5">
+      <span className="relative flex size-5 shrink-0 items-center justify-center [&_svg]:size-4">
         {icon}
         {badge ? (
           <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-2xs font-semibold text-primary-foreground">
@@ -103,7 +103,7 @@ function CategoryNavItem({
       params={{ categoryId: cat.id }}
       activeProps={{ 'data-active': 'true' }}
       className={cn(
-        'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors',
+        'group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors',
         'hover:bg-muted hover:text-foreground',
         'data-[active=true]:bg-primary/12 data-[active=true]:text-primary',
         collapsed && 'justify-center px-0',
@@ -137,7 +137,7 @@ export function NavRail() {
   return (
     <nav
       className={cn(
-        'hidden h-full shrink-0 flex-col border-r border-border bg-subtle transition-[width] duration-200 lg:flex',
+        'hidden h-full shrink-0 flex-col glass-thin border-y-0 border-l-0 transition-[width] duration-200 lg:flex',
         navCollapsed ? 'w-[68px]' : 'w-60',
       )}
     >
@@ -245,7 +245,7 @@ export function NavRail() {
         </div>
 
         {!navCollapsed && !revidoDismissed && (
-          <div className="relative mt-3 overflow-hidden rounded-xl bg-gradient-to-br from-primary/12 to-accent/20 p-3">
+          <div className="relative mt-3 overflow-hidden rounded-xl bg-muted/50 p-3">
             <button
               onClick={() => setRevidoDismissed(true)}
               className="absolute right-2 top-2 rounded-md p-0.5 text-muted-foreground hover:text-foreground"

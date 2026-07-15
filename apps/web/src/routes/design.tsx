@@ -68,7 +68,7 @@ function DesignScreen() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-4xl font-semibold">Design System</h1>
+            <h1 className="text-4xl font-semibold">Design System</h1>
             <p className="mt-1 text-muted-foreground">
               Warm consumer skin, pro-tool bones. Tokens only.
             </p>
@@ -82,7 +82,7 @@ function DesignScreen() {
         <TokenFoundation />
 
         <div className="my-12 border-t border-border" />
-        <h2 className="mb-6 font-display text-2xl font-semibold">Components</h2>
+        <h2 className="mb-6 text-2xl font-semibold">Components</h2>
 
         <Group title="Semantic colors">
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
@@ -116,8 +116,8 @@ function DesignScreen() {
 
         <Group title="Typography">
           <div className="space-y-2">
-            <div className="font-display text-5xl font-semibold">Your inbox, handled.</div>
-            <div className="font-display text-3xl font-semibold">Good morning, Sam</div>
+            <div className="text-5xl font-semibold">Your inbox, handled.</div>
+            <div className="text-3xl font-semibold">Good morning, Sam</div>
             <div className="text-xl font-semibold">Section heading (sans)</div>
             <p className="text-base">Body text — the quick brown fox jumps over the lazy dog.</p>
             <p className="text-sm text-muted-foreground">Muted small — supporting copy.</p>

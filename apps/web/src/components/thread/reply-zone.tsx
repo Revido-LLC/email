@@ -9,7 +9,7 @@ export function ReplyZone({ thread }: { thread: Thread }) {
   const [draft, setDraft] = React.useState<string | null>(null)
 
   return (
-    <div className="shrink-0 border-t border-border bg-background/90 px-4 py-3 backdrop-blur">
+    <div className="glass-thin shrink-0 border-x-0 border-b-0 px-4 py-3">
       <div className="mx-auto w-full max-w-3xl">
         {draft !== null && (
           <div className="mb-3 rounded-2xl border border-border bg-card p-3 shadow-soft">

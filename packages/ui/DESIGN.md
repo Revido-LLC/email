@@ -42,14 +42,24 @@ neutral — color is no longer a per-category signal.
 
 ## Type
 
-- **Display** (`font-display`, Fraunces): greetings, screen titles, hero, empty-state headings.
-- **Body/UI** (default `font-sans`, Inter): everything else.
+- **One family: Inter** (`font-sans`, the default). No display serif — everything, from screen titles
+  to body, is Inter. Hierarchy comes from **size and weight**, not a second typeface.
+- **Screen titles**: `text-lg font-semibold tracking-tight`.
+- **The one big moment**: the Today greeting is `text-2xl font-semibold` — a screen gets a single title
+  that's allowed to be large (see the loudness budget below).
+- **Marketing hero**: `text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight` — big by size, but
+  medium weight so it reads calm, not shouty.
 - Sizes are the Tailwind scale plus `text-2xs` (0.6875rem) for tiny meta/labels.
+
+> **Loudness budget.** A screen gets ONE big element; big = size + space, never weight + color.
 
 ## Shape & elevation
 
 - Radius is tight and modern — crisp without going brutalist: `rounded-xl` (buttons/inputs), `rounded-2xl` (cards), `rounded-3xl` (hero/marketing).
-- Shadows: `shadow-soft` (resting cards, buttons), `shadow-pop` (popovers, dialogs, command palette).
+- **Shadows are reserved for true overlays.** Resting surfaces — cards, buttons, toolbars — carry no
+  shadow; a hairline border does the separating. Reach for `shadow-pop` only on things that actually
+  float above the page (popovers, dialogs, command palette). Structure reads through borders and
+  spacing, not a resting lift.
 
 ## The AI marker
 
@@ -111,7 +121,9 @@ Twelve primitives. Match the component to the job, and lean on the emphasis rule
 to reach for.
 
 **Button** — variants `primary` · `secondary` · `outline` · `ghost` · `subtle` · `ai` ·
-`destructive` · `link`; sizes `sm` `md` `lg` `icon` `icon-sm`.
+`destructive` · `link`; sizes `sm` `md` (`h-9 px-3.5`, the default) `lg` (`h-10 px-5 text-sm`)
+`icon` (`size-9`) `icon-sm`. Controls run dense — inputs, selects, and the tabs list share the `h-9`
+line so a toolbar reads as one tidy row.
 _Use when_ triggering an action. `primary` is the **one loud action per view** (send, save) — at most
 one on screen; `secondary`/`outline`/`subtle`/`ghost` step down through the medium and quiet tiers
 for everything else; `ai` (sparkle) for AI actions; `destructive` for irreversible ones; `link` for

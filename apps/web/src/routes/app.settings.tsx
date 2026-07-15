@@ -51,13 +51,13 @@ export const Route = createFileRoute('/app/settings')({
 function SettingsScreen() {
   return (
     <div className="h-full overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
+      <header className="glass-thin sticky top-0 z-10 border-x-0 border-t-0">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4 sm:px-6">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
             <SettingsIcon className="size-4" />
           </div>
           <div>
-            <h1 className="font-display text-xl font-semibold tracking-tight">Settings</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
             <p className="text-sm text-muted-foreground">
               Accounts, AI preferences, signatures, privacy and usage.
             </p>
@@ -65,7 +65,7 @@ function SettingsScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <Tabs defaultValue="accounts">
           <TabsList className="mb-6 flex w-full overflow-x-auto">
             <TabsTrigger value="accounts">Accounts</TabsTrigger>
@@ -488,7 +488,7 @@ function UsageTab() {
         {COUNTERS.map((c) => (
           <Card key={c.label} className="shadow-soft">
             <CardContent className="p-5">
-              <div className={cn('font-display text-3xl font-semibold', counterText(c.token))}>
+              <div className={cn('text-2xl font-semibold tabular-nums', counterText(c.token))}>
                 {c.value}
               </div>
               <div className="mt-1 text-sm font-medium">{c.label}</div>
@@ -498,7 +498,7 @@ function UsageTab() {
         ))}
       </div>
 
-      <div className="flex items-start gap-3 rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-accent/15 to-card p-5">
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-subtle p-5">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
           <Gauge className="size-4" />
         </div>

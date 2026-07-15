@@ -30,10 +30,10 @@ export function PromptBar({
   }
 
   return (
-    <div className="rounded-2xl border border-ai/25 bg-gradient-to-br from-ai/10 via-ai/5 to-card p-4 shadow-soft">
+    <div className="rounded-2xl border border-ai/20 bg-ai/5 p-4 shadow-soft">
       <div className="mb-2.5 flex items-center gap-2">
         <Sparkle />
-        <span className="font-display text-base font-semibold">Draft with AI</span>
+        <span className="text-base font-semibold">Draft with AI</span>
         <AiTag />
       </div>
 

@@ -41,13 +41,13 @@ function TalkScreen() {
         </div>
 
         <header className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-primary/30 via-accent/25 to-card shadow-soft">
-            <Sparkles className="size-7 text-primary" />
+          <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-soft">
+            <Sparkles className="size-6" />
           </div>
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-3 py-1 text-xs font-medium text-primary">
             <Sparkle className="text-primary" /> Revido
           </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="text-2xl font-semibold tracking-tight">
             We built this. We can build yours.
           </h1>
           <p className="mx-auto mt-3 max-w-md text-base text-muted-foreground">
@@ -56,7 +56,7 @@ function TalkScreen() {
           </p>
         </header>
 
-        <Card className="shadow-pop">
+        <Card className="shadow-soft">
           <CardContent className="p-6">
             {sent ? (
               <ThankYou name={form.name} />
@@ -151,7 +151,7 @@ function ThankYou({ name }: { name: string }) {
         <Check className="size-7" />
       </div>
       <div>
-        <h2 className="font-display text-2xl font-semibold">Thanks, {first}.</h2>
+        <h2 className="text-2xl font-semibold">Thanks, {first}.</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
           We’ll be in touch within one business day. Want to skip the wait? Grab a time and we’ll
           come prepared.

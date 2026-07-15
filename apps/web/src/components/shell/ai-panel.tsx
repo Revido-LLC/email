@@ -54,7 +54,7 @@ export function AIPanel() {
         <div className="flex size-7 items-center justify-center rounded-lg bg-ai/12">
           <Sparkles className="size-4 text-ai" />
         </div>
-        <span className="font-display text-base font-semibold">Assistant</span>
+        <span className="text-base font-semibold">Assistant</span>
       </div>
       <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={label}>
         {icon}
@@ -91,7 +91,7 @@ export function AIPanel() {
     <>
       {/* Desktop (lg+): static right column, or a thin reopen rail. */}
       {aiPanelOpen ? (
-        <aside className="hidden h-full w-95 shrink-0 flex-col border-l border-border bg-subtle lg:flex">
+        <aside className="hidden h-full w-95 shrink-0 flex-col glass-thin border-y-0 border-r-0 lg:flex">
           {renderHeader(
             () => setAiPanelOpen(false),
             'Collapse panel (⌘J)',
@@ -100,7 +100,7 @@ export function AIPanel() {
           {renderBody()}
         </aside>
       ) : (
-        <div className="hidden h-full w-12 shrink-0 flex-col items-center border-l border-border bg-subtle py-3 lg:flex">
+        <div className="hidden h-full w-12 shrink-0 flex-col items-center glass-thin border-y-0 border-r-0 py-3 lg:flex">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -247,7 +247,7 @@ function DayInsights() {
           )
         })}
       </section>
-      <div className="rounded-xl bg-gradient-to-br from-ai/10 to-primary/10 p-3 text-xs text-muted-foreground">
+      <div className="rounded-xl border border-ai/20 bg-ai/5 p-3 text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Tip:</span> Ask me anything about your inbox
         in the Chat tab — “what did John say about the contract?”
       </div>
@@ -258,7 +258,7 @@ function DayInsights() {
 function Stat({ n, label, tone }: { n: number; label: string; tone: string }) {
   return (
     <div className="rounded-xl border border-border bg-card p-2.5 text-center">
-      <div className={cn('font-display text-xl font-semibold', tone)}>{n}</div>
+      <div className={cn('text-xl font-semibold tabular-nums', tone)}>{n}</div>
       <div className="text-2xs text-muted-foreground">{label}</div>
     </div>
   )

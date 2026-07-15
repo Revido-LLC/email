@@ -102,7 +102,7 @@ function NotFound() {
         <Inbox className="size-6" />
       </div>
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Thread not found</h1>
+        <h1 className="text-lg font-semibold tracking-tight">Thread not found</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           This conversation may have been archived or moved.
         </p>

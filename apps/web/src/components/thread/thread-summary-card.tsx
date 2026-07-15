@@ -19,7 +19,7 @@ export function ThreadSummaryCard({ thread }: { thread: Thread }) {
   const hasDetails = actions.length > 0 || facts.length > 0
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-ai/25 bg-gradient-to-br from-ai/8 via-card to-card shadow-soft">
+    <section className="overflow-hidden rounded-2xl border border-ai/20 bg-ai/5 shadow-soft">
       <div className="flex items-start gap-3 p-4">
         <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-ai/12">
           <Sparkle />

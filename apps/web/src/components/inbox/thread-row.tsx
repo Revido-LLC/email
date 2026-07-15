@@ -8,7 +8,6 @@ import {
   ContactAvatar,
   PriorityDot,
   SimpleTooltip,
-  Sparkle,
   cn,
 } from '@revido/ui'
 import {
@@ -113,7 +112,7 @@ export function ThreadRow({
       <ContactAvatar
         name={sender.name}
         src={sender.avatarUrl}
-        className="pointer-events-none size-9 shrink-0"
+        className="pointer-events-none size-8 shrink-0"
       />
 
       {/* Sender · subject + AI TL;DR */}
@@ -130,8 +129,7 @@ export function ThreadRow({
           </span>
           <span className="truncate text-sm text-muted-foreground">{thread.subject}</span>
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <Sparkle className="size-3 shrink-0" />
+        <div className="mt-0.5">
           <span className="truncate text-sm text-muted-foreground">{thread.tldr}</span>
         </div>
       </div>

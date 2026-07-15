@@ -14,7 +14,7 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm transition-colors',
+      'flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm transition-colors',
       'data-[placeholder]:text-muted-foreground/70 [&_svg]:size-4 [&_svg]:shrink-0',
       'hover:border-ring',
       'focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
@@ -79,7 +79,7 @@ export const SelectContent = React.forwardRef<
       position={position}
       sideOffset={sideOffset}
       className={cn(
-        'relative z-50 max-h-96 min-w-44 overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-pop',
+        'relative z-50 max-h-96 min-w-40 overflow-hidden rounded-xl p-1 text-popover-foreground shadow-pop glass-thin',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         position === 'popper' && 'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
         className,
@@ -100,7 +100,7 @@ export const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn('px-2.5 py-1.5 text-xs font-semibold text-muted-foreground', className)}
+    className={cn('px-2.5 py-1 text-xs font-semibold text-muted-foreground', className)}
     {...props}
   />
 ))
@@ -113,7 +113,7 @@ export const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-lg py-1.5 pl-8 pr-2.5 text-sm outline-none transition-colors',
+      'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-md py-1 pl-8 pr-2.5 text-sm outline-none transition-colors',
       'data-[highlighted]:bg-muted data-[highlighted]:text-foreground',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className,

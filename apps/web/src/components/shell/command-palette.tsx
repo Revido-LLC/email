@@ -46,7 +46,7 @@ export function CommandPalette() {
     <Dialog open={commandOpen} onOpenChange={setCommandOpen}>
       <DialogContent
         showClose={false}
-        className="top-24 max-w-xl translate-y-0 gap-0 overflow-hidden p-0"
+        className="top-24 max-w-xl translate-y-0 gap-0 overflow-hidden p-0 glass"
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <Command

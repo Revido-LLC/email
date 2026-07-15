@@ -14,7 +14,7 @@ import {
   RADIUS_SCALE,
   CONTRAST_REPORT,
 } from '@revido/ui/tokens'
-import { Badge, Button, Sparkle } from '@revido/ui'
+import { Badge, Button, Sparkle, cn } from '@revido/ui'
 import { ArrowRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -129,6 +129,61 @@ function EmphasisDemo() {
         </ul>
         <p className="mt-3 text-2xs text-muted-foreground">One primary action; danger kept for real danger; the rest recede.</p>
       </div>
+    </div>
+  )
+}
+
+/* ---- Materials: liquid glass over a busy monochrome field ------------------ */
+
+const GLASS_PANELS = [
+  {
+    cls: 'glass',
+    label: '.glass',
+    hint: 'Flagship floating chrome — command palette, dialogs. blur(20px), specular top rim, soft depth.',
+  },
+  {
+    cls: 'glass-thin',
+    label: '.glass-thin',
+    hint: 'Lighter weight for smaller surfaces — dropdown menus, toolbars. Less blur, no rim.',
+  },
+] as const
+
+function GlassMaterials() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {GLASS_PANELS.map((m) => (
+        <div
+          key={m.label}
+          className="relative h-64 overflow-hidden rounded-2xl border border-border bg-background"
+        >
+          {/* Busy monochrome backdrop the material frosts over. */}
+          <div aria-hidden className="absolute inset-0 p-3">
+            <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm font-semibold uppercase leading-snug tracking-widest text-foreground/55">
+              {Array.from({ length: 44 }).map((_, i) => (
+                <span key={i}>Revido</span>
+              ))}
+            </div>
+            <div className="absolute left-6 top-8 size-20 rounded-full bg-primary/70" />
+            <div className="absolute right-8 top-12 size-16 rounded-2xl bg-neutral-500" />
+            <div className="absolute bottom-8 left-16 size-24 rounded-full bg-muted-foreground/50" />
+            <div className="absolute bottom-10 right-6 size-14 rounded-xl bg-neutral-700" />
+          </div>
+
+          {/* The floating glass panel — its backdrop-blur frosts the field above. */}
+          <div
+            className={cn(
+              'absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-2xl p-4',
+              m.cls,
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Sparkle className="text-ai" />
+              <span className="font-mono text-sm font-medium">{m.label}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{m.hint}</p>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -262,6 +317,10 @@ export function TokenFoundation() {
 
       <Section title="Emphasis — the hierarchy fix" hint="Hierarchy is a property of a ramp, not a color. The same six inbox rows: all-loud (today) vs. ranked with emphasis tiers.">
         <EmphasisDemo />
+      </Section>
+
+      <Section title="Materials — liquid glass" hint="The depth layer for floating chrome: a translucent, frosted material that adapts to light and dark. Each panel sits over a busy monochrome field so the backdrop-blur is visibly frosting what's behind it.">
+        <GlassMaterials />
       </Section>
 
       <Section title="Color ramps (primitive)" hint="OKLCH scales, 50→900. Hover a swatch for its AA contrast on the app canvas. Text roles are pinned to steps that clear AA 4.5.">

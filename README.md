@@ -21,23 +21,31 @@ pnpm dev        # http://localhost:5173
 
 Key routes:
 
-| Route             | Screen                                   |
-| ----------------- | ---------------------------------------- |
-| `/`               | Landing page                             |
-| `/onboarding`     | 30-second first-run wow                  |
-| `/app`            | Today (AI morning brief)                 |
-| `/app/inbox`      | Thread list — Needs You                  |
-| `/app/thread/:id` | Thread takeover                          |
-| `/app/compose`    | Composer (prompt bar + tone chips)       |
-| `/app/agents`     | Inbox agents (gallery / create / feed)   |
-| `/app/reminders`  | Reminders                                |
-| `/app/settings`   | Settings                                 |
-| `/talk`           | Talk to Revido                           |
-| `/design`         | Kitchen-sink: tokens + component gallery |
+| Route                       | Screen                                                                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                         | Landing page                                                                                                                      |
+| `/onboarding`               | 30-second first-run wow                                                                                                           |
+| `/app`                      | Today (AI morning brief)                                                                                                          |
+| `/app/inbox`                | Thread list — Needs You                                                                                                           |
+| `/app/approvals`            | Approvals — pending agent actions to review                                                                                       |
+| `/app/category/:categoryId` | Category view (9 categories: to-reply, awaiting-reply, fyi, newsletters, notifications, promotions, receipts, calendar, personal) |
+| `/app/thread/:id`           | Thread takeover                                                                                                                   |
+| `/app/compose`              | Composer (prompt bar + tone chips)                                                                                                |
+| `/app/agents`               | Inbox agents (gallery / create / feed)                                                                                            |
+| `/app/reminders`            | Reminders                                                                                                                         |
+| `/app/settings`             | Settings                                                                                                                          |
+| `/talk`                     | Talk to Revido                                                                                                                    |
+| `/design`                   | Kitchen-sink: tokens + component gallery                                                                                          |
 
 ## Scripts
 
 - `pnpm dev` · `pnpm build` · `pnpm typecheck` · `pnpm lint` · `pnpm format`
+
+## Docs
+
+- [Information architecture](./docs/information-architecture.md) — screen map, navigation model, IA rationale.
+- [Design system](./packages/ui/DESIGN.md) — tokens, categories, the AI marker, component inventory.
+- [Contributing](./CONTRIBUTING.md) — setup, commands, and conventions.
 
 ## License
 

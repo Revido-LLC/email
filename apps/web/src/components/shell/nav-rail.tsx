@@ -9,7 +9,6 @@ import {
 } from '@revido/mock-data'
 import {
   Button,
-  CategoryDot,
   ContactAvatar,
   Kbd,
   Progress,
@@ -17,6 +16,7 @@ import {
   SimpleTooltip,
   cn,
 } from '@revido/ui'
+import { Icon } from '@/lib/icons'
 import {
   Bell,
   CheckCircle2,
@@ -90,6 +90,45 @@ function NavLink({
   )
 }
 
+function CategoryNavItem({
+  cat,
+  collapsed,
+}: {
+  cat: (typeof CATEGORY_LIST)[number]
+  collapsed: boolean
+}) {
+  const link = (
+    <Link
+      to="/app/category/$categoryId"
+      params={{ categoryId: cat.id }}
+      activeProps={{ 'data-active': 'true' }}
+      className={cn(
+        'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors',
+        'hover:bg-muted hover:text-foreground',
+        'data-[active=true]:bg-primary/12 data-[active=true]:text-primary',
+        collapsed && 'justify-center px-0',
+      )}
+    >
+      <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-4">
+        <Icon name={cat.icon} />
+      </span>
+      {!collapsed && (
+        <>
+          <span className="min-w-0 flex-1 truncate">{cat.label}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{counts[cat.id] ?? 0}</span>
+        </>
+      )}
+    </Link>
+  )
+  return collapsed ? (
+    <SimpleTooltip label={`${cat.label} · ${counts[cat.id] ?? 0}`} side="right">
+      {link}
+    </SimpleTooltip>
+  ) : (
+    link
+  )
+}
+
 export function NavRail() {
   const { navCollapsed, toggleNav } = useAppState()
   const [revidoDismissed, setRevidoDismissed] = React.useState(false)
@@ -159,37 +198,16 @@ export function NavRail() {
           />
         </div>
 
-        {!navCollapsed && (
+        {!navCollapsed ? (
           <div className="mt-5 px-4 text-2xs font-semibold uppercase tracking-wide text-muted-foreground/70">
             Categories
           </div>
+        ) : (
+          <div className="mx-auto mt-3 mb-1 h-px w-7 bg-border" aria-hidden />
         )}
         <div className="mt-1.5 flex flex-col gap-0.5 px-3">
           {CATEGORY_LIST.map((cat) => (
-            <Link
-              key={cat.id}
-              to="/app/category/$categoryId"
-              params={{ categoryId: cat.id }}
-              activeProps={{ 'data-active': 'true' }}
-              className={cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground',
-                navCollapsed && 'justify-center px-0',
-              )}
-            >
-              {navCollapsed ? (
-                <SimpleTooltip label={cat.label} side="right">
-                  <span className="flex size-5 items-center justify-center">
-                    <CategoryDot token={cat.token} />
-                  </span>
-                </SimpleTooltip>
-              ) : (
-                <>
-                  <CategoryDot token={cat.token} className="size-2.5" />
-                  <span className="min-w-0 flex-1 truncate">{cat.label}</span>
-                  <span className="text-xs text-muted-foreground">{counts[cat.id] ?? 0}</span>
-                </>
-              )}
-            </Link>
+            <CategoryNavItem key={cat.id} cat={cat} collapsed={navCollapsed} />
           ))}
         </div>
 

@@ -48,7 +48,7 @@ the stem for you (the class strings are enumerated in `components/category.tsx` 
 
 ## Shape & elevation
 
-- Radius is generous: `rounded-xl` (buttons/inputs), `rounded-2xl` (cards), `rounded-3xl` (hero/marketing).
+- Radius is tight and modern — crisp without going brutalist: `rounded-xl` (buttons/inputs), `rounded-2xl` (cards), `rounded-3xl` (hero/marketing).
 - Shadows: `shadow-soft` (resting cards, buttons), `shadow-pop` (popovers, dialogs, command palette).
 
 ## The AI marker

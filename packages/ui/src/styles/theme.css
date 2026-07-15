@@ -10,6 +10,8 @@
  */
 @import 'tailwindcss';
 @import 'tw-animate-css';
+/* Generated primitive ramps (color.brand.600 -> --brand-600 / bg-brand-600). */
+@import '../../tokens/primitives.generated.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -28,8 +30,9 @@
   --input: oklch(0.9 0.012 75);
   --ring: oklch(0.67 0.18 25);
 
-  /* Coral primary + amber accent — the warm signature */
-  --primary: oklch(0.67 0.19 25);
+  /* Coral primary + amber accent — the warm signature. Action fills map to the
+     AA-safe ramp step (brand.700) so a white label clears WCAG AA. */
+  --primary: var(--brand-700);
   --primary-foreground: oklch(0.99 0.01 80);
   --accent: oklch(0.83 0.13 72);
   --accent-foreground: oklch(0.32 0.05 55);
@@ -38,8 +41,10 @@
 
   --success: oklch(0.66 0.15 150);
   --warning: oklch(0.78 0.15 70);
-  --destructive: oklch(0.58 0.2 22);
+  --destructive: var(--error-700);
   --destructive-foreground: oklch(0.99 0.01 80);
+  --info: var(--info-600);
+  --info-foreground: oklch(0.99 0.01 250);
 
   /* Sparkle — marks every AI-generated element */
   --ai: oklch(0.62 0.19 300);
@@ -71,7 +76,7 @@
   --input: oklch(0.36 0.016 58);
   --ring: oklch(0.7 0.17 27);
 
-  --primary: oklch(0.71 0.17 28);
+  --primary: var(--brand-500);
   --primary-foreground: oklch(0.2 0.02 40);
   --accent: oklch(0.78 0.13 72);
   --accent-foreground: oklch(0.24 0.04 55);
@@ -80,8 +85,10 @@
 
   --success: oklch(0.72 0.15 150);
   --warning: oklch(0.8 0.14 72);
-  --destructive: oklch(0.66 0.19 22);
+  --destructive: var(--error-500);
   --destructive-foreground: oklch(0.99 0.01 80);
+  --info: var(--info-400);
+  --info-foreground: oklch(0.2 0.02 250);
 
   --ai: oklch(0.72 0.17 300);
   --ai-foreground: oklch(0.18 0.02 300);
@@ -122,6 +129,8 @@
   --color-warning: var(--warning);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
 
   --color-ai: var(--ai);
   --color-ai-foreground: var(--ai-foreground);

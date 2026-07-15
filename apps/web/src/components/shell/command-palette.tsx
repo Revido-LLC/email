@@ -133,7 +133,7 @@ export function CommandPalette() {
               {CATEGORY_LIST.map((cat) => (
                 <Command.Item
                   key={cat.id}
-                  value={`category ${cat.label}`}
+                  value={['category', cat.label, ...(cat.keywords ?? [])].join(' ')}
                   onSelect={() => go('/app/category/$categoryId', { categoryId: cat.id })}
                   className={itemCls}
                 >

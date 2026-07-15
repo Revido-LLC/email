@@ -26,6 +26,8 @@ export interface CategoryMeta {
   token: string
   /** lucide-react icon name, resolved by the UI layer. */
   icon: string
+  /** Search synonyms surfaced in the command palette (⌘K). */
+  keywords?: string[]
 }
 
 export type Priority = 'urgent' | 'high' | 'normal' | 'low'

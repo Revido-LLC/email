@@ -22,7 +22,13 @@ export const CATEGORIES: Record<CategoryId, CategoryMeta> = {
     icon: 'Bell',
   },
   promotions: { id: 'promotions', label: 'Promotions', token: 'promotions', icon: 'Tag' },
-  receipts: { id: 'receipts', label: 'Receipts', token: 'receipts', icon: 'Receipt' },
+  receipts: {
+    id: 'receipts',
+    label: 'Receipts',
+    token: 'receipts',
+    icon: 'Receipt',
+    keywords: ['invoice', 'invoices', 'billing'],
+  },
   calendar: { id: 'calendar', label: 'Calendar', token: 'calendar', icon: 'Calendar' },
   personal: { id: 'personal', label: 'Personal', token: 'personal', icon: 'Heart' },
 }

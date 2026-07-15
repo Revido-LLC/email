@@ -16,6 +16,8 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  server: { port: 5173, host: true },
-  preview: { port: 5173, host: true },
+  // `.up.railway.app` allows the Railway-generated subdomain; `.revido.co`
+  // allows the production custom domain (email.revido.co) and any sibling.
+  server: { port: 5173, host: true, allowedHosts: ['.up.railway.app', '.revido.co'] },
+  preview: { port: 5173, host: true, allowedHosts: ['.up.railway.app', '.revido.co'] },
 })

@@ -53,6 +53,11 @@
   --ai: var(--accent-700);
   --ai-foreground: var(--neutral-50);
 
+  /* Liquid glass — a translucent, frosted material for floating chrome. */
+  --glass-bg: color-mix(in srgb, var(--card) 68%, transparent);
+  --glass-border: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --glass-highlight: color-mix(in srgb, white 70%, transparent);
+
   /* Categories are monochrome — identity is the label, not a hue. */
   --cat-to-reply: var(--neutral-500);
   --cat-awaiting-reply: var(--neutral-500);
@@ -97,6 +102,11 @@
 
   --ai: var(--accent-400);
   --ai-foreground: var(--neutral-900);
+
+  /* Glass over a dark canvas: less opacity, a fainter top highlight. */
+  --glass-bg: color-mix(in srgb, var(--card) 55%, transparent);
+  --glass-border: color-mix(in srgb, white 12%, transparent);
+  --glass-highlight: color-mix(in srgb, white 14%, transparent);
 
   --cat-to-reply: var(--neutral-400);
   --cat-awaiting-reply: var(--neutral-400);
@@ -173,6 +183,25 @@
   --shadow-soft: 0 1px 2px oklch(0.5 0.05 40 / 0.04), 0 8px 24px -12px oklch(0.5 0.08 40 / 0.16);
   --shadow-pop:
     0 4px 12px -2px oklch(0.5 0.05 40 / 0.08), 0 16px 40px -12px oklch(0.5 0.08 40 / 0.22);
+}
+
+/* Liquid glass: a translucent frosted material for floating chrome (overlays,
+   command palette, sheets). Backdrop-blur + a specular top rim + soft depth.
+   Pair with a `rounded-*` and let content scroll behind it. */
+@utility glass {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-pop), inset 0 1px 0 0 var(--glass-highlight);
+}
+
+/* Lighter weight for smaller surfaces (toolbars, chips): less blur, no rim. */
+@utility glass-thin {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+  border: 1px solid var(--glass-border);
 }
 
 @layer base {

@@ -26,6 +26,21 @@ export { Skeleton } from './components/skeleton'
 export { Separator } from './components/separator'
 export { Switch } from './components/switch'
 export { Checkbox } from './components/checkbox'
+export { RadioGroup, RadioGroupItem } from './components/radio'
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+} from './components/select'
+export { Spinner, spinnerVariants, type SpinnerProps } from './components/spinner'
+export { Tag, tagVariants, type TagProps } from './components/tag'
 export { Progress } from './components/progress'
 export { EmptyState } from './components/empty-state'
 export { Avatar, AvatarImage, AvatarFallback, ContactAvatar } from './components/avatar'

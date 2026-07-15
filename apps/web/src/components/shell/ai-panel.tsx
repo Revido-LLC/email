@@ -248,13 +248,62 @@ const SEED_CHAT: ChatMsg[] = [
   },
 ]
 
+const CANNED_REPLIES: ChatMsg[] = [
+  {
+    role: 'ai',
+    text: 'Invoice #1042 from Meridian Labs is 6 days overdue at $12,500 — worth chasing today. Better news on the other side: the $4,800 from Acme Corp has cleared in your Mercury account.',
+    citations: [
+      { threadId: 't-quickbooks', label: 'Invoice #1042 overdue' },
+      { threadId: 't-mercury', label: 'Acme payment cleared' },
+    ],
+  },
+  {
+    role: 'ai',
+    text: 'Your cloud and tooling spend this cycle is about $562: AWS is estimating $342.19, and Anthropic billed $220.00 through Stripe.',
+    citations: [
+      { threadId: 't-aws', label: 'AWS bill $342.19' },
+      { threadId: 't-stripe', label: 'Anthropic receipt' },
+    ],
+  },
+  {
+    role: 'ai',
+    text: 'Your Amazon package is on track to arrive Thursday — nothing you need to do on it.',
+    citations: [{ threadId: 't-amazon', label: 'Package arriving Thursday' }],
+  },
+]
+
 function ChatTab() {
   const [input, setInput] = React.useState('')
+  const [messages, setMessages] = React.useState<ChatMsg[]>(SEED_CHAT)
+  const [pending, setPending] = React.useState(false)
+  const replyCursor = React.useRef(0)
+  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const endRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages, pending])
+
+  React.useEffect(() => () => clearTimeout(timer.current), [])
+
+  const send = () => {
+    if (!input.trim() || pending) return
+    setMessages((prev) => [...prev, { role: 'user', text: input.trim() }])
+    setInput('')
+    setPending(true)
+    timer.current = setTimeout(() => {
+      const reply = CANNED_REPLIES[replyCursor.current % CANNED_REPLIES.length]
+      replyCursor.current += 1
+      if (reply) setMessages((prev) => [...prev, reply])
+      setPending(false)
+    }, 700)
+  }
+
   return (
     <>
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-4">
-          {SEED_CHAT.map((m, i) => (
+          {messages.map((m, i) => (
             <div
               key={i}
               className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}
@@ -287,6 +336,15 @@ function ChatTab() {
               </div>
             </div>
           ))}
+          {pending && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm">
+                <AiTag className="mb-1.5" />
+                <p className="animate-pulse text-muted-foreground">Thinking…</p>
+              </div>
+            </div>
+          )}
+          <div ref={endRef} />
         </div>
       </ScrollArea>
       <div className="border-t border-border p-3">
@@ -294,11 +352,23 @@ function ChatTab() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send()
+              }
+            }}
             rows={1}
             placeholder="Ask about your inbox…"
             className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-muted-foreground/70"
           />
-          <Button size="icon-sm" variant="ai" aria-label="Send" disabled={!input.trim()}>
+          <Button
+            size="icon-sm"
+            variant="ai"
+            aria-label="Send"
+            onClick={send}
+            disabled={!input.trim() || pending}
+          >
             <ArrowUp className="size-4" />
           </Button>
         </div>

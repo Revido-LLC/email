@@ -1,0 +1,199 @@
+{
+  "semantic": {
+    "light": {
+      "bg": {
+        "canvas": {
+          "$value": "{primitive.color.neutral.50}"
+        },
+        "raised": {
+          "$value": "{primitive.color.neutral.50}"
+        },
+        "sunken": {
+          "$value": "{primitive.color.neutral.100}"
+        }
+      },
+      "text": {
+        "primary": {
+          "$value": "{primitive.color.neutral.900}"
+        },
+        "secondary": {
+          "$value": "{primitive.color.neutral.700}"
+        },
+        "muted": {
+          "$value": "{primitive.color.neutral.600}"
+        },
+        "onBrand": {
+          "$value": "{primitive.color.neutral.50}"
+        }
+      },
+      "border": {
+        "subtle": {
+          "$value": "{primitive.color.neutral.200}"
+        },
+        "strong": {
+          "$value": "{primitive.color.neutral.300}"
+        }
+      },
+      "action": {
+        "loud": {
+          "$value": "{primitive.color.brand.700}"
+        },
+        "loudHover": {
+          "$value": "{primitive.color.brand.800}"
+        },
+        "quietFill": {
+          "$value": "{primitive.color.brand.100}"
+        },
+        "quietText": {
+          "$value": "{primitive.color.brand.700}"
+        }
+      },
+      "status": {
+        "successText": {
+          "$value": "{primitive.color.success.700}"
+        },
+        "successFill": {
+          "$value": "{primitive.color.success.100}"
+        },
+        "warningText": {
+          "$value": "{primitive.color.warning.800}"
+        },
+        "warningFill": {
+          "$value": "{primitive.color.warning.100}"
+        },
+        "errorText": {
+          "$value": "{primitive.color.error.600}"
+        },
+        "errorFill": {
+          "$value": "{primitive.color.error.100}"
+        },
+        "infoText": {
+          "$value": "{primitive.color.info.700}"
+        },
+        "infoFill": {
+          "$value": "{primitive.color.info.100}"
+        }
+      },
+      "ai": {
+        "text": {
+          "$value": "{primitive.color.ai.700}"
+        },
+        "fill": {
+          "$value": "{primitive.color.ai.100}"
+        }
+      }
+    },
+    "dark": {
+      "bg": {
+        "canvas": {
+          "$value": "{primitive.color.neutral.900}"
+        },
+        "raised": {
+          "$value": "{primitive.color.neutral.800}"
+        },
+        "sunken": {
+          "$value": "{primitive.color.neutral.900}"
+        }
+      },
+      "text": {
+        "primary": {
+          "$value": "{primitive.color.neutral.100}"
+        },
+        "secondary": {
+          "$value": "{primitive.color.neutral.300}"
+        },
+        "muted": {
+          "$value": "{primitive.color.neutral.400}"
+        },
+        "onBrand": {
+          "$value": "{primitive.color.neutral.900}"
+        }
+      },
+      "border": {
+        "subtle": {
+          "$value": "{primitive.color.neutral.700}"
+        },
+        "strong": {
+          "$value": "{primitive.color.neutral.600}"
+        }
+      },
+      "action": {
+        "loud": {
+          "$value": "{primitive.color.brand.500}"
+        },
+        "loudHover": {
+          "$value": "{primitive.color.brand.400}"
+        },
+        "quietFill": {
+          "$value": "{primitive.color.brand.900}"
+        },
+        "quietText": {
+          "$value": "{primitive.color.brand.300}"
+        }
+      },
+      "status": {
+        "successText": {
+          "$value": "{primitive.color.success.400}"
+        },
+        "successFill": {
+          "$value": "{primitive.color.success.900}"
+        },
+        "warningText": {
+          "$value": "{primitive.color.warning.400}"
+        },
+        "warningFill": {
+          "$value": "{primitive.color.warning.900}"
+        },
+        "errorText": {
+          "$value": "{primitive.color.error.400}"
+        },
+        "errorFill": {
+          "$value": "{primitive.color.error.900}"
+        },
+        "infoText": {
+          "$value": "{primitive.color.info.400}"
+        },
+        "infoFill": {
+          "$value": "{primitive.color.info.900}"
+        }
+      },
+      "ai": {
+        "text": {
+          "$value": "{primitive.color.ai.400}"
+        },
+        "fill": {
+          "$value": "{primitive.color.ai.900}"
+        }
+      }
+    },
+    "space": {
+      "3xs": {
+        "$value": "{primitive.space.1}"
+      },
+      "2xs": {
+        "$value": "{primitive.space.2}"
+      },
+      "xs": {
+        "$value": "{primitive.space.3}"
+      },
+      "sm": {
+        "$value": "{primitive.space.4}"
+      },
+      "md": {
+        "$value": "{primitive.space.6}"
+      },
+      "lg": {
+        "$value": "{primitive.space.8}"
+      },
+      "xl": {
+        "$value": "{primitive.space.12}"
+      },
+      "2xl": {
+        "$value": "{primitive.space.16}"
+      },
+      "3xl": {
+        "$value": "{primitive.space.24}"
+      }
+    }
+  }
+}

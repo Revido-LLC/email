@@ -40,6 +40,7 @@ import {
 import { Archive, Moon, Reply, Sun } from 'lucide-react'
 import * as React from 'react'
 import { useAppState } from '@/lib/app-state'
+import { TokenFoundation } from '@/components/design/token-gallery'
 
 export const Route = createFileRoute('/design')({
   component: DesignScreen,
@@ -77,6 +78,11 @@ function DesignScreen() {
             {theme === 'dark' ? 'Light' : 'Dark'}
           </Button>
         </div>
+
+        <TokenFoundation />
+
+        <div className="my-12 border-t border-border" />
+        <h2 className="mb-6 font-display text-2xl font-semibold">Components</h2>
 
         <Group title="Semantic colors">
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">

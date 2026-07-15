@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles/theme.css",
-    "./lib/utils": "./src/lib/utils.ts"
+    "./lib/utils": "./src/lib/utils.ts",
+    "./tokens": "./tokens/tokens.generated.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

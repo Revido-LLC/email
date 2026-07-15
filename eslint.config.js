@@ -81,7 +81,18 @@ const tokensOnly = {
 }
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/routeTree.gen.ts', '**/.turbo/**', 'eslint.config.js'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/routeTree.gen.ts',
+      '**/.turbo/**',
+      'eslint.config.js',
+      // Generated tokens + their build tooling — the source of truth is the ramp
+      // math in build-tokens.mjs, regenerated, not linted by hand.
+      '**/tokens/*.mjs',
+      '**/tokens/tokens.generated.ts',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

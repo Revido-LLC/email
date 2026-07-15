@@ -28,6 +28,7 @@ import {
   PanelRightClose,
   Sparkles,
   Truck,
+  X,
 } from 'lucide-react'
 import * as React from 'react'
 import { useAppState } from '@/lib/app-state'
@@ -42,69 +43,98 @@ const factIcon: Record<ExtractedFact['type'], React.ReactNode> = {
 }
 
 export function AIPanel() {
-  const { aiPanelOpen, setAiPanelOpen, aiTab, setAiTab } = useAppState()
+  const { aiPanelOpen, setAiPanelOpen, mobileAiOpen, setMobileAiOpen, aiTab, setAiTab } =
+    useAppState()
   const params = useParams({ strict: false }) as { threadId?: string }
   const thread = params.threadId ? getThread(params.threadId) : undefined
 
-  if (!aiPanelOpen) {
-    return (
-      <div className="flex h-full w-12 shrink-0 flex-col items-center border-l border-border bg-subtle py-3">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setAiPanelOpen(true)}
-          aria-label="Open AI panel (⌘J)"
-        >
+  const renderHeader = (onClose: () => void, label: string, icon: React.ReactNode) => (
+    <div className="flex items-center justify-between px-4 pt-3.5">
+      <div className="flex items-center gap-2">
+        <div className="flex size-7 items-center justify-center rounded-lg bg-ai/12">
           <Sparkles className="size-4 text-ai" />
-        </Button>
+        </div>
+        <span className="font-display text-base font-semibold">Assistant</span>
       </div>
-    )
-  }
+      <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={label}>
+        {icon}
+      </Button>
+    </div>
+  )
+
+  const renderBody = () => (
+    <Tabs
+      value={aiTab}
+      onValueChange={(v) => setAiTab(v as 'insights' | 'chat')}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div className="px-4 pt-3">
+        <TabsList className="w-full">
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="insights" className="min-h-0 flex-1">
+        <ScrollArea className="h-full">
+          <div className="p-4">{thread ? <ThreadInsights thread={thread} /> : <DayInsights />}</div>
+        </ScrollArea>
+      </TabsContent>
+
+      <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
+        <ChatTab />
+      </TabsContent>
+    </Tabs>
+  )
 
   return (
-    <aside className="flex h-full w-95 shrink-0 flex-col border-l border-border bg-subtle">
-      <div className="flex items-center justify-between px-4 pt-3.5">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-ai/12">
+    <>
+      {/* Desktop (lg+): static right column, or a thin reopen rail. */}
+      {aiPanelOpen ? (
+        <aside className="hidden h-full w-95 shrink-0 flex-col border-l border-border bg-subtle lg:flex">
+          {renderHeader(
+            () => setAiPanelOpen(false),
+            'Collapse panel (⌘J)',
+            <PanelRightClose className="size-4" />,
+          )}
+          {renderBody()}
+        </aside>
+      ) : (
+        <div className="hidden h-full w-12 shrink-0 flex-col items-center border-l border-border bg-subtle py-3 lg:flex">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setAiPanelOpen(true)}
+            aria-label="Open AI panel (⌘J)"
+          >
             <Sparkles className="size-4 text-ai" />
-          </div>
-          <span className="font-display text-base font-semibold">Assistant</span>
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setAiPanelOpen(false)}
-          aria-label="Collapse panel (⌘J)"
-        >
-          <PanelRightClose className="size-4" />
-        </Button>
-      </div>
+      )}
 
-      <Tabs
-        value={aiTab}
-        onValueChange={(v) => setAiTab(v as 'insights' | 'chat')}
-        className="flex min-h-0 flex-1 flex-col"
+      {/* Mobile (<lg): a glass slide-over over a dimmed backdrop. */}
+      <div
+        className={cn('fixed inset-0 z-50 lg:hidden', !mobileAiOpen && 'pointer-events-none')}
+        aria-hidden={!mobileAiOpen}
       >
-        <div className="px-4 pt-3">
-          <TabsList className="w-full">
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="insights" className="min-h-0 flex-1">
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              {thread ? <ThreadInsights thread={thread} /> : <DayInsights />}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
-          <ChatTab />
-        </TabsContent>
-      </Tabs>
-    </aside>
+        <div
+          className={cn(
+            'absolute inset-0 bg-foreground/25 transition-opacity duration-200',
+            mobileAiOpen ? 'opacity-100' : 'opacity-0',
+          )}
+          onClick={() => setMobileAiOpen(false)}
+        />
+        <aside
+          className={cn(
+            'glass absolute inset-y-0 right-0 flex w-11/12 max-w-sm flex-col transition-transform duration-200',
+            mobileAiOpen ? 'translate-x-0' : 'translate-x-full',
+          )}
+        >
+          {renderHeader(() => setMobileAiOpen(false), 'Close assistant', <X className="size-4" />)}
+          {renderBody()}
+        </aside>
+      </div>
+    </>
   )
 }
 

@@ -9,6 +9,9 @@ interface AppState {
   aiPanelOpen: boolean
   toggleAiPanel: () => void
   setAiPanelOpen: (open: boolean) => void
+  /** Mobile-only: the assistant is a slide-over below `lg`, closed by default. */
+  mobileAiOpen: boolean
+  setMobileAiOpen: (open: boolean) => void
   aiTab: AiTab
   setAiTab: (tab: AiTab) => void
   theme: Theme
@@ -32,6 +35,7 @@ function readStored<T>(key: string, fallback: T): T {
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [navCollapsed, setNavCollapsed] = React.useState(() => readStored('rm.navCollapsed', false))
   const [aiPanelOpen, setAiPanelOpen] = React.useState(() => readStored('rm.aiPanelOpen', true))
+  const [mobileAiOpen, setMobileAiOpen] = React.useState(false)
   const [aiTab, setAiTab] = React.useState<AiTab>('insights')
   const [commandOpen, setCommandOpen] = React.useState(false)
   const [theme, setTheme] = React.useState<Theme>(() => {
@@ -62,6 +66,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     aiPanelOpen,
     toggleAiPanel: () => setAiPanelOpen((v) => !v),
     setAiPanelOpen,
+    mobileAiOpen,
+    setMobileAiOpen,
     aiTab,
     setAiTab,
     theme,

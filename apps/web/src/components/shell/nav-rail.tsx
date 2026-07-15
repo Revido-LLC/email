@@ -137,7 +137,7 @@ export function NavRail() {
   return (
     <nav
       className={cn(
-        'flex h-full shrink-0 flex-col border-r border-border bg-subtle transition-[width] duration-200',
+        'hidden h-full shrink-0 flex-col border-r border-border bg-subtle transition-[width] duration-200 lg:flex',
         navCollapsed ? 'w-[68px]' : 'w-60',
       )}
     >

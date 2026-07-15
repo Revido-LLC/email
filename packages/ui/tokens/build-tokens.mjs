@@ -83,26 +83,26 @@ const L_CHROMATIC = { 50:0.985, 100:0.962, 200:0.922, 300:0.864, 400:0.778, 500:
 const C_FRACTION  = { 50:0.22,  100:0.34,  200:0.56,  300:0.78,  400:0.93,  500:1.00,  600:0.99,  700:0.92,  800:0.80,  900:0.64 }
 
 // prettier-ignore
-const L_NEUTRAL   = { 50:0.986, 100:0.966, 200:0.928, 300:0.882, 400:0.744, 500:0.606, 600:0.500, 700:0.412, 800:0.312, 900:0.224 }
+const L_NEUTRAL   = { 50:0.985, 100:0.965, 200:0.926, 300:0.876, 400:0.735, 500:0.598, 600:0.492, 700:0.400, 800:0.300, 900:0.205 }
+// A whisper of cool chroma so grays read crisp, never dead-flat.
 // prettier-ignore
-const C_NEUTRAL   = { 50:0.004, 100:0.006, 200:0.008, 300:0.010, 400:0.012, 500:0.014, 600:0.014, 700:0.014, 800:0.016, 900:0.018 }
+const C_NEUTRAL   = { 50:0.002, 100:0.003, 200:0.004, 300:0.005, 400:0.006, 500:0.006, 600:0.007, 700:0.008, 800:0.008, 900:0.010 }
 
-/** family -> { hue, peakChroma, label, role } */
+/**
+ * Monochrome system: black/white/gray does ~all the work; one dark-blue accent
+ * appears sparingly; a single restrained red is reserved for true danger only.
+ * family -> { hue, peakChroma, label, role }
+ */
 const FAMILIES = {
-  brand:   { hue: 27,  peak: 0.190, label: 'Brand · Coral',   role: 'Primary action, brand signature' },
-  amber:   { hue: 68,  peak: 0.145, label: 'Amber',           role: 'Secondary / warm highlight' },
-  neutral: { hue: 72,  peak: 0,     label: 'Neutral · Warm',  role: 'Text, surfaces, borders', neutral: true },
-  success: { hue: 150, peak: 0.150, label: 'Success · Green',  role: 'Positive / paid / done' },
-  warning: { hue: 85,  peak: 0.165, label: 'Warning · Gold',   role: 'Caution / due soon' },
-  error:   { hue: 18,  peak: 0.205, label: 'Error · Red',      role: 'Destructive / overdue' },
-  info:    { hue: 245, peak: 0.140, label: 'Info · Blue',      role: 'Informational / calendar' },
-  ai:      { hue: 300, peak: 0.185, label: 'AI · Violet',      role: 'AI-generated marker (reserve it)' },
+  neutral: { hue: 255, peak: 0, label: 'Neutral · Ink → Paper', role: 'Text, surfaces, borders — ~the entire UI', neutral: true },
+  accent:  { hue: 255, peak: 0.140, label: 'Accent · Dark Blue', role: 'Sparingly: links, focus, selected, AI marker' },
+  danger:  { hue: 25,  peak: 0.135, label: 'Danger · Red',       role: 'Destructive / overdue — the one retained hue' },
 }
 
-// Reference backgrounds/inks, taken from the real theme.css so contrast is honest.
+// Reference canvases (near-white paper / near-black ink) so contrast is honest.
 const REF = {
-  lightBg: oklchToHex(0.994, 0.005, 85), // --background (light)
-  darkBg: oklchToHex(0.2, 0.012, 55), // --background (dark)
+  lightBg: oklchToHex(0.985, 0.004, 255), // --background (light)
+  darkBg: oklchToHex(0.205, 0.006, 255), // --background (dark)
   white: '#ffffff',
 }
 
@@ -223,48 +223,29 @@ const semantic = {
       primary: ref('color.neutral.900'),
       secondary: ref('color.neutral.700'),
       muted: ref('color.neutral.600'),
-      onBrand: ref('color.neutral.50'),
+      onInk: ref('color.neutral.50'),
     },
     border: { subtle: ref('color.neutral.200'), strong: ref('color.neutral.300') },
-    // Emphasis: the same brand hue at three volumes. `loud` is brand.700 (not
-    // 600) so a white label clears AA 4.5 — vibrancy stays in the ramp, the
-    // clickable fill takes the AA-safe step.
-    action: {
-      loud: ref('color.brand.700'),
-      loudHover: ref('color.brand.800'),
-      quietFill: ref('color.brand.100'),
-      quietText: ref('color.brand.700'),
-    },
-    status: {
-      successText: ref('color.success.700'), successFill: ref('color.success.100'),
-      warningText: ref('color.warning.800'), warningFill: ref('color.warning.100'),
-      errorText: ref('color.error.600'), errorFill: ref('color.error.100'),
-      infoText: ref('color.info.700'), infoFill: ref('color.info.100'),
-    },
-    ai: { text: ref('color.ai.700'), fill: ref('color.ai.100') },
+    // Emphasis is monochrome: the primary action is INK (neutral.900), not a
+    // hue. Loudness comes from contrast, not color.
+    action: { loud: ref('color.neutral.900'), loudHover: ref('color.neutral.800'), onLoud: ref('color.neutral.50') },
+    // The one sparing accent: links, focus, selected, AI.
+    accent: { solid: ref('color.accent.600'), text: ref('color.accent.700'), fill: ref('color.accent.100') },
+    // The one retained status hue.
+    danger: { text: ref('color.danger.700'), solid: ref('color.danger.600'), fill: ref('color.danger.100') },
   },
   dark: {
     bg: { canvas: ref('color.neutral.900'), raised: ref('color.neutral.800'), sunken: ref('color.neutral.900') },
     text: {
-      primary: ref('color.neutral.100'),
+      primary: ref('color.neutral.50'),
       secondary: ref('color.neutral.300'),
       muted: ref('color.neutral.400'),
-      onBrand: ref('color.neutral.900'),
+      onInk: ref('color.neutral.900'),
     },
     border: { subtle: ref('color.neutral.700'), strong: ref('color.neutral.600') },
-    action: {
-      loud: ref('color.brand.500'),
-      loudHover: ref('color.brand.400'),
-      quietFill: ref('color.brand.900'),
-      quietText: ref('color.brand.300'),
-    },
-    status: {
-      successText: ref('color.success.400'), successFill: ref('color.success.900'),
-      warningText: ref('color.warning.400'), warningFill: ref('color.warning.900'),
-      errorText: ref('color.error.400'), errorFill: ref('color.error.900'),
-      infoText: ref('color.info.400'), infoFill: ref('color.info.900'),
-    },
-    ai: { text: ref('color.ai.400'), fill: ref('color.ai.900') },
+    action: { loud: ref('color.neutral.50'), loudHover: ref('color.neutral.200'), onLoud: ref('color.neutral.900') },
+    accent: { solid: ref('color.accent.400'), text: ref('color.accent.300'), fill: ref('color.accent.900') },
+    danger: { text: ref('color.danger.400'), solid: ref('color.danger.500'), fill: ref('color.danger.900') },
   },
   space: Object.fromEntries(Object.entries(SPACE_ALIAS).map(([k, v]) => [k, { $value: `{primitive.space.${v}}` }])),
 }
@@ -277,18 +258,17 @@ const AA = 4.5
 const AA_LARGE = 3
 const grade = (r) => (r >= 7 ? 'AAA' : r >= AA ? 'AA' : r >= AA_LARGE ? 'AA-large' : 'fail')
 const pairs = [
-  ['primary label — neutral.50 on brand.700', hexOf('neutral', 50), hexOf('brand', 700), 'primary button (light)'],
-  ['primary label — neutral.900 on brand.500', hexOf('neutral', 900), hexOf('brand', 500), 'primary button (dark)'],
+  ['ink label — neutral.50 on neutral.900', hexOf('neutral', 50), hexOf('neutral', 900), 'primary button (light)'],
+  ['ink label — neutral.900 on neutral.50', hexOf('neutral', 900), hexOf('neutral', 50), 'primary button (dark)'],
   ['text.primary — neutral.900', hexOf('neutral', 900), REF.lightBg, 'light canvas'],
   ['text.secondary — neutral.700', hexOf('neutral', 700), REF.lightBg, 'light canvas'],
   ['text.muted — neutral.600', hexOf('neutral', 600), REF.lightBg, 'light canvas'],
   ['text.secondary dark — neutral.300', hexOf('neutral', 300), REF.darkBg, 'dark canvas'],
-  ['action.quietText — brand.700 on brand.100', hexOf('brand', 700), hexOf('brand', 100), 'quiet chip'],
-  ['error.700 text', hexOf('error', 700), REF.lightBg, 'light canvas'],
-  ['success.700 text', hexOf('success', 700), REF.lightBg, 'light canvas'],
-  ['warning.800 text', hexOf('warning', 800), REF.lightBg, 'light canvas'],
-  ['info.700 text', hexOf('info', 700), REF.lightBg, 'light canvas'],
-  ['ai.700 text', hexOf('ai', 700), REF.lightBg, 'light canvas'],
+  ['accent link — accent.700', hexOf('accent', 700), REF.lightBg, 'light canvas'],
+  ['accent label — neutral.50 on accent.600', hexOf('neutral', 50), hexOf('accent', 600), 'accent surface'],
+  ['accent link dark — accent.300', hexOf('accent', 300), REF.darkBg, 'dark canvas'],
+  ['danger text — danger.700', hexOf('danger', 700), REF.lightBg, 'light canvas'],
+  ['danger label — neutral.50 on danger.600', hexOf('neutral', 50), hexOf('danger', 600), 'destructive button'],
 ]
 const contrastReport = {
   reference: REF,

@@ -40,7 +40,9 @@ server-side is a later, separate planning pass.
 - **Tokens only.** Style with token utilities (`bg-primary`, `text-muted-foreground`, category
   utilities like `bg-cat-newsletters`). Do **not** use arbitrary Tailwind values (`bg-[#abc]`, `w-[327px]`).
   The `tokens-only/no-arbitrary-values` ESLint rule flags violations.
-- Every AI-generated UI element carries a subtle sparkle glyph (`<Sparkle/>`) — trust through transparency.
+- AI output carries a subtle sparkle glyph (`<Sparkle/>`) in the blue accent — but **reserve it** for AI
+  the user can act on or might be surprised by (drafts, summaries, agent actions), not every AI-touched
+  pixel. A marker that's everywhere stops meaning anything.
 
 ## Commands
 

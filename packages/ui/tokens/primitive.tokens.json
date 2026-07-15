@@ -1,257 +1,13 @@
 {
   "primitive": {
     "color": {
-      "brand": {
-        "50": {
-          "$type": "color",
-          "$value": "#fff0eb",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.985 0.0418 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "100": {
-          "$type": "color",
-          "$value": "#ffe3db",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.962 0.0646 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "200": {
-          "$type": "color",
-          "$value": "#ffcabf",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.922 0.1064 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "300": {
-          "$type": "color",
-          "$value": "#ffaa9d",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.864 0.1482 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "400": {
-          "$type": "color",
-          "$value": "#ff8477",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.778 0.1767 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "500": {
-          "$type": "color",
-          "$value": "#fa6156",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.688 0.19 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "600": {
-          "$type": "color",
-          "$value": "#de4840",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.612 0.1881 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "700": {
-          "$type": "color",
-          "$value": "#bc332f",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.532 0.1748 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "800": {
-          "$type": "color",
-          "$value": "#982421",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.45 0.152 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "900": {
-          "$type": "color",
-          "$value": "#711a17",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.366 0.1216 27)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        }
-      },
-      "amber": {
-        "50": {
-          "$type": "color",
-          "$value": "#fff7e4",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.985 0.0319 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "100": {
-          "$type": "color",
-          "$value": "#ffedd0",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.962 0.0493 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "200": {
-          "$type": "color",
-          "$value": "#ffdcab",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.922 0.0812 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "300": {
-          "$type": "color",
-          "$value": "#ffc47f",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.864 0.1131 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "400": {
-          "$type": "color",
-          "$value": "#efa54d",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.778 0.1348 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "500": {
-          "$type": "color",
-          "$value": "#d48718",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.688 0.145 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "600": {
-          "$type": "color",
-          "$value": "#bb7000",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.612 0.1435 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "700": {
-          "$type": "color",
-          "$value": "#9d5a00",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.532 0.1334 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "800": {
-          "$type": "color",
-          "$value": "#7e4600",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.45 0.116 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "900": {
-          "$type": "color",
-          "$value": "#5e3300",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.366 0.0928 68)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        }
-      },
       "neutral": {
         "50": {
           "$type": "color",
-          "$value": "#fcfaf8",
+          "$value": "#f9fafb",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.986 0.004 72)"
+              "oklch": "oklch(0.985 0.002 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -260,10 +16,10 @@
         },
         "100": {
           "$type": "color",
-          "$value": "#f6f3ef",
+          "$value": "#f2f3f5",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.966 0.006 72)"
+              "oklch": "oklch(0.965 0.003 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -272,10 +28,10 @@
         },
         "200": {
           "$type": "color",
-          "$value": "#ebe6e1",
+          "$value": "#e5e7e9",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.928 0.008 72)"
+              "oklch": "oklch(0.926 0.004 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -284,10 +40,10 @@
         },
         "300": {
           "$type": "color",
-          "$value": "#dcd7d1",
+          "$value": "#d4d6d9",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.882 0.01 72)"
+              "oklch": "oklch(0.876 0.005 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -296,10 +52,10 @@
         },
         "400": {
           "$type": "color",
-          "$value": "#b1aba4",
+          "$value": "#a7a9ad",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.744 0.012 72)"
+              "oklch": "oklch(0.735 0.006 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -308,10 +64,10 @@
         },
         "500": {
           "$type": "color",
-          "$value": "#878179",
+          "$value": "#7d8083",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.606 0.014 72)"
+              "oklch": "oklch(0.598 0.006 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -320,10 +76,10 @@
         },
         "600": {
           "$type": "color",
-          "$value": "#68625b",
+          "$value": "#5e6165",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.5 0.014 72)"
+              "oklch": "oklch(0.492 0.007 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -332,10 +88,10 @@
         },
         "700": {
           "$type": "color",
-          "$value": "#504a43",
+          "$value": "#45484c",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.412 0.014 72)"
+              "oklch": "oklch(0.4 0.008 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -344,10 +100,10 @@
         },
         "800": {
           "$type": "color",
-          "$value": "#363028",
+          "$value": "#2b2e32",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.312 0.016 72)"
+              "oklch": "oklch(0.3 0.008 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -356,10 +112,10 @@
         },
         "900": {
           "$type": "color",
-          "$value": "#211a12",
+          "$value": "#14171c",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.224 0.018 72)"
+              "oklch": "oklch(0.205 0.01 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -367,13 +123,13 @@
           }
         }
       },
-      "success": {
+      "accent": {
         "50": {
           "$type": "color",
-          "$value": "#ebffef",
+          "$value": "#edfcff",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.985 0.033 150)"
+              "oklch": "oklch(0.985 0.0308 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -382,10 +138,10 @@
         },
         "100": {
           "$type": "color",
-          "$value": "#dbfde1",
+          "$value": "#def5ff",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.962 0.051 150)"
+              "oklch": "oklch(0.962 0.0476 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -394,10 +150,10 @@
         },
         "200": {
           "$type": "color",
-          "$value": "#bef6c8",
+          "$value": "#c3e9ff",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.922 0.084 150)"
+              "oklch": "oklch(0.922 0.0784 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -406,10 +162,10 @@
         },
         "300": {
           "$type": "color",
-          "$value": "#99e8a9",
+          "$value": "#a1d6ff",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.864 0.117 150)"
+              "oklch": "oklch(0.864 0.1092 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -418,10 +174,10 @@
         },
         "400": {
           "$type": "color",
-          "$value": "#6fd086",
+          "$value": "#7cbaff",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.778 0.1395 150)"
+              "oklch": "oklch(0.778 0.1302 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -430,10 +186,10 @@
         },
         "500": {
           "$type": "color",
-          "$value": "#48b467",
+          "$value": "#5b9def",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.688 0.15 150)"
+              "oklch": "oklch(0.688 0.14 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -442,10 +198,10 @@
         },
         "600": {
           "$type": "color",
-          "$value": "#2d9c51",
+          "$value": "#4585d5",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.612 0.1485 150)"
+              "oklch": "oklch(0.612 0.1386 255)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -454,10 +210,10 @@
         },
         "700": {
           "$type": "color",
-          "$value": "#16823e",
+          "$value": "#326db5",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.532 0.138 150)"
+              "oklch": "oklch(0.532 0.1288 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -466,10 +222,10 @@
         },
         "800": {
           "$type": "color",
-          "$value": "#09672e",
+          "$value": "#245692",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.45 0.12 150)"
+              "oklch": "oklch(0.45 0.112 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -478,10 +234,10 @@
         },
         "900": {
           "$type": "color",
-          "$value": "#074c21",
+          "$value": "#1a3f6d",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.366 0.096 150)"
+              "oklch": "oklch(0.366 0.0896 255)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -489,13 +245,13 @@
           }
         }
       },
-      "warning": {
+      "danger": {
         "50": {
           "$type": "color",
-          "$value": "#fff9df",
+          "$value": "#fff3f0",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.985 0.0363 85)"
+              "oklch": "oklch(0.985 0.0297 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -504,10 +260,10 @@
         },
         "100": {
           "$type": "color",
-          "$value": "#fff0c8",
+          "$value": "#ffe7e3",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.962 0.0561 85)"
+              "oklch": "oklch(0.962 0.0459 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -516,10 +272,10 @@
         },
         "200": {
           "$type": "color",
-          "$value": "#ffe19d",
+          "$value": "#ffd2cc",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.922 0.0924 85)"
+              "oklch": "oklch(0.922 0.0756 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -528,10 +284,10 @@
         },
         "300": {
           "$type": "color",
-          "$value": "#f9cb68",
+          "$value": "#ffb7af",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.864 0.1287 85)"
+              "oklch": "oklch(0.864 0.1053 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -540,10 +296,10 @@
         },
         "400": {
           "$type": "color",
-          "$value": "#e3ad1e",
+          "$value": "#fd968e",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.778 0.1535 85)"
+              "oklch": "oklch(0.778 0.1256 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -552,10 +308,10 @@
         },
         "500": {
           "$type": "color",
-          "$value": "#c99000",
+          "$value": "#e2766f",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.688 0.165 85)"
+              "oklch": "oklch(0.688 0.135 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -564,10 +320,10 @@
         },
         "600": {
           "$type": "color",
-          "$value": "#b07800",
+          "$value": "#c7605a",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.612 0.1633 85)"
+              "oklch": "oklch(0.612 0.1337 25)"
             },
             "com.revido": {
               "aaTextOnLight": false
@@ -576,10 +332,10 @@
         },
         "700": {
           "$type": "color",
-          "$value": "#946200",
+          "$value": "#a84b46",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.532 0.1518 85)"
+              "oklch": "oklch(0.532 0.1242 25)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -588,10 +344,10 @@
         },
         "800": {
           "$type": "color",
-          "$value": "#764c00",
+          "$value": "#873936",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.45 0.132 85)"
+              "oklch": "oklch(0.45 0.108 25)"
             },
             "com.revido": {
               "aaTextOnLight": true
@@ -600,376 +356,10 @@
         },
         "900": {
           "$type": "color",
-          "$value": "#583800",
+          "$value": "#652927",
           "$extensions": {
             "studio.tokens": {
-              "oklch": "oklch(0.366 0.1056 85)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        }
-      },
-      "error": {
-        "50": {
-          "$type": "color",
-          "$value": "#ffefef",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.985 0.0451 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "100": {
-          "$type": "color",
-          "$value": "#ffe0e1",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.962 0.0697 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "200": {
-          "$type": "color",
-          "$value": "#ffc6c8",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.922 0.1148 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "300": {
-          "$type": "color",
-          "$value": "#ffa4aa",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.864 0.1599 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "400": {
-          "$type": "color",
-          "$value": "#ff7b88",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.778 0.1906 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "500": {
-          "$type": "color",
-          "$value": "#ff5669",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.688 0.205 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "600": {
-          "$type": "color",
-          "$value": "#e33b53",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.612 0.2029 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "700": {
-          "$type": "color",
-          "$value": "#c12641",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.532 0.1886 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "800": {
-          "$type": "color",
-          "$value": "#9c1831",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.45 0.164 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "900": {
-          "$type": "color",
-          "$value": "#741223",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.366 0.1312 18)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        }
-      },
-      "info": {
-        "50": {
-          "$type": "color",
-          "$value": "#eafdff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.985 0.0308 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "100": {
-          "$type": "color",
-          "$value": "#d9f7ff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.962 0.0476 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "200": {
-          "$type": "color",
-          "$value": "#baecff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.922 0.0784 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "300": {
-          "$type": "color",
-          "$value": "#94daff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.864 0.1092 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "400": {
-          "$type": "color",
-          "$value": "#69bfff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.778 0.1302 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "500": {
-          "$type": "color",
-          "$value": "#42a2eb",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.688 0.14 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "600": {
-          "$type": "color",
-          "$value": "#268ad1",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.612 0.1386 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "700": {
-          "$type": "color",
-          "$value": "#0f72b1",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.532 0.1288 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "800": {
-          "$type": "color",
-          "$value": "#03598f",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.45 0.112 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "900": {
-          "$type": "color",
-          "$value": "#04426a",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.366 0.0896 245)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        }
-      },
-      "ai": {
-        "50": {
-          "$type": "color",
-          "$value": "#fef5ff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.985 0.0407 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "100": {
-          "$type": "color",
-          "$value": "#f9eaff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.962 0.0629 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "200": {
-          "$type": "color",
-          "$value": "#f0d6ff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.922 0.1036 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "300": {
-          "$type": "color",
-          "$value": "#e1bcff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.864 0.1443 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "400": {
-          "$type": "color",
-          "$value": "#c89aff",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.778 0.1721 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "500": {
-          "$type": "color",
-          "$value": "#ae7bfa",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.688 0.185 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "600": {
-          "$type": "color",
-          "$value": "#9663df",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.612 0.1832 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": false
-            }
-          }
-        },
-        "700": {
-          "$type": "color",
-          "$value": "#7d4ebe",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.532 0.1702 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "800": {
-          "$type": "color",
-          "$value": "#633c9a",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.45 0.148 300)"
-            },
-            "com.revido": {
-              "aaTextOnLight": true
-            }
-          }
-        },
-        "900": {
-          "$type": "color",
-          "$value": "#492b73",
-          "$extensions": {
-            "studio.tokens": {
-              "oklch": "oklch(0.366 0.1184 300)"
+              "oklch": "oklch(0.366 0.0864 25)"
             },
             "com.revido": {
               "aaTextOnLight": true

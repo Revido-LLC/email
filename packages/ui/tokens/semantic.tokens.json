@@ -22,7 +22,7 @@
         "muted": {
           "$value": "{primitive.color.neutral.600}"
         },
-        "onBrand": {
+        "onInk": {
           "$value": "{primitive.color.neutral.50}"
         }
       },
@@ -36,50 +36,35 @@
       },
       "action": {
         "loud": {
-          "$value": "{primitive.color.brand.700}"
+          "$value": "{primitive.color.neutral.900}"
         },
         "loudHover": {
-          "$value": "{primitive.color.brand.800}"
+          "$value": "{primitive.color.neutral.800}"
         },
-        "quietFill": {
-          "$value": "{primitive.color.brand.100}"
-        },
-        "quietText": {
-          "$value": "{primitive.color.brand.700}"
+        "onLoud": {
+          "$value": "{primitive.color.neutral.50}"
         }
       },
-      "status": {
-        "successText": {
-          "$value": "{primitive.color.success.700}"
+      "accent": {
+        "solid": {
+          "$value": "{primitive.color.accent.600}"
         },
-        "successFill": {
-          "$value": "{primitive.color.success.100}"
-        },
-        "warningText": {
-          "$value": "{primitive.color.warning.800}"
-        },
-        "warningFill": {
-          "$value": "{primitive.color.warning.100}"
-        },
-        "errorText": {
-          "$value": "{primitive.color.error.600}"
-        },
-        "errorFill": {
-          "$value": "{primitive.color.error.100}"
-        },
-        "infoText": {
-          "$value": "{primitive.color.info.700}"
-        },
-        "infoFill": {
-          "$value": "{primitive.color.info.100}"
-        }
-      },
-      "ai": {
         "text": {
-          "$value": "{primitive.color.ai.700}"
+          "$value": "{primitive.color.accent.700}"
         },
         "fill": {
-          "$value": "{primitive.color.ai.100}"
+          "$value": "{primitive.color.accent.100}"
+        }
+      },
+      "danger": {
+        "text": {
+          "$value": "{primitive.color.danger.700}"
+        },
+        "solid": {
+          "$value": "{primitive.color.danger.600}"
+        },
+        "fill": {
+          "$value": "{primitive.color.danger.100}"
         }
       }
     },
@@ -97,7 +82,7 @@
       },
       "text": {
         "primary": {
-          "$value": "{primitive.color.neutral.100}"
+          "$value": "{primitive.color.neutral.50}"
         },
         "secondary": {
           "$value": "{primitive.color.neutral.300}"
@@ -105,7 +90,7 @@
         "muted": {
           "$value": "{primitive.color.neutral.400}"
         },
-        "onBrand": {
+        "onInk": {
           "$value": "{primitive.color.neutral.900}"
         }
       },
@@ -119,50 +104,35 @@
       },
       "action": {
         "loud": {
-          "$value": "{primitive.color.brand.500}"
+          "$value": "{primitive.color.neutral.50}"
         },
         "loudHover": {
-          "$value": "{primitive.color.brand.400}"
+          "$value": "{primitive.color.neutral.200}"
         },
-        "quietFill": {
-          "$value": "{primitive.color.brand.900}"
-        },
-        "quietText": {
-          "$value": "{primitive.color.brand.300}"
+        "onLoud": {
+          "$value": "{primitive.color.neutral.900}"
         }
       },
-      "status": {
-        "successText": {
-          "$value": "{primitive.color.success.400}"
+      "accent": {
+        "solid": {
+          "$value": "{primitive.color.accent.400}"
         },
-        "successFill": {
-          "$value": "{primitive.color.success.900}"
-        },
-        "warningText": {
-          "$value": "{primitive.color.warning.400}"
-        },
-        "warningFill": {
-          "$value": "{primitive.color.warning.900}"
-        },
-        "errorText": {
-          "$value": "{primitive.color.error.400}"
-        },
-        "errorFill": {
-          "$value": "{primitive.color.error.900}"
-        },
-        "infoText": {
-          "$value": "{primitive.color.info.400}"
-        },
-        "infoFill": {
-          "$value": "{primitive.color.info.900}"
-        }
-      },
-      "ai": {
         "text": {
-          "$value": "{primitive.color.ai.400}"
+          "$value": "{primitive.color.accent.300}"
         },
         "fill": {
-          "$value": "{primitive.color.ai.900}"
+          "$value": "{primitive.color.accent.900}"
+        }
+      },
+      "danger": {
+        "text": {
+          "$value": "{primitive.color.danger.400}"
+        },
+        "solid": {
+          "$value": "{primitive.color.danger.500}"
+        },
+        "fill": {
+          "$value": "{primitive.color.danger.900}"
         }
       }
     },

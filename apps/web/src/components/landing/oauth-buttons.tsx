@@ -28,15 +28,17 @@ export function OAuthButtons({
   stacked?: boolean
   className?: string
 }) {
+  const buttonWidth = stacked ? 'w-full sm:w-auto' : ''
+
   return (
     <div className={cn('flex gap-2', stacked ? 'flex-col sm:flex-row' : 'flex-wrap', className)}>
-      <Button asChild variant="primary" size={size}>
+      <Button asChild variant="primary" size={size} className={buttonWidth}>
         <Link to="/onboarding">
           <GoogleGlyph />
           Continue with Google
         </Link>
       </Button>
-      <Button asChild variant="outline" size={size}>
+      <Button asChild variant="outline" size={size} className={buttonWidth}>
         <Link to="/onboarding">
           <MicrosoftGlyph />
           Continue with Microsoft

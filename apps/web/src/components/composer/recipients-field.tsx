@@ -56,7 +56,7 @@ export function RecipientsField() {
         onKeyDown={onKeyDown}
         onBlur={commit}
         placeholder={recipients.length ? 'Add another…' : 'Add people…'}
-        className="h-7 min-w-40 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+        className="h-7 min-w-32 flex-1 bg-transparent text-sm outline-none sm:min-w-40 placeholder:text-muted-foreground/70"
       />
     </div>
   )

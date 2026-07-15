@@ -31,7 +31,7 @@ function TalkScreen() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-10">
+      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-10 sm:px-6">
         <div className="mb-8">
           <Button asChild variant="ghost" size="sm">
             <Link to="/app">
@@ -47,7 +47,7 @@ function TalkScreen() {
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-3 py-1 text-xs font-medium text-primary">
             <Sparkle className="text-primary" /> Revido
           </div>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">
+          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
             We built this. We can build yours.
           </h1>
           <p className="mx-auto mt-3 max-w-md text-base text-muted-foreground">

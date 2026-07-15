@@ -55,7 +55,7 @@ function Wordmark() {
 function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Wordmark />
         <OAuthButtons size="sm" className="hidden sm:flex" />
         <Button asChild variant="primary" size="sm" className="sm:hidden">
@@ -86,7 +86,7 @@ function Hero() {
         <div className="absolute bottom-0 left-1/3 size-80 rounded-full bg-ai/10 blur-3xl" />
       </div>
 
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:gap-10 lg:py-24">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:py-24">
         <motion.div
           variants={fadeUp}
           initial="initial"
@@ -98,7 +98,7 @@ function Hero() {
             AI-first email — free forever
           </div>
 
-          <h1 className="font-display text-5xl font-semibold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
+          <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
             Your inbox,{' '}
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               handled.
@@ -175,7 +175,7 @@ const STEPS = [
 function HowItWorks() {
   return (
     <section className="border-t border-border/60">
-      <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <SectionHeading eyebrow="How it works" title="From chaos to calm in about a minute." />
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {STEPS.map((step, i) => (
@@ -278,7 +278,7 @@ function FeatureCard({
 function Features() {
   return (
     <section className="border-t border-border/60">
-      <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <SectionHeading
           eyebrow="What you get"
           title="A calmer inbox, powered by agents."
@@ -322,8 +322,8 @@ const PRIVACY_POINTS = [
 function Privacy() {
   return (
     <section className="border-t border-border/60">
-      <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-accent/10 to-card p-8 shadow-soft sm:p-12">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-accent/10 to-card p-6 shadow-soft sm:p-12">
           <div className="mx-auto max-w-2xl text-center">
             <AiTag label="Privacy" />
             <h2 className="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -361,7 +361,7 @@ function Privacy() {
 function Footer() {
   return (
     <footer className="border-t border-border/60 bg-muted/30">
-      <div className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
           <div className="max-w-md">
             <Wordmark />

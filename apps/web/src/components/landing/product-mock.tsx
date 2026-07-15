@@ -12,7 +12,7 @@ export function ProductMock({ className }: { className?: string }) {
   const threads = MOCK_THREAD_IDS.map(getThread).filter((t): t is Thread => Boolean(t))
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative max-w-full', className)}>
       {/* Soft glow behind the card */}
       <div
         aria-hidden

@@ -52,7 +52,7 @@ function SettingsScreen() {
   return (
     <div className="h-full overflow-y-auto">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4 sm:px-6">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
             <SettingsIcon className="size-4" />
           </div>
@@ -65,9 +65,9 @@ function SettingsScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <Tabs defaultValue="accounts">
-          <TabsList className="mb-6 flex w-full flex-wrap">
+          <TabsList className="mb-6 flex w-full overflow-x-auto">
             <TabsTrigger value="accounts">Accounts</TabsTrigger>
             <TabsTrigger value="ai">AI</TabsTrigger>
             <TabsTrigger value="signatures">Signatures</TabsTrigger>
@@ -167,7 +167,7 @@ function DisconnectDialog({ account }: { account: Account }) {
   const [done, setDone] = React.useState(false)
 
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-muted-foreground">
         Disconnecting purges every message, draft and index we hold for this account.
       </p>

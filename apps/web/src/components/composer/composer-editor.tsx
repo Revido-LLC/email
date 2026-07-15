@@ -29,7 +29,7 @@ export function ComposerEditor({
           </div>
         )}
         {empty && (
-          <p className="pointer-events-none absolute left-4 top-3 text-sm text-muted-foreground/70">
+          <p className="pointer-events-none absolute inset-x-4 top-3 text-sm text-muted-foreground/70">
             Write your message, or use the AI prompt above to draft it.
           </p>
         )}

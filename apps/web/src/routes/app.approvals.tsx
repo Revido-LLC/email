@@ -112,7 +112,7 @@ function ApprovalsScreen() {
     <div className="h-full overflow-y-auto">
       {/* Sticky header */}
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-display text-2xl font-semibold tracking-tight">Approvals</h1>
@@ -155,7 +155,7 @@ function ApprovalsScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-6 py-8">
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
         {top ? (
           <>
             <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
@@ -163,7 +163,7 @@ function ApprovalsScreen() {
                 <span className="font-medium text-foreground">1</span> of {queue.length} · from{' '}
                 {top.agentName}
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="hidden items-center gap-1.5 sm:flex">
                 <Kbd>A</Kbd> approve <Kbd>E</Kbd> edit <Kbd>X</Kbd> reject
               </span>
             </div>

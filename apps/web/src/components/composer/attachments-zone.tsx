@@ -60,7 +60,7 @@ export function AttachmentsZone({
             : 'border-border bg-muted/40 text-muted-foreground',
         )}
       >
-        <UploadCloud className={cn('size-4', dragging && 'text-primary')} />
+        <UploadCloud className={cn('size-4 shrink-0', dragging && 'text-primary')} />
         <span>
           Drag files here to attach{' '}
           <span className="text-muted-foreground/60">— or use the paperclip below</span>
@@ -72,16 +72,16 @@ export function AttachmentsZone({
           {attachments.map((a) => (
             <span
               key={a.id}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card py-1.5 pl-2.5 pr-1.5 text-xs shadow-soft"
+              className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card py-1.5 pl-2.5 pr-1.5 text-xs shadow-soft"
             >
-              <FileText className="size-3.5 text-primary" />
-              <span className="font-medium text-foreground">{a.name}</span>
-              <span className="text-muted-foreground">{a.size}</span>
+              <FileText className="size-3.5 shrink-0 text-primary" />
+              <span className="min-w-0 truncate font-medium text-foreground">{a.name}</span>
+              <span className="shrink-0 text-muted-foreground">{a.size}</span>
               <button
                 type="button"
                 aria-label={`Remove ${a.name}`}
                 onClick={() => onRemove(a.id)}
-                className="flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3" />
               </button>

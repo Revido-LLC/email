@@ -225,14 +225,17 @@ export function ThreadList({
               {selected.size} selected
             </span>
             <Separator orientation="vertical" className="mx-1 h-5" />
-            <Button variant="ghost" size="sm" onClick={archiveSelected}>
-              <Archive className="size-4" /> Archive
+            <Button variant="ghost" size="sm" aria-label="Archive" onClick={archiveSelected}>
+              <Archive className="size-4" />
+              <span className="hidden sm:inline">Archive</span>
             </Button>
-            <Button variant="ghost" size="sm">
-              <Tag className="size-4" /> Label
+            <Button variant="ghost" size="sm" aria-label="Label">
+              <Tag className="size-4" />
+              <span className="hidden sm:inline">Label</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              <MailOpen className="size-4" /> Mark read
+            <Button variant="ghost" size="sm" aria-label="Mark read" onClick={clearSelection}>
+              <MailOpen className="size-4" />
+              <span className="hidden sm:inline">Mark read</span>
             </Button>
             <Separator orientation="vertical" className="mx-1 h-5" />
             <Button
@@ -253,11 +256,17 @@ export function ThreadList({
 function SortToggle({ sort, onChange }: { sort: SortMode; onChange: (s: SortMode) => void }) {
   return (
     <div className="flex items-center rounded-xl border border-border bg-card p-0.5">
-      <SortButton active={sort === 'priority'} onClick={() => onChange('priority')}>
-        <Zap className="size-3.5" /> Priority
+      <SortButton
+        active={sort === 'priority'}
+        label="Priority"
+        onClick={() => onChange('priority')}
+      >
+        <Zap className="size-3.5" />
+        <span className="hidden sm:inline">Priority</span>
       </SortButton>
-      <SortButton active={sort === 'recent'} onClick={() => onChange('recent')}>
-        <Clock className="size-3.5" /> Recent
+      <SortButton active={sort === 'recent'} label="Recent" onClick={() => onChange('recent')}>
+        <Clock className="size-3.5" />
+        <span className="hidden sm:inline">Recent</span>
       </SortButton>
     </div>
   )
@@ -265,10 +274,12 @@ function SortToggle({ sort, onChange }: { sort: SortMode; onChange: (s: SortMode
 
 function SortButton({
   active,
+  label,
   onClick,
   children,
 }: {
   active: boolean
+  label: string
   onClick: () => void
   children: React.ReactNode
 }) {
@@ -277,6 +288,7 @@ function SortButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      aria-label={label}
       className={cn(
         'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
         active ? 'bg-primary/12 text-primary' : 'text-muted-foreground hover:text-foreground',

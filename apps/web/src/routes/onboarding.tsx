@@ -63,7 +63,7 @@ function OnboardingScreen() {
       <div className="pointer-events-none absolute -left-24 top-8 size-72 rounded-full bg-primary/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 bottom-4 size-80 rounded-full bg-ai/10 blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-8">
+      <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-8 sm:px-6">
         {/* Persistent header: wordmark + 4-stage indicator */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -124,7 +124,7 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="w-full max-w-md"
     >
-      <Card className="rounded-3xl border-border/70 p-8 text-center shadow-soft">
+      <Card className="rounded-3xl border-border/70 p-6 text-center shadow-soft sm:p-8">
         <Orb stage={stage} connected={connected} />
 
         <AnimatePresence mode="wait">
@@ -285,7 +285,7 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
         <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-ai/12 text-ai">
           <Sparkles className="size-6" />
         </div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
           We found a few things we can automate
         </h1>
         <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">

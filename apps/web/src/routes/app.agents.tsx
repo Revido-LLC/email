@@ -42,7 +42,7 @@ function AgentsScreen() {
       <Tabs defaultValue="gallery">
         {/* Sticky header */}
         <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-6 py-4">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
             <div>
               <h1 className="font-display text-2xl font-semibold tracking-tight">Agents</h1>
               <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -61,7 +61,7 @@ function AgentsScreen() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-4xl px-6 py-6">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
           <TabsContent value="gallery" className="mt-0 space-y-6">
             {/* NL create hero */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-ai/15 via-accent/10 to-card p-6 shadow-soft">

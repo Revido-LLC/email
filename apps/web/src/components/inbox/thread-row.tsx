@@ -122,7 +122,7 @@ export function ThreadRow({
           {thread.unread && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
           <span
             className={cn(
-              'shrink-0 truncate text-sm',
+              'min-w-0 truncate text-sm sm:shrink-0',
               thread.unread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90',
             )}
           >

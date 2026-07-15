@@ -150,7 +150,7 @@ function ComposeScreen() {
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div key={composeKey} className="mx-auto max-w-3xl px-6 py-8">
+        <div key={composeKey} className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
           {/* Header */}
           <header className="mb-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
@@ -221,7 +221,7 @@ function ComposeScreen() {
 
       {/* Sticky bottom bar */}
       <div className="border-t border-border bg-card/80 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <AttachButton onAttach={(file) => setAttachments((prev) => [...prev, file])} />
             <label className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -232,7 +232,7 @@ function ComposeScreen() {
               </span>
             </label>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3">
             <Button variant="ghost" onClick={() => navigate({ to: '/app' })}>
               Discard
             </Button>
@@ -259,7 +259,7 @@ function ComposeScreen() {
 function SentConfirmation({ onCompose, onInbox }: { onCompose: () => void; onInbox: () => void }) {
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <div className="flex max-w-md flex-col items-center gap-4 rounded-3xl border border-border bg-gradient-to-br from-success/10 via-card to-card p-10 text-center shadow-soft animate-in fade-in-0 zoom-in-95">
+      <div className="flex max-w-md flex-col items-center gap-4 rounded-3xl border border-border bg-gradient-to-br from-success/10 via-card to-card p-6 text-center shadow-soft sm:p-10 animate-in fade-in-0 zoom-in-95">
         <span className="flex size-16 items-center justify-center rounded-3xl bg-success/15 text-success">
           <CheckCircle2 className="size-8" />
         </span>
@@ -269,7 +269,7 @@ function SentConfirmation({ onCompose, onInbox }: { onCompose: () => void; onInb
             Your email is on its way. We’ll keep an eye out for a reply.
           </p>
         </div>
-        <div className="mt-1 flex items-center gap-2.5">
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-2.5">
           <Button variant="outline" onClick={onInbox}>
             <Inbox className="size-4" /> Back to inbox
           </Button>

@@ -47,7 +47,7 @@ function RemindersScreen() {
   return (
     <div className="h-full overflow-y-auto">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4 sm:px-6">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
             <Bell className="size-4" />
           </div>
@@ -60,7 +60,7 @@ function RemindersScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <div className="space-y-6">
           {GROUPS.map((group) => {
             const items = reminders.filter((r) => r.kind === group.kind)
@@ -159,7 +159,7 @@ function ChaserBlock({ draft }: { draft: string }) {
         <AiTag label="Drafted chaser" />
       </div>
       <p className="text-sm text-muted-foreground">{draft}</p>
-      <div className="mt-2.5 flex items-center gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
         {resolved ? (
           <span className="text-sm font-medium text-muted-foreground">
             {resolved === 'sent' ? '✓ Chaser sent' : '✓ Snoozed for later'}

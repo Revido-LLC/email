@@ -94,7 +94,7 @@ export function ApprovalCard({
         {consequence(approval)}
       </p>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {editing ? (
           <>
             <Button onClick={onConfirmEdit}>
@@ -108,15 +108,15 @@ export function ApprovalCard({
           <>
             <Button onClick={onApprove} className="gap-1.5">
               <Check /> Approve
-              <Kbd className="border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground">
+              <Kbd className="hidden border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground sm:inline-flex">
                 A
               </Kbd>
             </Button>
             <Button variant="outline" onClick={onStartEdit} className="gap-1.5">
-              <Pencil /> Edit <Kbd>E</Kbd>
+              <Pencil /> Edit <Kbd className="hidden sm:inline-flex">E</Kbd>
             </Button>
             <Button variant="ghost" onClick={onReject} className="gap-1.5 text-muted-foreground">
-              <X /> Reject <Kbd>X</Kbd>
+              <X /> Reject <Kbd className="hidden sm:inline-flex">X</Kbd>
             </Button>
           </>
         )}

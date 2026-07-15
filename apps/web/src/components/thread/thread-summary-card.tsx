@@ -70,11 +70,11 @@ export function ThreadSummaryCard({ thread }: { thread: Thread }) {
                 {facts.map((f, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs [&_svg]:text-muted-foreground"
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
                   >
                     {factIcon[f.type]}
-                    <span className="text-muted-foreground">{f.label}:</span>
-                    <span className="font-medium">{f.value}</span>
+                    <span className="shrink-0 text-muted-foreground">{f.label}:</span>
+                    <span className="truncate font-medium">{f.value}</span>
                   </span>
                 ))}
               </div>

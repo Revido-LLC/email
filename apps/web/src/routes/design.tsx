@@ -65,8 +65,8 @@ function DesignScreen() {
   const { theme, toggleTheme } = useAppState()
   return (
     <div className="min-h-screen overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto max-w-5xl px-8 py-10">
-        <div className="mb-10 flex items-center justify-between">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-4xl font-semibold">Design System</h1>
             <p className="mt-1 text-muted-foreground">

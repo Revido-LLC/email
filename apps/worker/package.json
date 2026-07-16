@@ -12,12 +12,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@revido/core": "workspace:*",
-    "@revido/db": "workspace:*",
     "@anthropic-ai/sdk": "^0.32.1",
     "@react-email/components": "^0.0.31",
     "@react-email/render": "^1.0.3",
+    "@revido/core": "workspace:*",
+    "@revido/db": "workspace:*",
     "@supabase/supabase-js": "^2.47.0",
+    "node-cron": "^4.6.0",
     "openai": "^4.77.0",
     "postgres": "^3.4.5",
     "react": "^19.0.0",
@@ -26,11 +27,12 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/node-cron": "^3.0.11",
+    "@types/react": "^19.0.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
-    "vitest": "^2.1.8",
     "typescript": "^5.7.2",
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.0.2"
+    "vitest": "^2.1.8"
   }
 }

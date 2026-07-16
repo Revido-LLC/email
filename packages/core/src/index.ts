@@ -9,3 +9,20 @@ export * from './provider-adapter'
 export * from './prompts'
 export * from './agent-plan'
 export * from './language'
+
+// Concrete provider adapters + their fetch-injection plumbing.
+export { GmailAdapter, parseGmailMessage } from './adapters/gmail'
+export type { GmailAdapterOptions } from './adapters/gmail'
+export { OutlookAdapter, parseGraphMessage } from './adapters/outlook'
+export type { OutlookAdapterOptions } from './adapters/outlook'
+export { ProviderHttpError } from './adapters/http'
+export type { FetchImpl } from './adapters/http'
+export {
+  buildRfc822,
+  formatAddress,
+  parseAddress,
+  parseAddressList,
+  encodeBase64Url,
+  decodeBase64Url,
+} from './adapters/mime'
+export type { Address } from './adapters/mime'

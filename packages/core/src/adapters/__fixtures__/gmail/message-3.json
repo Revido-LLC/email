@@ -1,0 +1,20 @@
+{
+  "id": "msg-3",
+  "threadId": "thread-b",
+  "labelIds": ["INBOX", "UNREAD"],
+  "internalDate": "1721091600000",
+  "payload": {
+    "mimeType": "text/html",
+    "headers": [
+      { "name": "From", "value": "billing@shop.example <billing@shop.example>" },
+      { "name": "To", "value": "Jane Doe <jane@example.com>" },
+      { "name": "Subject", "value": "Invoice #4471" },
+      { "name": "Date", "value": "Tue, 16 Jul 2024 01:00:00 +0000" },
+      { "name": "Message-ID", "value": "<inv-4471@shop.example>" }
+    ],
+    "body": {
+      "size": 52,
+      "data": "PHA-WW91ciBpbnZvaWNlICM0NDcxIGZvciBFVVIgMjQwLDAwIGlzIGF0dGFjaGVkLjwvcD4"
+    }
+  }
+}

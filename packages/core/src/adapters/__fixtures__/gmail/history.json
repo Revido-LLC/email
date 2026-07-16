@@ -1,0 +1,13 @@
+{
+  "history": [
+    {
+      "id": "800001",
+      "messagesAdded": [{ "message": { "id": "msg-3", "threadId": "thread-b" } }]
+    },
+    {
+      "id": "800002",
+      "messagesDeleted": [{ "message": { "id": "msg-old", "threadId": "thread-z" } }]
+    }
+  ],
+  "historyId": "800100"
+}

@@ -17,15 +17,23 @@ import { createdAt, encrypted, timestamps } from './columns'
 import { outputLanguageEnum, providerEnum } from './enums'
 
 /**
- * Application users. `id` mirrors Supabase `auth.users.id` (the migration adds
- * the FK to `auth.users`); RLS policies compare `id = auth.uid()`. Email/name are
- * plaintext identity metadata.
+ * Application users. This IS Better Auth's `user` model (mapped via
+ * `user.modelName = 'users'`); Better Auth writes it through the service path,
+ * and GUC RLS compares `id = current_setting('app.user_id')::uuid`. Email/name
+ * are plaintext identity metadata.
+ *
+ * `emailVerified` is required by Better Auth. Better Auth's `image` field is
+ * mapped onto the existing `avatar_url` column (`user.fields.image = 'avatarUrl'`),
+ * so no separate `image` column is added. `outputLanguage` / `voiceProfileCt`
+ * are Revido-specific additional fields Better Auth ignores.
  */
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull(),
   name: text('name'),
   avatarUrl: text('avatar_url'),
+  /** Better Auth: whether the user's email has been verified. */
+  emailVerified: boolean('email_verified').notNull().default(false),
   /** Preferred output language for AI artifacts (W5). */
   outputLanguage: outputLanguageEnum('output_language').notNull().default('match'),
   /** Encrypted learned writing-voice profile used to draft "in your voice" (AI). */

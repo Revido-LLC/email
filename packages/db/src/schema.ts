@@ -13,6 +13,8 @@
  *  - agents       — agents, agent_actions, agent_runs, approvals.
  *  - productivity — reminders, commitments, signatures.
  *  - system       — leads, usage_counters, audit_log.
+ *  - auth         — Better Auth session, account, verification (user → users).
+ *  - jobs         — the background job queue (replaces pgmq).
  *
  * Storage-at-rest boundary: `*Ct` columns hold DEK-encrypted `Ciphertext`
  * (bodies, subjects, all AI-derived text, OAuth tokens). Everything else is
@@ -29,3 +31,5 @@ export * from './schema/mail'
 export * from './schema/agents'
 export * from './schema/productivity'
 export * from './schema/system'
+export * from './schema/auth'
+export * from './schema/jobs'

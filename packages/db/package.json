@@ -1,0 +1,33 @@
+{
+  "name": "@revido/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./crypto": "./src/crypto.ts",
+    "./client": "./src/client.ts",
+    "./zod": "./src/zod.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.38.0",
+    "drizzle-zod": "^0.6.0",
+    "postgres": "^3.4.5",
+    "@supabase/supabase-js": "^2.47.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}

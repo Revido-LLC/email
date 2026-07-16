@@ -1,0 +1,36 @@
+{
+  "name": "@revido/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@revido/core": "workspace:*",
+    "@revido/db": "workspace:*",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@react-email/components": "^0.0.31",
+    "@react-email/render": "^1.0.3",
+    "@supabase/supabase-js": "^2.47.0",
+    "openai": "^4.77.0",
+    "postgres": "^3.4.5",
+    "react": "^19.0.0",
+    "resend": "^4.0.1",
+    "voyageai": "^0.0.4",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2"
+  }
+}

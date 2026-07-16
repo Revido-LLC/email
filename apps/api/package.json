@@ -1,0 +1,36 @@
+{
+  "name": "@revido/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rpc": "./src/rpc.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@revido/core": "workspace:*",
+    "@revido/db": "workspace:*",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@hono/node-server": "^1.13.7",
+    "@supabase/supabase-js": "^2.47.0",
+    "hono": "^4.6.14",
+    "openai": "^4.77.0",
+    "voyageai": "^0.0.4",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}

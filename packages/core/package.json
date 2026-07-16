@@ -1,0 +1,27 @@
+{
+  "name": "@revido/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adapters": "./src/provider-adapter.ts",
+    "./prompts": "./src/prompts.ts",
+    "./agent-plan": "./src/agent-plan.ts",
+    "./language": "./src/language.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@revido/db": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}

@@ -1,14 +1,31 @@
 /**
  * Drizzle schema — Postgres tables for Revido Mail (W2).
  *
- * Filled in by the Wave 1 `db-schema` agent: users, accounts, contacts, threads,
- * messages, attachments, extracted_facts, thread_badges, agents, agent_actions,
- * agent_runs, approvals, reminders, commitments, signatures, leads,
- * usage_counters, sync_state, user_keys, message_embeddings (pgvector),
- * audit_log (append-only). Categories are an enum of the locked 9. RLS on every
- * user-scoped table (`auth.uid()`). DEK-encrypted columns store `Ciphertext`
- * (see ./crypto); plaintext metadata stays queryable.
+ * The `@revido/db/schema` entrypoint. Tables are grouped under `./schema/*` and
+ * re-exported here so callers can `import { threads } from '@revido/db/schema'`.
  *
- * This stub keeps `@revido/db/schema` resolvable while the schema lands.
+ * Layout:
+ *  - enums        — the locked, queryable vocabularies (category, priority, …).
+ *  - columns      — custom types: `encrypted(...)` (Ciphertext jsonb) + `vector`.
+ *  - identity     — users, user_keys, accounts, contacts, sync_state.
+ *  - mail         — threads, messages, their participants/recipients,
+ *                   attachments, extracted_facts, thread_badges, message_embeddings.
+ *  - agents       — agents, agent_actions, agent_runs, approvals.
+ *  - productivity — reminders, commitments, signatures.
+ *  - system       — leads, usage_counters, audit_log.
+ *
+ * Storage-at-rest boundary: `*Ct` columns hold DEK-encrypted `Ciphertext`
+ * (bodies, subjects, all AI-derived text, OAuth tokens). Everything else is
+ * plaintext metadata and is queryable. RLS on every user-scoped table
+ * (`user_id = auth.uid()`) lands in the migrations under `./migrations`.
+ *
+ * Row types are available via `typeof <table>.$inferSelect` / `$inferInsert`;
+ * DTO validators live in `@revido/db/zod`.
  */
-export {}
+export * from './schema/enums'
+export * from './schema/columns'
+export * from './schema/identity'
+export * from './schema/mail'
+export * from './schema/agents'
+export * from './schema/productivity'
+export * from './schema/system'

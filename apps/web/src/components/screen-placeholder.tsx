@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Sparkles } from 'lucide-react'
 
 /** Temporary stub shown until a screen is implemented. Replaced wholesale per screen. */

@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 /**
  * Live token foundation for the /design canvas. Everything here renders from the
  * GENERATED tokens (`@revido/ui/tokens`) — swap the ramp math in

@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { RotateCcw, Send } from 'lucide-react'
 import * as React from 'react'
 import { Button, Progress } from '@revido/ui'

@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Link } from '@tanstack/react-router'
 import { USER, type Thread } from '@revido/mock-data'
 import { AiTag, Button, Sparkle } from '@revido/ui'

@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { AGENTS, type AgentDef } from '@revido/mock-data'
 import { Button, Input, Tabs, TabsContent, TabsList, TabsTrigger } from '@revido/ui'
 import { createFileRoute } from '@tanstack/react-router'

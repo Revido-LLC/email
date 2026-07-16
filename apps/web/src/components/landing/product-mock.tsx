@@ -1,15 +1,21 @@
 import { CATEGORIES, getThread, type Thread } from '@revido/mock-data'
 import { AiTag, Badge, CategoryChip, ContactAvatar, PriorityDot, Sparkle, cn } from '@revido/ui'
 import { Check, Sparkles, Sun } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { formatDate } from '@/i18n/format'
 
 const MOCK_THREAD_IDS = ['t-acme', 't-priya', 't-elena']
+
+/** Illustrative "today" date shown in the hero mock — not the real clock. */
+const MOCK_TODAY = new Date(2026, 6, 15)
 
 /**
  * A stylized "Today"-style card built from the real kit — this is the hero
  * visual that sells the product. Purely illustrative, no interactivity.
  */
 export function ProductMock({ className }: { className?: string }) {
-  const threads = MOCK_THREAD_IDS.map(getThread).filter((t): t is Thread => Boolean(t))
+  const { t } = useTranslation()
+  const threads = MOCK_THREAD_IDS.map(getThread).filter((thread): thread is Thread => Boolean(thread))
 
   return (
     <div className={cn('relative max-w-full', className)}>
@@ -19,18 +25,20 @@ export function ProductMock({ className }: { className?: string }) {
           <div>
             <div className="flex items-center gap-1.5 text-2xs font-medium uppercase tracking-wide text-muted-foreground">
               <Sun className="size-3.5 text-accent" />
-              Wednesday, July 15
+              {formatDate(MOCK_TODAY, { weekday: 'long', month: 'long', day: 'numeric' })}
             </div>
-            <div className="mt-0.5 text-xl font-semibold tracking-tight">Good morning, Sam</div>
+            <div className="mt-0.5 text-xl font-semibold tracking-tight">
+              {t('landing.mock.greeting', { name: 'Sam' })}
+            </div>
           </div>
-          <AiTag label="Triaged" />
+          <AiTag label={t('landing.mock.triaged')} />
         </div>
 
         {/* Stat strip */}
         <div className="mb-4 grid grid-cols-3 gap-2">
-          <MockStat n="6" label="need you" />
-          <MockStat n="3" label="promises" />
-          <MockStat n="24" label="handled" ai />
+          <MockStat n="6" label={t('landing.mock.statNeedYou')} />
+          <MockStat n="3" label={t('landing.mock.statPromises')} />
+          <MockStat n="24" label={t('landing.mock.statHandled')} ai />
         </div>
 
         {/* Thread rows */}
@@ -46,11 +54,11 @@ export function ProductMock({ className }: { className?: string }) {
             <Sparkles className="size-3.5" />
           </span>
           <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Agents</span> bundled 6 newsletters &amp;
-            filed 2 receipts
+            <span className="font-medium text-foreground">{t('landing.mock.agentsLabel')}</span>{' '}
+            {t('landing.mock.agentsSummary', { newsletters: 6, receipts: 2 })}
           </span>
           <Badge variant="ai" className="shrink-0 gap-1">
-            <Check className="size-3" /> done
+            <Check className="size-3" /> {t('landing.mock.done')}
           </Badge>
         </div>
       </div>

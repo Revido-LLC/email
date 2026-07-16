@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Loader2, Sparkles } from 'lucide-react'
 import * as React from 'react'
 import { AiTag, Button, Input, Sparkle } from '@revido/ui'

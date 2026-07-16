@@ -30,6 +30,7 @@ import {
   X,
 } from 'lucide-react'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppState } from '@/lib/app-state'
 
 const counts = getCategoryCounts()
@@ -130,6 +131,7 @@ function CategoryNavItem({
 }
 
 export function NavRail() {
+  const { t } = useTranslation()
   const { navCollapsed, toggleNav } = useAppState()
   const [revidoDismissed, setRevidoDismissed] = React.useState(false)
   const account = ACCOUNTS[0]!
@@ -159,8 +161,13 @@ export function NavRail() {
           )}
         </Link>
         {!navCollapsed && (
-          <SimpleTooltip label="Collapse (⌘\)" side="bottom">
-            <Button variant="ghost" size="icon-sm" onClick={toggleNav} aria-label="Collapse nav">
+          <SimpleTooltip label={t('shell.nav.collapse')} side="bottom">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={toggleNav}
+              aria-label={t('shell.nav.collapseAria')}
+            >
               <ChevronsLeft className="size-4" />
             </Button>
           </SimpleTooltip>
@@ -171,7 +178,7 @@ export function NavRail() {
         <Button asChild className="w-full justify-center gap-2">
           <Link to="/app/compose">
             <Pencil className="size-4" />
-            {!navCollapsed && <span>Compose</span>}
+            {!navCollapsed && <span>{t('shell.nav.compose')}</span>}
             {!navCollapsed && (
               <Kbd className="ml-auto bg-primary-foreground/20 text-primary-foreground">c</Kbd>
             )}
@@ -181,18 +188,24 @@ export function NavRail() {
 
       <ScrollArea className="mt-3 min-h-0 flex-1">
         <div className="flex flex-col gap-0.5 px-3">
-          <NavLink to="/app" exact icon={<Home />} label="Today" collapsed={navCollapsed} />
+          <NavLink
+            to="/app"
+            exact
+            icon={<Home />}
+            label={t('shell.nav.today')}
+            collapsed={navCollapsed}
+          />
           <NavLink
             to="/app/inbox"
             icon={<Inbox />}
-            label="Needs You"
+            label={t('shell.nav.needsYou')}
             count={needsYouCount}
             collapsed={navCollapsed}
           />
           <NavLink
             to="/app/approvals"
             icon={<CheckCircle2 />}
-            label="Approvals"
+            label={t('shell.nav.approvals')}
             badge={approvals}
             collapsed={navCollapsed}
           />
@@ -200,7 +213,7 @@ export function NavRail() {
 
         {!navCollapsed ? (
           <div className="mt-5 px-4 text-2xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-            Categories
+            {t('shell.nav.categories')}
           </div>
         ) : (
           <div className="mx-auto mt-3 mb-1 h-px w-7 bg-border" aria-hidden />
@@ -212,8 +225,18 @@ export function NavRail() {
         </div>
 
         <div className="mt-5 flex flex-col gap-0.5 px-3">
-          <NavLink to="/app/reminders" icon={<Bell />} label="Reminders" collapsed={navCollapsed} />
-          <NavLink to="/app/agents" icon={<Sparkles />} label="Agents" collapsed={navCollapsed} />
+          <NavLink
+            to="/app/reminders"
+            icon={<Bell />}
+            label={t('shell.nav.reminders')}
+            collapsed={navCollapsed}
+          />
+          <NavLink
+            to="/app/agents"
+            icon={<Sparkles />}
+            label={t('shell.nav.agents')}
+            collapsed={navCollapsed}
+          />
         </div>
       </ScrollArea>
 
@@ -232,12 +255,17 @@ export function NavRail() {
           <NavLink
             to="/app/settings"
             icon={<Settings />}
-            label="Settings"
+            label={t('shell.nav.settings')}
             collapsed={navCollapsed}
           />
           {navCollapsed && (
-            <SimpleTooltip label="Expand nav" side="right">
-              <Button variant="ghost" size="icon-sm" onClick={toggleNav} aria-label="Expand nav">
+            <SimpleTooltip label={t('shell.nav.expandAria')} side="right">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={toggleNav}
+                aria-label={t('shell.nav.expandAria')}
+              >
                 <PanelLeft className="size-4" />
               </Button>
             </SimpleTooltip>
@@ -249,19 +277,17 @@ export function NavRail() {
             <button
               onClick={() => setRevidoDismissed(true)}
               className="absolute right-2 top-2 rounded-md p-0.5 text-muted-foreground hover:text-foreground"
-              aria-label="Dismiss"
+              aria-label={t('shell.nav.dismissAria')}
             >
               <X className="size-3.5" />
             </button>
-            <div className="text-xs font-semibold">Built by Revido</div>
-            <p className="mt-1 text-2xs text-muted-foreground">
-              We build custom AI tools for companies.
-            </p>
+            <div className="text-xs font-semibold">{t('common.builtByRevido')}</div>
+            <p className="mt-1 text-2xs text-muted-foreground">{t('common.revidoTagline')}</p>
             <Link
               to="/talk"
               className="mt-2 inline-block text-2xs font-semibold text-primary hover:underline"
             >
-              Talk to us →
+              {t('common.talkToUs')}
             </Link>
           </div>
         )}

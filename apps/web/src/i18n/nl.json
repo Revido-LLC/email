@@ -1,0 +1,328 @@
+{
+  "common": {
+    "brand": "Revido Mail",
+    "builtByRevido": "Gebouwd door Revido",
+    "revidoTagline": "Wij bouwen op maat gemaakte AI-tools voor bedrijven.",
+    "talkToUs": "Praat met ons →",
+    "talkToRevido": "Praat met Revido"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "Deze pagina is de weg kwijt.",
+    "back": "Terug naar Vandaag"
+  },
+  "landing": {
+    "topbar": {
+      "getStarted": "Aan de slag"
+    },
+    "hero": {
+      "badge": "AI-first e-mail — voor altijd gratis",
+      "titleLead": "Je inbox, ",
+      "titleAccent": "geregeld.",
+      "subtitle": "Een gratis, AI-first e-mailclient die je inbox triageert, antwoorden opstelt in jouw stijl en agents inzet voor het geklungel — zodat je alleen ziet wat aandacht nodig heeft.",
+      "seeItLive": "Bekijk de demo",
+      "noSignup": "Geen account nodig om de demo te verkennen",
+      "trust": {
+        "free": "Gratis",
+        "noTraining": "Je mail traint nooit AI-modellen",
+        "deleteAnytime": "Verwijder alles, wanneer je wilt"
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "Hoe het werkt",
+      "title": "Van chaos naar rust in ongeveer een minuut.",
+      "steps": {
+        "connect": {
+          "title": "Koppel je inbox",
+          "copy": "Log in met Google of Microsoft. Eén tik, eerst alleen-lezen — niets komt buiten jouw controle."
+        },
+        "read": {
+          "title": "Wij lezen & triageren",
+          "copy": "Binnen zo’n 30 seconden is elk gesprek samengevat, gesorteerd en gescoord — de ruis valt weg."
+        },
+        "agents": {
+          "title": "Agents doen de rest",
+          "copy": "Stellen antwoorden op, jagen onbeantwoorde mails na, archiveren bonnetjes, bundelen nieuwsbrieven — jij keurt alleen goed."
+        }
+      }
+    },
+    "features": {
+      "eyebrow": "Wat je krijgt",
+      "title": "Een rustigere inbox, aangedreven door agents.",
+      "subtitle": "Consumentvriendelijk aan de oppervlakte, razendsnel eronder — elke AI-actie is gemarkeerd met een sparkle.",
+      "items": {
+        "triage": {
+          "title": "Slimme triage",
+          "copy": "Elk gesprek krijgt een samenvatting in één regel, een categorie en een prioriteitsscore. Open je inbox al gesorteerd."
+        },
+        "replies": {
+          "title": "Antwoorden in jouw stijl",
+          "copy": "Concepten die echt klinken als jij — toon, formulering en afsluiting geleerd van je verzonden mail."
+        },
+        "agents": {
+          "title": "Inbox-agents",
+          "copy": "Zet-en-vergeet-agents melden je af, jagen onbeantwoorde mails na, archiveren facturen en bundelen de ruis."
+        },
+        "chat": {
+          "title": "Chat met je inbox",
+          "copy": "Vraag “wat heb ik Priya beloofd?” of “zoek dat voorstel van €48k.” Antwoorden, met bewijs."
+        },
+        "reminders": {
+          "title": "Proactieve herinneringen",
+          "copy": "Het onthoudt de beloftes die je deed en de antwoorden waar je nog op wacht — voordat ze verdwijnen."
+        },
+        "privacy": {
+          "title": "Privacy voorop",
+          "copy": "Per gebruiker versleuteld, AI zonder retentie, open source. Jouw mail is van jou — altijd."
+        }
+      }
+    },
+    "privacy": {
+      "tag": "Privacy",
+      "title": "Niemand leest je e-mail.",
+      "subtitle": "Wij niet. Onze modellen niet. Niemand. Vertrouwen is het hele product.",
+      "points": {
+        "encryption": {
+          "title": "Versleuteling per gebruiker, in rust",
+          "copy": "Elke mailbox is versleuteld met een eigen sleutel. Zelfs wij kunnen niet in je inbox kijken."
+        },
+        "zeroRetention": {
+          "title": "AI zonder retentie",
+          "copy": "Modellen vatten samen en stellen op in het moment, en vergeten daarna. Je mail traint nooit iets."
+        },
+        "openSource": {
+          "title": "Open source",
+          "copy": "Vertrouw ons niet op ons woord — lees de code. De hele client ligt open."
+        },
+        "delete": {
+          "title": "Verwijder alles, wanneer je wilt",
+          "copy": "Eén knop, aantoonbaar gewist. Koppel los en je data is voorgoed weg."
+        }
+      }
+    },
+    "footer": {
+      "about": "Gebouwd door <strong>Revido</strong> — wij bouwen op maat gemaakte AI-tools voor bedrijven. Revido Mail is een voorproefje van hoe agents op maat aanvoelen.",
+      "copyright": "© 2026 Revido · mail.revido.co",
+      "aiMarked": "Elke AI-actie is gemarkeerd, gelogd en terug te draaien."
+    },
+    "oauth": {
+      "google": "Doorgaan met Google",
+      "microsoft": "Doorgaan met Microsoft"
+    },
+    "mock": {
+      "greeting": "Goedemorgen, {{name}}",
+      "triaged": "Getriageerd",
+      "statNeedYou": "vragen jou",
+      "statPromises": "beloftes",
+      "statHandled": "afgehandeld",
+      "agentsLabel": "Agents",
+      "agentsSummary": "bundelde {{newsletters}} nieuwsbrieven & archiveerde {{receipts}} bonnetjes",
+      "done": "klaar"
+    }
+  },
+  "onboarding": {
+    "footer": "Gebouwd door Revido · wij bouwen op maat gemaakte AI-tools",
+    "scan": {
+      "connecting": {
+        "title": "Je inbox wordt gekoppeld…"
+      },
+      "connected": {
+        "title": "Gekoppeld",
+        "subtitle": "Beveiligde verbinding met {{email}}"
+      },
+      "reading": {
+        "title": "Je recente mail wordt gelezen…",
+        "subtitle": "Revido triageert in realtime",
+        "needReplies": "wachten op antwoord",
+        "newsletters": "nieuwsbrieven",
+        "invoices": "facturen",
+        "progress": "{{scanned}} van {{total}} gesprekken gescand"
+      },
+      "ready": {
+        "title": "Je eerste overzicht wordt voorbereid",
+        "subtitle": "Alles is gesorteerd — dit kunnen we alvast van je overnemen."
+      }
+    },
+    "proposals": {
+      "title": "We vonden een paar dingen die we kunnen automatiseren",
+      "subtitle": "Zet de agents aan die je wilt — je kunt dit altijd nog wijzigen.",
+      "continue": "Ga naar je inbox",
+      "skip": "Nu overslaan",
+      "agentsCount_one": "{{count}} agent gaat aan het werk zodra je landt.",
+      "agentsCount_other": "{{count}} agents gaan aan het werk zodra je landt.",
+      "enableAria": "{{title}} inschakelen"
+    }
+  },
+  "shell": {
+    "nav": {
+      "collapse": "Inklappen (⌘\\)",
+      "collapseAria": "Navigatie inklappen",
+      "expandAria": "Navigatie uitklappen",
+      "compose": "Opstellen",
+      "today": "Vandaag",
+      "needsYou": "Vraagt Jou",
+      "approvals": "Goedkeuringen",
+      "categories": "Categorieën",
+      "reminders": "Herinneringen",
+      "agents": "Agents",
+      "settings": "Instellingen",
+      "dismissAria": "Sluiten"
+    },
+    "commandPalette": {
+      "title": "Opdrachtenpalet",
+      "placeholder": "Zoek of typ een opdracht…",
+      "noResults": "Geen resultaten gevonden.",
+      "askAi": "Vraag AI: “{{query}}”",
+      "groupJumpTo": "Ga naar",
+      "groupCategories": "Categorieën",
+      "groupThreads": "Gesprekken",
+      "groupActions": "Acties",
+      "jumpToday": "Vandaag",
+      "jumpInbox": "Inbox — Vraagt Jou",
+      "jumpApprovals": "Goedkeuringen",
+      "jumpAgents": "Agents",
+      "jumpReminders": "Herinneringen",
+      "jumpSettings": "Instellingen",
+      "actionCompose": "Nieuwe e-mail opstellen",
+      "actionCreateAgent": "Agent aanmaken",
+      "actionToggleTheme": "Thema wisselen"
+    }
+  },
+  "settings": {
+    "header": {
+      "title": "Instellingen",
+      "subtitle": "Accounts, AI-voorkeuren, handtekeningen, privacy en gebruik."
+    },
+    "tabs": {
+      "accounts": "Accounts",
+      "ai": "AI",
+      "signatures": "Handtekeningen",
+      "privacy": "Privacy",
+      "usage": "Gebruik"
+    },
+    "accounts": {
+      "connectAnother": "Nog een account koppelen",
+      "supportNote": "Gmail en Outlook worden ondersteund. Je mail is end-to-end versleuteld met een sleutel die alleen jij hebt.",
+      "synced": "Gesynchroniseerd",
+      "syncing": "Synchroniseren…",
+      "disconnectNote": "Loskoppelen wist elk bericht, concept en index die we voor dit account bewaren.",
+      "disconnect": "Loskoppelen",
+      "disconnectTitle": "{{email}} loskoppelen?",
+      "disconnectDescription": "Dit koppelt het account los en wist permanent alles wat we ervoor bewaren.",
+      "provablePurge": "Aantoonbaar gewist",
+      "purgeDetail": "Het verwijderen van je sleutel wist cryptografisch al je content, inclusief back-ups — direct en permanent. Zelfs wij zouden het niet kunnen herstellen.",
+      "disconnectedDone": "✓ Account losgekoppeld en gewist.",
+      "keepAccount": "Account behouden",
+      "disconnectConfirm": "Loskoppelen + alles verwijderen"
+    },
+    "ai": {
+      "title": "AI-voorkeuren",
+      "description": "Jij houdt altijd de controle. Zet een van deze uit en de AI houdt zich stil.",
+      "prefs": {
+        "drafts": {
+          "label": "Antwoordconcepten",
+          "description": "Schrijft antwoorden vast in jouw stijl, zodat je met één tik kunt versturen."
+        },
+        "agents": {
+          "label": "Inbox-agents",
+          "description": "Laat agents triageren, archiveren en achtervolgen op de achtergrond."
+        },
+        "chat": {
+          "label": "Chat met inbox",
+          "description": "Stel vragen over je mail en krijg onderbouwde antwoorden."
+        },
+        "digest": {
+          "label": "Dagelijkse samenvatting per e-mail",
+          "description": "Een ochtendoverzicht van wat ertoe doet.",
+          "note": "Wordt om 7:00 uur ’s ochtends bezorgd, in jouw tijdzone."
+        }
+      },
+      "voiceProfile": {
+        "title": "Jouw stemprofiel",
+        "description": "Geleerd van je verzonden mail — begroetingen, afsluitingen en hoe formeel je bent per contact. Concepten klinken als jij, niet als een robot."
+      }
+    },
+    "signatures": {
+      "title": "Handtekening {{name}}",
+      "description": "Wordt toegevoegd aan nieuwe mail. HTML is toegestaan.",
+      "preview": "Voorbeeld",
+      "save": "Handtekening opslaan",
+      "saved": "Opgeslagen."
+    },
+    "privacy": {
+      "guaranteesTitle": "Wat we garanderen",
+      "guaranteesDescription": "Gewone taal, geen kleine lettertjes.",
+      "guarantees": {
+        "encryption": "Je mail is versleuteld met een sleutel die alleen jij hebt.",
+        "zeroRetention": "AI werkt op je inbox zonder retentie — prompts en inhoud worden nooit opgeslagen of gebruikt om op te trainen.",
+        "openSource": "De client is open source. Controleer precies wat er draait.",
+        "delete": "Verwijder je sleutel en elke byte is aantoonbaar en permanent weg."
+      },
+      "notClaimedTitle": "Wat we niet beweren",
+      "notClaimedDescription": "De eerlijke grenzen.",
+      "notClaimed": {
+        "noAds": "We verkopen of delen je data niet — er is hier geen advertentiemodel.",
+        "noRead": "We lezen je mail niet. Agents handelen erop; mensen bij Revido zien het nooit.",
+        "noBackdoor": "We hebben geen achterdeur. Er is aan onze kant geen herstelsleutel."
+      },
+      "openSourceNote": "Open source · AI zonder retentie. Het geheel is controleerbaar en niets wat je typt blijft aan een model plakken.",
+      "deleteEverything": {
+        "title": "Alles verwijderen",
+        "description": "Wis elk account, elke agent en elke byte die we voor je bewaren.",
+        "button": "Alles verwijderen",
+        "dialogTitle": "Alles verwijderen?",
+        "dialogDescription": "Dit wist alle accounts, agents, concepten en indexen die aan je sleutel gekoppeld zijn.",
+        "purgeDetail": "Het verwijderen van je sleutel wist cryptografisch al je content, inclusief back-ups — direct en permanent.",
+        "done": "✓ Alles verwijderd. Je sleutel is weg.",
+        "cancel": "Annuleren",
+        "confirm": "Ja, alles verwijderen"
+      }
+    },
+    "usage": {
+      "counters": {
+        "drafts": {
+          "label": "AI-concepten deze maand",
+          "sub": "vooraf geschreven antwoorden"
+        },
+        "agentRuns": {
+          "label": "Agent-acties",
+          "sub": "acties die voor je zijn afgehandeld"
+        },
+        "chatQueries": {
+          "label": "Chatvragen",
+          "sub": "beantwoorde vragen"
+        }
+      },
+      "freePlan": "Je zit op het gratis plan — vandaag geen limieten.",
+      "freePlanDetail": "{{name}}, dit alles is gratis zolang we in vroege toegang zitten. We waarschuwen je altijd voordat er iets verandert."
+    }
+  },
+  "talk": {
+    "back": "Terug naar Revido Mail",
+    "tag": "Revido",
+    "title": "Wij hebben dit gebouwd. Wij kunnen dat van jou ook bouwen.",
+    "subtitle": "Revido Mail is één voorbeeld van wat we maken. Vertel ons welk geklungel de week van je team opslokt, en wij bouwen de AI-tool die daar een einde aan maakt.",
+    "form": {
+      "name": "Naam",
+      "namePlaceholder": "Je naam",
+      "email": "E-mail",
+      "emailPlaceholder": "jij@bedrijf.com",
+      "company": "Bedrijf",
+      "companyPlaceholder": "Bedrijf",
+      "automate": "Wat zou je willen automatiseren?",
+      "automatePlaceholder": "bijv. Achterstallige facturen achtervolgen, supportmail triageren, voorstellen opstellen na een gesprek…",
+      "submit": "Start het gesprek",
+      "disclaimer": "Geen pitch deck, geen spam — een echte reactie van de mensen die dit bouwen."
+    },
+    "footer": {
+      "title": "Gebouwd door Revido",
+      "subtitle": "Wij bouwen op maat gemaakte AI-tools voor bedrijven."
+    },
+    "thankYou": {
+      "title": "Bedankt, {{name}}.",
+      "message": "We nemen binnen één werkdag contact op. Wil je niet wachten? Kies een moment en we komen voorbereid.",
+      "book": "Boek een gesprek van 20 minuten",
+      "footer": "Gebouwd door Revido · wij bouwen op maat gemaakte AI-tools voor bedrijven"
+    }
+  }
+}

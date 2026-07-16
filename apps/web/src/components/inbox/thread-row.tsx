@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Link } from '@tanstack/react-router'
 import { CATEGORIES, USER, type Thread, type ThreadBadge } from '@revido/mock-data'
 import {

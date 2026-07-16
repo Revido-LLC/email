@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { getNeedsYou } from '@revido/mock-data'
 import { Button, EmptyState } from '@revido/ui'

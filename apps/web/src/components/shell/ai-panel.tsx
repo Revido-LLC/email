@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, useParams } from '@tanstack/react-router'
 import {
   TODAY_BRIEF,

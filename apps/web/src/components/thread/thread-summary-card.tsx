@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { type ExtractedFact, type Thread } from '@revido/mock-data'
 import { AiTag, Button, Checkbox, Sparkle } from '@revido/ui'
 import { Calendar, ChevronDown, CircleDollarSign, Link2, Truck, User } from 'lucide-react'

@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Button, Sparkle } from '@revido/ui'
 import type { ToneKey } from './draft-data'
 

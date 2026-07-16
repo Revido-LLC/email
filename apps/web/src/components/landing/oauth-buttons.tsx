@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Button, cn } from '@revido/ui'
 import { Chrome } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 /** Chrome glyph stands in for Google (no real brand marks in a mock). */
 function GoogleGlyph() {
@@ -28,6 +29,7 @@ export function OAuthButtons({
   stacked?: boolean
   className?: string
 }) {
+  const { t } = useTranslation()
   const buttonWidth = stacked ? 'w-full sm:w-auto' : ''
 
   return (
@@ -35,13 +37,13 @@ export function OAuthButtons({
       <Button asChild variant="primary" size={size} className={buttonWidth}>
         <Link to="/onboarding">
           <GoogleGlyph />
-          Continue with Google
+          {t('landing.oauth.google')}
         </Link>
       </Button>
       <Button asChild variant="outline" size={size} className={buttonWidth}>
         <Link to="/onboarding">
           <MicrosoftGlyph />
-          Continue with Microsoft
+          {t('landing.oauth.microsoft')}
         </Link>
       </Button>
     </div>

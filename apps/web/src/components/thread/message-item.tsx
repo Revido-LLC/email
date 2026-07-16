@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { USER, type Attachment, type Message } from '@revido/mock-data'
 import { Badge, ContactAvatar, cn } from '@revido/ui'
 import { File, FileArchive, FileText, Image as ImageIcon, ImageOff, Sheet } from 'lucide-react'

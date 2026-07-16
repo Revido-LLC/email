@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { useNavigate } from '@tanstack/react-router'
 import { type CategoryMeta, type Thread } from '@revido/mock-data'
 import { Button, CategoryChip, Separator, cn } from '@revido/ui'

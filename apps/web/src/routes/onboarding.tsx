@@ -15,7 +15,9 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowRight, Check, Loader2, Sparkles } from 'lucide-react'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Icon } from '@/lib/icons'
+import { formatNumber } from '@/i18n/format'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingScreen,
@@ -33,6 +35,7 @@ const STAGE_MS: Record<Stage, number> = {
 }
 
 function OnboardingScreen() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [stage, setStage] = React.useState<Stage>('connecting')
   const [connected, setConnected] = React.useState(false)
@@ -66,7 +69,7 @@ function OnboardingScreen() {
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
               <Sparkles className="size-5" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">Revido Mail</span>
+            <span className="text-lg font-semibold tracking-tight">{t('common.brand')}</span>
           </div>
           <div className="flex items-center gap-1.5" aria-label="Setup progress">
             {STAGES.map((s, i) => (
@@ -92,7 +95,7 @@ function OnboardingScreen() {
 
         <footer className="flex items-center justify-center gap-1.5 pb-1 text-2xs text-muted-foreground/70">
           <Sparkles className="size-3 text-ai/70" />
-          Built by Revido · we build custom AI tools
+          {t('onboarding.footer')}
         </footer>
       </div>
     </div>
@@ -104,6 +107,7 @@ function OnboardingScreen() {
 /* ------------------------------------------------------------------ */
 
 function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
+  const { t } = useTranslation()
   const started = stage !== 'connecting'
   const total = useCountUp(ONBOARDING_SCAN.totalThreads, 1400, started)
   const needReplies = useCountUp(ONBOARDING_SCAN.needReplies, 1400, started)
@@ -133,30 +137,50 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
           >
             {beat === 'connecting' && (
               <>
-                <h1 className="text-2xl font-semibold tracking-tight">Connecting your inbox…</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {t('onboarding.scan.connecting.title')}
+                </h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">{USER.email}</p>
               </>
             )}
 
             {beat === 'connected' && (
               <>
-                <h1 className="text-2xl font-semibold tracking-tight">Connected</h1>
-                <p className="mt-1.5 text-sm text-muted-foreground">Secure link to {USER.email}</p>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {t('onboarding.scan.connected.title')}
+                </h1>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {t('onboarding.scan.connected.subtitle', { email: USER.email })}
+                </p>
               </>
             )}
 
             {beat === 'reading' && (
               <>
-                <h1 className="text-2xl font-semibold tracking-tight">Reading your recent mail…</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {t('onboarding.scan.reading.title')}
+                </h1>
                 <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                   <Sparkle className="size-3.5" />
-                  Revido is triaging in real time
+                  {t('onboarding.scan.reading.subtitle')}
                 </p>
 
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-                  <ScanStat token="to-reply" value={needReplies} label="need replies" />
-                  <ScanStat token="newsletters" value={newsletters} label="newsletters" />
-                  <ScanStat token="receipts" value={invoices} label="invoices" />
+                  <ScanStat
+                    token="to-reply"
+                    value={needReplies}
+                    label={t('onboarding.scan.reading.needReplies')}
+                  />
+                  <ScanStat
+                    token="newsletters"
+                    value={newsletters}
+                    label={t('onboarding.scan.reading.newsletters')}
+                  />
+                  <ScanStat
+                    token="receipts"
+                    value={invoices}
+                    label={t('onboarding.scan.reading.invoices')}
+                  />
                 </div>
 
                 <Progress
@@ -165,8 +189,10 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
                   barClassName="bg-ai"
                 />
                 <p className="mt-2 text-2xs tabular-nums text-muted-foreground">
-                  {total.toLocaleString()} of {ONBOARDING_SCAN.totalThreads.toLocaleString()}{' '}
-                  conversations scanned
+                  {t('onboarding.scan.reading.progress', {
+                    scanned: formatNumber(total),
+                    total: formatNumber(ONBOARDING_SCAN.totalThreads),
+                  })}
                 </p>
               </>
             )}
@@ -174,10 +200,10 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
             {beat === 'ready' && (
               <>
                 <h1 className="text-2xl font-semibold tracking-tight">
-                  Preparing your first brief
+                  {t('onboarding.scan.ready.title')}
                 </h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">
-                  Everything’s sorted — here’s what we can take off your plate.
+                  {t('onboarding.scan.ready.subtitle')}
                 </p>
               </>
             )}
@@ -258,6 +284,7 @@ function ScanStat({ token, value, label }: { token: string; value: number; label
 /* ------------------------------------------------------------------ */
 
 function ProposalsView({ onContinue }: { onContinue: () => void }) {
+  const { t } = useTranslation()
   const proposals = AGENT_PROPOSALS.slice(0, 3)
   const [enabled, setEnabled] = React.useState<Record<string, boolean>>(() =>
     Object.fromEntries(proposals.map((p, i) => [p.id, i < 2])),
@@ -275,12 +302,10 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
         <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-2xl bg-ai/12 text-ai">
           <Sparkles className="size-6" />
         </div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          We found a few things we can automate
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t('onboarding.proposals.title')}</h1>
         <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
           <Sparkle className="size-3.5" />
-          Flip on the agents you’d like — you can change these anytime.
+          {t('onboarding.proposals.subtitle')}
         </p>
       </div>
 
@@ -298,7 +323,7 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
 
       <div className="mt-7 flex flex-col items-center gap-3">
         <Button className="w-full" onClick={onContinue}>
-          Continue to your inbox
+          {t('onboarding.proposals.continue')}
           <ArrowRight className="size-4" />
         </Button>
         <button
@@ -306,10 +331,10 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
           onClick={onContinue}
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          Skip for now
+          {t('onboarding.proposals.skip')}
         </button>
         <p className="text-2xs text-muted-foreground/70">
-          {onCount} {onCount === 1 ? 'agent' : 'agents'} will start working the moment you land.
+          {t('onboarding.proposals.agentsCount', { count: onCount })}
         </p>
       </div>
     </motion.div>
@@ -327,6 +352,7 @@ function ProposalCard({
   on: boolean
   onToggle: (value: boolean) => void
 }) {
+  const { t } = useTranslation()
   const cls = CATEGORY_CLASSES[proposal.accent as CategoryToken] ?? CATEGORY_CLASSES.fyi
 
   return (
@@ -360,7 +386,7 @@ function ProposalCard({
           checked={on}
           onCheckedChange={onToggle}
           className="mt-1 shrink-0"
-          aria-label={`Enable ${proposal.title}`}
+          aria-label={t('onboarding.proposals.enableAria', { title: proposal.title })}
         />
       </Card>
     </motion.div>

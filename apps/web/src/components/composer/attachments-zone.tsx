@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { FileText, Paperclip, UploadCloud, X } from 'lucide-react'
 import * as React from 'react'
 import { cn } from '@revido/ui'

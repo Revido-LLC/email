@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { SIGNATURES } from '@revido/mock-data'
 import { useEditor } from '@tiptap/react'

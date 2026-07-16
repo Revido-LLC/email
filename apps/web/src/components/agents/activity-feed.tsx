@@ -1,3 +1,4 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { type AgentRunEntry, getAgentRuns } from '@revido/mock-data'
 import { AiTag, Badge, Button, cn } from '@revido/ui'
 import { Link } from '@tanstack/react-router'

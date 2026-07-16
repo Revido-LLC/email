@@ -1,0 +1,328 @@
+{
+  "common": {
+    "brand": "Revido Mail",
+    "builtByRevido": "Built by Revido",
+    "revidoTagline": "We build custom AI tools for companies.",
+    "talkToUs": "Talk to us →",
+    "talkToRevido": "Talk to Revido"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "This page took a wrong turn.",
+    "back": "Back to Today"
+  },
+  "landing": {
+    "topbar": {
+      "getStarted": "Get started"
+    },
+    "hero": {
+      "badge": "AI-first email — free forever",
+      "titleLead": "Your inbox, ",
+      "titleAccent": "handled.",
+      "subtitle": "A free, AI-first email client that triages your inbox, drafts replies in your voice, and runs agents on the busywork — so you only see what needs you.",
+      "seeItLive": "See it live",
+      "noSignup": "No signup needed to explore the demo",
+      "trust": {
+        "free": "Free",
+        "noTraining": "Your mail never trains AI models",
+        "deleteAnytime": "Delete everything anytime"
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "How it works",
+      "title": "From chaos to calm in about a minute.",
+      "steps": {
+        "connect": {
+          "title": "Connect your inbox",
+          "copy": "Sign in with Google or Microsoft. One tap, read-only to start — nothing leaves your control."
+        },
+        "read": {
+          "title": "We read & triage",
+          "copy": "In about 30 seconds, every thread is summarized, sorted, and scored — the noise falls away."
+        },
+        "agents": {
+          "title": "Agents handle the rest",
+          "copy": "Draft replies, chase no-answers, file receipts, bundle newsletters — you just approve."
+        }
+      }
+    },
+    "features": {
+      "eyebrow": "What you get",
+      "title": "A calmer inbox, powered by agents.",
+      "subtitle": "Consumer-warm on the surface, pro-tool fast underneath — every AI touch is marked with a sparkle.",
+      "items": {
+        "triage": {
+          "title": "Smart triage",
+          "copy": "Every thread gets a one-line TL;DR, a category, and a priority score. Open your inbox already sorted."
+        },
+        "replies": {
+          "title": "Replies in your voice",
+          "copy": "Drafts that actually sound like you — tone, phrasing, and sign-off learned from your sent mail."
+        },
+        "agents": {
+          "title": "Inbox agents",
+          "copy": "Set-and-forget agents unsubscribe, chase no-replies, file invoices, and bundle the noise."
+        },
+        "chat": {
+          "title": "Chat with your inbox",
+          "copy": "Ask “what did I promise Priya?” or “find that $48k proposal.” Answers, with the receipts."
+        },
+        "reminders": {
+          "title": "Proactive reminders",
+          "copy": "It remembers the promises you made and the replies you’re still waiting on — before they slip."
+        },
+        "privacy": {
+          "title": "Privacy-first",
+          "copy": "Encrypted per user, zero-retention AI, open source. Your mail is yours — always."
+        }
+      }
+    },
+    "privacy": {
+      "tag": "Privacy",
+      "title": "Nobody reads your email.",
+      "subtitle": "Not us. Not our models. Not anyone. Trust is the whole product.",
+      "points": {
+        "encryption": {
+          "title": "Per-user encryption at rest",
+          "copy": "Every mailbox is encrypted with its own key. Even we can’t browse your inbox."
+        },
+        "zeroRetention": {
+          "title": "Zero-retention AI",
+          "copy": "Models summarize and draft in the moment, then forget. Your mail never trains anything."
+        },
+        "openSource": {
+          "title": "Open source",
+          "copy": "Don’t trust us — read the code. The whole client is out in the open."
+        },
+        "delete": {
+          "title": "Delete everything, anytime",
+          "copy": "One button, provable purge. Disconnect and your data is gone for good."
+        }
+      }
+    },
+    "footer": {
+      "about": "Built by <strong>Revido</strong> — we build custom AI tools for companies. Revido Mail is a taste of what bespoke agents feel like.",
+      "copyright": "© 2026 Revido · mail.revido.co",
+      "aiMarked": "Every AI action is marked, logged, and reversible."
+    },
+    "oauth": {
+      "google": "Continue with Google",
+      "microsoft": "Continue with Microsoft"
+    },
+    "mock": {
+      "greeting": "Good morning, {{name}}",
+      "triaged": "Triaged",
+      "statNeedYou": "need you",
+      "statPromises": "promises",
+      "statHandled": "handled",
+      "agentsLabel": "Agents",
+      "agentsSummary": "bundled {{newsletters}} newsletters & filed {{receipts}} receipts",
+      "done": "done"
+    }
+  },
+  "onboarding": {
+    "footer": "Built by Revido · we build custom AI tools",
+    "scan": {
+      "connecting": {
+        "title": "Connecting your inbox…"
+      },
+      "connected": {
+        "title": "Connected",
+        "subtitle": "Secure link to {{email}}"
+      },
+      "reading": {
+        "title": "Reading your recent mail…",
+        "subtitle": "Revido is triaging in real time",
+        "needReplies": "need replies",
+        "newsletters": "newsletters",
+        "invoices": "invoices",
+        "progress": "{{scanned}} of {{total}} conversations scanned"
+      },
+      "ready": {
+        "title": "Preparing your first brief",
+        "subtitle": "Everything’s sorted — here’s what we can take off your plate."
+      }
+    },
+    "proposals": {
+      "title": "We found a few things we can automate",
+      "subtitle": "Flip on the agents you’d like — you can change these anytime.",
+      "continue": "Continue to your inbox",
+      "skip": "Skip for now",
+      "agentsCount_one": "{{count}} agent will start working the moment you land.",
+      "agentsCount_other": "{{count}} agents will start working the moment you land.",
+      "enableAria": "Enable {{title}}"
+    }
+  },
+  "shell": {
+    "nav": {
+      "collapse": "Collapse (⌘\\)",
+      "collapseAria": "Collapse nav",
+      "expandAria": "Expand nav",
+      "compose": "Compose",
+      "today": "Today",
+      "needsYou": "Needs You",
+      "approvals": "Approvals",
+      "categories": "Categories",
+      "reminders": "Reminders",
+      "agents": "Agents",
+      "settings": "Settings",
+      "dismissAria": "Dismiss"
+    },
+    "commandPalette": {
+      "title": "Command palette",
+      "placeholder": "Search or type a command…",
+      "noResults": "No results found.",
+      "askAi": "Ask AI: “{{query}}”",
+      "groupJumpTo": "Jump to",
+      "groupCategories": "Categories",
+      "groupThreads": "Threads",
+      "groupActions": "Actions",
+      "jumpToday": "Today",
+      "jumpInbox": "Inbox — Needs You",
+      "jumpApprovals": "Approvals",
+      "jumpAgents": "Agents",
+      "jumpReminders": "Reminders",
+      "jumpSettings": "Settings",
+      "actionCompose": "Compose new email",
+      "actionCreateAgent": "Create an agent",
+      "actionToggleTheme": "Toggle theme"
+    }
+  },
+  "settings": {
+    "header": {
+      "title": "Settings",
+      "subtitle": "Accounts, AI preferences, signatures, privacy and usage."
+    },
+    "tabs": {
+      "accounts": "Accounts",
+      "ai": "AI",
+      "signatures": "Signatures",
+      "privacy": "Privacy",
+      "usage": "Usage"
+    },
+    "accounts": {
+      "connectAnother": "Connect another account",
+      "supportNote": "Gmail and Outlook supported. Your mail is end-to-end encrypted with a key only you hold.",
+      "synced": "Synced",
+      "syncing": "Syncing…",
+      "disconnectNote": "Disconnecting purges every message, draft and index we hold for this account.",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect {{email}}?",
+      "disconnectDescription": "This disconnects the account and permanently erases everything we store for it.",
+      "provablePurge": "Provable purge",
+      "purgeDetail": "Deleting your key cryptographically erases all your content, including backups — instantly and permanently. We couldn’t recover it even if you asked.",
+      "disconnectedDone": "✓ Account disconnected and purged.",
+      "keepAccount": "Keep account",
+      "disconnectConfirm": "Disconnect + delete everything"
+    },
+    "ai": {
+      "title": "AI preferences",
+      "description": "You’re always in control. Turn any of these off and the AI stays quiet.",
+      "prefs": {
+        "drafts": {
+          "label": "Reply drafts",
+          "description": "Pre-write replies in your voice so you can send with one tap."
+        },
+        "agents": {
+          "label": "Inbox agents",
+          "description": "Let agents triage, file and chase in the background."
+        },
+        "chat": {
+          "label": "Chat with inbox",
+          "description": "Ask questions across your mail and get grounded answers."
+        },
+        "digest": {
+          "label": "Daily digest email",
+          "description": "A morning brief of what matters.",
+          "note": "Delivered at 7:00am, your time."
+        }
+      },
+      "voiceProfile": {
+        "title": "Your voice profile",
+        "description": "Learned from your sent mail — greetings, sign-offs and how formal you get with each contact. Drafts sound like you, not a robot."
+      }
+    },
+    "signatures": {
+      "title": "{{name}} signature",
+      "description": "Appended to new mail. HTML is allowed.",
+      "preview": "Preview",
+      "save": "Save signature",
+      "saved": "Saved."
+    },
+    "privacy": {
+      "guaranteesTitle": "What we guarantee",
+      "guaranteesDescription": "Plain language, no fine print.",
+      "guarantees": {
+        "encryption": "Your mail is encrypted with a key only you hold.",
+        "zeroRetention": "AI runs on your inbox with zero retention — prompts and content are never stored or trained on.",
+        "openSource": "The client is open source. Audit exactly what runs.",
+        "delete": "Delete your key and every byte is provably, permanently gone."
+      },
+      "notClaimedTitle": "What we don’t claim",
+      "notClaimedDescription": "The honest limits.",
+      "notClaimed": {
+        "noAds": "We don’t sell or share your data — there is no ad model here.",
+        "noRead": "We don’t read your mail. Agents act on it; humans at Revido never see it.",
+        "noBackdoor": "We don’t hold a backdoor. There’s no recovery key on our side."
+      },
+      "openSourceNote": "Open source · zero-retention AI. The whole thing is auditable, and nothing you type sticks to a model.",
+      "deleteEverything": {
+        "title": "Delete everything",
+        "description": "Wipe every account, agent and byte we hold for you.",
+        "button": "Delete everything",
+        "dialogTitle": "Delete everything?",
+        "dialogDescription": "This erases all accounts, agents, drafts and indexes tied to your key.",
+        "purgeDetail": "Deleting your key cryptographically erases all your content, including backups — instantly and permanently.",
+        "done": "✓ Everything deleted. Your key is gone.",
+        "cancel": "Cancel",
+        "confirm": "Yes, delete everything"
+      }
+    },
+    "usage": {
+      "counters": {
+        "drafts": {
+          "label": "AI drafts this month",
+          "sub": "replies pre-written"
+        },
+        "agentRuns": {
+          "label": "Agent runs",
+          "sub": "actions handled for you"
+        },
+        "chatQueries": {
+          "label": "Chat queries",
+          "sub": "questions answered"
+        }
+      },
+      "freePlan": "You’re on the free plan — no limits today.",
+      "freePlanDetail": "{{name}}, everything above is on the house while we’re in early access. We’ll always warn you before anything changes."
+    }
+  },
+  "talk": {
+    "back": "Back to Revido Mail",
+    "tag": "Revido",
+    "title": "We built this. We can build yours.",
+    "subtitle": "Revido Mail is one example of what we make. Tell us the busywork eating your team’s week, and we’ll build the AI tool that ends it.",
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailPlaceholder": "you@company.com",
+      "company": "Company",
+      "companyPlaceholder": "Company",
+      "automate": "What would you automate?",
+      "automatePlaceholder": "e.g. Chase overdue invoices, triage support mail, draft proposals from a call…",
+      "submit": "Start the conversation",
+      "disclaimer": "No pitch deck, no spam — a real reply from the people who build these."
+    },
+    "footer": {
+      "title": "Built by Revido",
+      "subtitle": "We build custom AI tools for companies."
+    },
+    "thankYou": {
+      "title": "Thanks, {{name}}.",
+      "message": "We’ll be in touch within one business day. Want to skip the wait? Grab a time and we’ll come prepared.",
+      "book": "Book a 20-minute call",
+      "footer": "Built by Revido · we build custom AI tools for companies"
+    }
+  }
+}

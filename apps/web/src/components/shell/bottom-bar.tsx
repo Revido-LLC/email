@@ -1,3 +1,5 @@
+// i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n);
+// mirror the equivalent labels already wired in shell/nav-rail.tsx (shell.nav.*)
 import { Link } from '@tanstack/react-router'
 import { cn } from '@revido/ui'
 import { Home, Inbox, Pencil, Settings, Sparkles } from 'lucide-react'

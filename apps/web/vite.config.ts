@@ -18,6 +18,16 @@ export default defineConfig({
   },
   // `.up.railway.app` allows the Railway-generated subdomain; `.revido.co`
   // allows the production custom domain (email.revido.co) and any sibling.
-  server: { port: 5173, host: true, allowedHosts: ['.up.railway.app', '.revido.co'] },
-  preview: { port: 5173, host: true, allowedHosts: ['.up.railway.app', '.revido.co'] },
+  // Railway assigns `$PORT` at runtime, so both dev and preview servers must
+  // bind to it rather than the hardcoded default.
+  server: {
+    port: Number(process.env.PORT) || 5173,
+    host: true,
+    allowedHosts: ['.up.railway.app', '.revido.co'],
+  },
+  preview: {
+    port: Number(process.env.PORT) || 5173,
+    host: true,
+    allowedHosts: ['.up.railway.app', '.revido.co'],
+  },
 })

@@ -1,0 +1,8 @@
+{
+  "id": "sub-graph-1",
+  "resource": "/me/messages",
+  "changeType": "created,updated,deleted",
+  "notificationUrl": "https://api.revido.example/webhooks/graph",
+  "expirationDateTime": "2024-07-18T09:00:00Z",
+  "clientState": "opaque-secret"
+}

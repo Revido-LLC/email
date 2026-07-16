@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod'
+import type { Thread } from '@revido/db'
 
 /** Consequential actions are promoted to dedicated, gated tools (require approval). */
 export const AGENT_ACTION_TYPES = [
@@ -53,3 +54,151 @@ export const agentPlanSchema = z.object({
   actions: z.array(agentActionSchema),
 })
 export type AgentPlan = z.infer<typeof agentPlanSchema>
+
+// ---------------------------------------------------------------------------
+// Predicate compiler
+//
+// Turns a plan's `conditions[]` into a `(thread) => boolean` predicate over
+// `Thread`. This replaces the frontend's keyword-matcher mock and backs the
+// server-side dry-run (`POST /agents/dry-run`) and the new-mail trigger check.
+// Conditions are ANDed; an empty condition list matches every thread (a bare
+// "new mail arrives" agent).
+// ---------------------------------------------------------------------------
+
+type FieldValues = { values: (string | number | boolean)[] } | null
+
+/** Resolve a condition `field` to comparable value(s) on a thread. */
+function resolveField(thread: Thread, field: string): FieldValues {
+  switch (field.trim().toLowerCase()) {
+    case 'category':
+      return { values: [thread.category] }
+    case 'subject':
+      return { values: [thread.subject] }
+    case 'priority':
+      return { values: [thread.priority] }
+    case 'priorityscore':
+    case 'priority_score':
+    case 'priority-score':
+    case 'score':
+      return { values: [thread.priorityScore] }
+    case 'awaitingreply':
+    case 'awaiting_reply':
+    case 'awaiting-reply':
+    case 'awaiting':
+      return { values: [thread.awaitingReply] }
+    case 'unread':
+      return { values: [thread.unread] }
+    case 'starred':
+      return { values: [thread.starred] }
+    case 'hasattachments':
+    case 'has_attachments':
+    case 'has-attachments':
+    case 'attachments':
+      return { values: [thread.hasAttachments] }
+    case 'snoozed':
+      return { values: [thread.snoozedUntil != null] }
+    case 'label':
+    case 'labels':
+      return { values: thread.labels }
+    case 'language':
+    case 'lang':
+      return { values: [thread.language ?? ''] }
+    case 'from':
+    case 'sender':
+    case 'email':
+    case 'participant':
+    case 'participants':
+      return { values: thread.participants.map((p) => p.email) }
+    case 'name':
+    case 'participantname':
+    case 'participant_name':
+      return { values: thread.participants.map((p) => p.name) }
+    default:
+      return null
+  }
+}
+
+function parseBool(value: string): boolean {
+  const v = value.trim().toLowerCase()
+  return v === 'true' || v === '1' || v === 'yes' || v === 'y'
+}
+
+function equals(value: string | number | boolean, target: string): boolean {
+  if (typeof value === 'number') return value === Number(target)
+  if (typeof value === 'boolean') return value === parseBool(target)
+  return value.toLowerCase() === target.trim().toLowerCase()
+}
+
+function asString(value: string | number | boolean): string {
+  return typeof value === 'string' ? value : String(value)
+}
+
+function firstNumber(values: (string | number | boolean)[]): number | undefined {
+  for (const v of values) {
+    const n = typeof v === 'number' ? v : Number(v)
+    if (!Number.isNaN(n)) return n
+  }
+  return undefined
+}
+
+/** Compile one condition into a thread predicate. */
+function compileCondition(cond: AgentCondition): (t: Thread) => boolean {
+  // Precompile the regex for `matches` once, not per-thread.
+  let regex: RegExp | null = null
+  if (cond.op === 'matches') {
+    try {
+      regex = new RegExp(cond.value, 'i')
+    } catch {
+      regex = null
+    }
+  }
+  const target = cond.value
+
+  return (thread: Thread) => {
+    const resolved = resolveField(thread, cond.field)
+    if (!resolved) return false // unknown field never matches
+    const { values } = resolved
+    switch (cond.op) {
+      case 'is':
+        return values.some((v) => equals(v, target))
+      case 'is-not':
+        return values.every((v) => !equals(v, target))
+      case 'contains':
+        return values.some((v) => asString(v).toLowerCase().includes(target.toLowerCase()))
+      case 'not-contains':
+        return values.every((v) => !asString(v).toLowerCase().includes(target.toLowerCase()))
+      case 'matches':
+        return regex != null && values.some((v) => regex!.test(asString(v)))
+      case 'gt': {
+        const n = firstNumber(values)
+        return n != null && n > Number(target)
+      }
+      case 'lt': {
+        const n = firstNumber(values)
+        return n != null && n < Number(target)
+      }
+      default:
+        return false
+    }
+  }
+}
+
+/**
+ * Compile an agent plan's conditions into a `Thread` predicate. All conditions
+ * must hold (AND); an empty condition list matches everything.
+ */
+export function compilePredicate(plan: AgentPlan): (t: Thread) => boolean {
+  const checks = plan.conditions.map(compileCondition)
+  if (checks.length === 0) return () => true
+  return (thread: Thread) => checks.every((check) => check(thread))
+}
+
+/** Whether an action type must be queued for user approval (consequential). */
+export function actionNeedsApproval(type: AgentActionType): boolean {
+  return CONSEQUENTIAL_ACTIONS.has(type)
+}
+
+/** Whether a plan contains any consequential (approval-gated) action. */
+export function planRequiresApproval(plan: AgentPlan): boolean {
+  return plan.actions.some((a) => actionNeedsApproval(a.type))
+}

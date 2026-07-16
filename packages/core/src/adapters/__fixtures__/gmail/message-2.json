@@ -1,0 +1,20 @@
+{
+  "id": "msg-2",
+  "threadId": "thread-a",
+  "labelIds": ["SENT"],
+  "internalDate": "1721005200000",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      { "name": "From", "value": "Jane Doe <jane@example.com>" },
+      { "name": "To", "value": "\"Sam Rivera\" <sam@acme.com>" },
+      { "name": "Subject", "value": "Re: Q3 numbers before Friday" },
+      { "name": "Date", "value": "Mon, 15 Jul 2024 01:00:00 +0000" },
+      { "name": "Message-ID", "value": "<CADX-msg-2@mail.example.com>" }
+    ],
+    "body": {
+      "size": 33,
+      "data": "UmVwbHkgZnJvbSBtZTogbnVtYmVycyBsb29rIGdvb2Qu"
+    }
+  }
+}

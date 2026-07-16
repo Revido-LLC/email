@@ -1,0 +1,44 @@
+{
+  "id": "msg-1",
+  "threadId": "thread-a",
+  "labelIds": ["INBOX", "UNREAD", "IMPORTANT"],
+  "internalDate": "1721001600000",
+  "payload": {
+    "mimeType": "multipart/mixed",
+    "headers": [
+      { "name": "From", "value": "\"Sam Rivera\" <sam@acme.com>" },
+      { "name": "To", "value": "Jane Doe <jane@example.com>" },
+      { "name": "Cc", "value": "\"Team, Finance\" <finance@example.com>" },
+      { "name": "Subject", "value": "Q3 numbers before Friday" },
+      { "name": "Date", "value": "Mon, 15 Jul 2024 00:00:00 +0000" },
+      { "name": "Message-ID", "value": "<CADX-msg-1@mail.acme.com>" },
+      { "name": "References", "value": "<CADX-root@mail.acme.com>" }
+    ],
+    "parts": [
+      {
+        "mimeType": "multipart/alternative",
+        "parts": [
+          {
+            "mimeType": "text/plain",
+            "body": {
+              "size": 63,
+              "data": "SGkgSmFuZSwKCkNhbiB5b3UgcmV2aWV3IHRoZSBRMyBudW1iZXJzIGJlZm9yZSBGcmlkYXk_CgpUaGFua3MsClNhbQ"
+            }
+          },
+          {
+            "mimeType": "text/html",
+            "body": {
+              "size": 88,
+              "data": "PHA-SGkgSmFuZSw8L3A-PHA-Q2FuIHlvdSByZXZpZXcgdGhlIFEzIG51bWJlcnMgYmVmb3JlIEZyaWRheT88L3A-PHA-VGhhbmtzLDxicj5TYW08L3A-"
+            }
+          }
+        ]
+      },
+      {
+        "mimeType": "application/pdf",
+        "filename": "q3-summary.pdf",
+        "body": { "size": 20481, "attachmentId": "att-1" }
+      }
+    ]
+  }
+}

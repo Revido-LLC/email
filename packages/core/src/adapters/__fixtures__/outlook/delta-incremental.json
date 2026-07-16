@@ -1,0 +1,23 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#Collection(message)",
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/messages/delta?$deltatoken=DELTA_TOKEN_2",
+  "value": [
+    {
+      "id": "AAMk-graph-3",
+      "conversationId": "conv-2",
+      "subject": "Contract signed",
+      "from": { "emailAddress": { "name": "Legal", "address": "legal@vendor.com" } },
+      "toRecipients": [{ "emailAddress": { "name": "Jane Doe", "address": "jane@example.com" } }],
+      "receivedDateTime": "2024-07-16T08:00:00Z",
+      "body": { "contentType": "html", "content": "<p>The contract has been countersigned.</p>" },
+      "bodyPreview": "The contract has been countersigned.",
+      "hasAttachments": false,
+      "isRead": false,
+      "internetMessageId": "<graph-3@vendor.com>"
+    },
+    {
+      "id": "AAMk-graph-removed",
+      "@removed": { "reason": "deleted" }
+    }
+  ]
+}

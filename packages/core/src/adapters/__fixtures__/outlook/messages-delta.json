@@ -1,0 +1,36 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#Collection(message)",
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/messages/delta?$deltatoken=DELTA_TOKEN_1",
+  "value": [
+    {
+      "id": "AAMk-graph-1",
+      "conversationId": "conv-1",
+      "subject": "Design review Thursday",
+      "from": { "emailAddress": { "name": "Priya Shah", "address": "priya@studio.com" } },
+      "toRecipients": [{ "emailAddress": { "name": "Jane Doe", "address": "jane@example.com" } }],
+      "ccRecipients": [],
+      "receivedDateTime": "2024-07-15T09:30:00Z",
+      "body": {
+        "contentType": "html",
+        "content": "<p>Can we move the design review to Thursday 3pm?</p>"
+      },
+      "bodyPreview": "Can we move the design review to Thursday 3pm?",
+      "hasAttachments": false,
+      "isRead": false,
+      "internetMessageId": "<graph-1@studio.com>"
+    },
+    {
+      "id": "AAMk-graph-2",
+      "conversationId": "conv-1",
+      "subject": "RE: Design review Thursday",
+      "from": { "emailAddress": { "name": "Jane Doe", "address": "jane@example.com" } },
+      "toRecipients": [{ "emailAddress": { "name": "Priya Shah", "address": "priya@studio.com" } }],
+      "receivedDateTime": "2024-07-15T10:05:00Z",
+      "body": { "contentType": "text", "content": "Thursday 3pm works for me." },
+      "bodyPreview": "Thursday 3pm works for me.",
+      "hasAttachments": false,
+      "isRead": true,
+      "internetMessageId": "<graph-2@example.com>"
+    }
+  ]
+}

@@ -20,6 +20,5 @@ export type AppType = typeof app
 if (process.env.NODE_ENV !== 'test') {
   const port = Number(process.env.PORT ?? 8787)
   serve({ fetch: app.fetch, port })
-  // eslint-disable-next-line no-console
   console.log(`[api] listening on :${port}`)
 }

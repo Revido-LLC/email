@@ -14,7 +14,6 @@
 export const consumers: Record<string, (payload: unknown) => Promise<void>> = {}
 
 async function main(): Promise<void> {
-  // eslint-disable-next-line no-console
   console.log('[worker] started; consumers:', Object.keys(consumers).length)
   // The Wave 2 worker-service agent adds the pgmq poll loop here.
 }

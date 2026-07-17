@@ -18,6 +18,10 @@ import { makeTriageConsumer } from './triage'
 import { makeSummaryConsumer } from './enrich'
 import { makeReconcileConsumer, makeRenewWatchConsumer } from './watch'
 import { makeDigestConsumer } from './digest'
+import { makeEmbedConsumer } from './embed'
+import { makeVoiceProfileConsumer } from './voice-profile'
+import { makeAgentRunConsumer } from './agent-run'
+import { makeChaserConsumer } from './chaser'
 
 export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
   const saveCreds = (account: AccountContext, creds: ProviderCredentials): Promise<void> =>
@@ -50,6 +54,28 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       mail: ctx.mail,
       llm: ctx.llm,
     }),
+    [QUEUE.embed]: makeEmbedConsumer({
+      loadAccount: ctx.loadAccount,
+      mail: ctx.mail,
+      embeddings: ctx.embeddings,
+    }),
+    [QUEUE.voiceProfile]: makeVoiceProfileConsumer({
+      loadUser: ctx.loadUser,
+      mail: ctx.mail,
+      llm: ctx.llm,
+    }),
+    [QUEUE.agentRun]: makeAgentRunConsumer({
+      loadUser: ctx.loadUser,
+      mail: ctx.mail,
+      llm: ctx.llm,
+    }),
+    [QUEUE.chaser]: makeChaserConsumer({
+      loadAccount: ctx.loadAccount,
+      loadUserCrypto: ctx.loadUser,
+      adapterFor: ctx.adapterFor,
+      mail: ctx.mail,
+      saveCredentials: saveCreds,
+    }),
     [QUEUE.renewWatch]: makeRenewWatchConsumer({
       loadAccount: ctx.loadAccount,
       adapterFor: ctx.adapterFor,
@@ -57,6 +83,10 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       saveCredentials: saveCreds,
     }),
     [QUEUE.reconcile]: makeReconcileConsumer({ jobs: ctx.jobs }),
-    [QUEUE.digest]: makeDigestConsumer({ logger: ctx.logger }),
+    [QUEUE.digest]: makeDigestConsumer({
+      loadUser: ctx.loadUser,
+      mail: ctx.mail,
+      email: ctx.email,
+    }),
   }
 }

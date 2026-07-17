@@ -7,6 +7,8 @@
  *  - ~2 days   → `renew_watch` for Outlook accounts (~3-day Graph subscription)
  *  - 30 min    → `reconcile` per account (missed-push safety-net delta sweep)
  *  - daily     → `digest` per user (digest generation)
+ *  - weekly    → `voice_profile` per user (relearn writing voice)
+ *  - hourly    → `agent_run` per enabled scheduled agent (full-inbox sweep)
  *
  * The enqueue functions are pure of cron and unit-tested with fakes; `startScheduler`
  * only wires them to a `CronScheduler` (node-cron by default, injectable for tests).
@@ -18,9 +20,11 @@ import type { JobStore } from './queue/store'
 import type { Logger } from './queue/runner'
 import {
   QUEUE,
+  type AgentRunPayload,
   type DigestPayload,
   type ReconcilePayload,
   type RenewWatchPayload,
+  type VoiceProfilePayload,
 } from './queue/jobs'
 import type { WorkerDb } from './db/client'
 
@@ -29,10 +33,17 @@ export interface AccountSummary {
   provider: Provider
 }
 
+/** An enabled, scheduled-trigger agent the cron sweep fans out over. */
+export interface ScheduledAgentSummary {
+  id: string
+  userId: string
+}
+
 /** Read model the scheduler fans out over. */
 export interface ScheduleRepo {
   listAccounts(): Promise<AccountSummary[]>
   listUserIds(): Promise<string[]>
+  listScheduledAgents(): Promise<ScheduledAgentSummary[]>
 }
 
 export class PgScheduleRepo implements ScheduleRepo {
@@ -45,6 +56,15 @@ export class PgScheduleRepo implements ScheduleRepo {
   async listUserIds(): Promise<string[]> {
     const rows = await this.db.asService((sql) => sql<{ id: string }[]>`select id from users`)
     return rows.map((r) => r.id)
+  }
+
+  listScheduledAgents(): Promise<ScheduledAgentSummary[]> {
+    return this.db.asService(
+      (sql) => sql<ScheduledAgentSummary[]>`
+        select id, user_id as "userId" from agents
+        where enabled = true and trigger = 'scheduled'
+      `,
+    )
   }
 }
 
@@ -81,6 +101,25 @@ export async function enqueueDailyDigests(deps: SchedulerDeps): Promise<number> 
   return userIds.length
 }
 
+export async function enqueueVoiceProfiles(deps: SchedulerDeps): Promise<number> {
+  const userIds = await deps.schedule.listUserIds()
+  for (const userId of userIds) {
+    const job: VoiceProfilePayload = { userId }
+    await deps.jobs.enqueue(QUEUE.voiceProfile, job)
+  }
+  return userIds.length
+}
+
+export async function enqueueScheduledAgentRuns(deps: SchedulerDeps): Promise<number> {
+  const agents = await deps.schedule.listScheduledAgents()
+  for (const agent of agents) {
+    // No threadIds ⇒ a full-inbox sweep; the consumer reconstructs the plan.
+    const job: AgentRunPayload = { userId: agent.userId, agentId: agent.id }
+    await deps.jobs.enqueue(QUEUE.agentRun, job)
+  }
+  return agents.length
+}
+
 /** A cron binding: register `task` on `cronExpression`, return a stoppable handle. */
 export type CronScheduler = (cronExpression: string, task: () => void) => { stop: () => void }
 
@@ -91,6 +130,8 @@ export const CRON_EXPRESSIONS = {
   outlookWatch: '0 4 */2 * *', // every 2 days 04:00
   reconcile: '*/30 * * * *', // every 30 minutes
   digest: '0 7 * * *', // daily 07:00
+  voiceProfile: '0 5 * * 1', // weekly, Mondays 05:00
+  agentSweep: '0 * * * *', // hourly, on the hour
 } as const
 
 function fireAndLog(deps: SchedulerDeps, name: string, run: () => Promise<number>): void {
@@ -119,6 +160,12 @@ export function startScheduler(
     ),
     scheduleFn(CRON_EXPRESSIONS.digest, () =>
       fireAndLog(deps, 'daily digest', () => enqueueDailyDigests(deps)),
+    ),
+    scheduleFn(CRON_EXPRESSIONS.voiceProfile, () =>
+      fireAndLog(deps, 'voice profile refresh', () => enqueueVoiceProfiles(deps)),
+    ),
+    scheduleFn(CRON_EXPRESSIONS.agentSweep, () =>
+      fireAndLog(deps, 'scheduled agent sweep', () => enqueueScheduledAgentRuns(deps)),
     ),
   ]
   deps.logger.info('scheduler started', { tasks: tasks.length })

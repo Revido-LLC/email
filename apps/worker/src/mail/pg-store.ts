@@ -16,10 +16,12 @@ import type { Ciphertext } from '@revido/db/crypto'
 import {
   AGENT_ACTION_TYPES,
   agentConditionSchema,
+  createStorageProvider,
   type AgentActionType,
   type AgentCondition,
   type AgentPlan,
   type RawFetchedMessage,
+  type StorageProvider,
 } from '@revido/core'
 import type { Tx, WorkerDb } from '../db/client'
 import { jsonCiphertext, type AccountCrypto } from '../db/accounts'
@@ -71,7 +73,15 @@ function attachmentKind(mime: string): 'pdf' | 'image' | 'doc' | 'sheet' | 'zip'
 }
 
 export class PgMailStore implements MailStore {
-  constructor(private readonly db: WorkerDb) {}
+  /**
+   * `storage` backs large (non-inline) attachments: outbound send resolves an
+   * attachment's encrypted `storage_ref_ct` to bytes through it. Injectable for
+   * tests; defaults to the env-selected provider (local FS in dev, S3/R2 in prod).
+   */
+  constructor(
+    private readonly db: WorkerDb,
+    private readonly storage: StorageProvider = createStorageProvider(),
+  ) {}
 
   // -- sync ------------------------------------------------------------------
 
@@ -513,19 +523,31 @@ export class PgMailStore implements MailStore {
       `
       const inReplyTo = parent[0]?.provider_message_id ?? undefined
 
-      // Inline attachments linked to this message (large-file `storage_ref_ct`
-      // objects are skipped until object storage lands — see the API attachments route).
+      // Attachments linked to this message. Inline ones carry base64 bytes in
+      // `content_ct`; larger ones carry an encrypted object ref in `storage_ref_ct`
+      // that resolves to bytes via the StorageProvider. Both kinds end up in the
+      // `attachments` array handed to `adapter.send`.
       const attachmentRows = await sql<
-        { name: string; mime: string | null; content_ct: Ciphertext | null }[]
+        {
+          name: string
+          mime: string | null
+          content_ct: Ciphertext | null
+          storage_ref_ct: Ciphertext | null
+        }[]
       >`
-        select name, mime, content_ct from attachments
-        where message_id = ${messageId} and content_ct is not null
+        select name, mime, content_ct, storage_ref_ct from attachments
+        where message_id = ${messageId}
+          and (content_ct is not null or storage_ref_ct is not null)
       `
-      const attachments = attachmentRows.map((a) => ({
-        name: a.name,
-        mime: a.mime ?? 'application/octet-stream',
-        content: new Uint8Array(Buffer.from(crypto.decrypt(a.content_ct!), 'base64')),
-      }))
+      const attachments = await Promise.all(
+        attachmentRows.map(async (a) => ({
+          name: a.name,
+          mime: a.mime ?? 'application/octet-stream',
+          content: a.content_ct
+            ? new Uint8Array(Buffer.from(crypto.decrypt(a.content_ct), 'base64'))
+            : await this.storage.get(crypto.decrypt(a.storage_ref_ct!)),
+        })),
+      )
 
       return {
         to: byKind('to'),

@@ -8,7 +8,12 @@
 
 import { DevKmsProvider } from '@revido/db/crypto'
 import type { KmsProvider } from '@revido/db/crypto'
-import { createEmbeddingsClient, type EmbeddingsClient } from '@revido/core'
+import {
+  createEmbeddingsClient,
+  createStorageProvider,
+  type EmbeddingsClient,
+  type StorageProvider,
+} from '@revido/core'
 import { createAdapterFactory, type AdapterFactory } from './adapters'
 import { createWorkerDb, type WorkerDb } from './db/client'
 import {
@@ -30,6 +35,8 @@ export interface WorkerContext {
   jobs: JobStore
   llm: WorkerLlmClient
   embeddings: EmbeddingsClient
+  /** Object storage for large (non-inline) attachments, injected into the mail store. */
+  storage: StorageProvider
   mail: MailStore
   email: EmailSender
   adapterFor: AdapterFactory
@@ -54,12 +61,14 @@ export function isBatchTriageEnabled(env: NodeJS.ProcessEnv = process.env): bool
 export function createWorkerContext(env: NodeJS.ProcessEnv = process.env): WorkerContext {
   const db = createWorkerDb(env)
   const kms = DevKmsProvider.fromEnv(env)
+  const storage = createStorageProvider(env)
   return {
     db,
     jobs: new PgJobStore(db),
     llm: createLlmClient(env),
     embeddings: createEmbeddingsClient(env),
-    mail: new PgMailStore(db),
+    storage,
+    mail: new PgMailStore(db, storage),
     email: new ResendEmailSender(env),
     adapterFor: createAdapterFactory(env),
     kms,

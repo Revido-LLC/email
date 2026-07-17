@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { FakeStorageProvider } from '@revido/core'
 import type { RawFetchedMessage, TriageResult } from '@revido/core'
 import type { AccountCrypto } from '../db/accounts'
 import type { Tx, WorkerDb } from '../db/client'
@@ -340,6 +341,68 @@ describe('PgMailStore.upsertMessageEmbedding', () => {
     })
     expect(calls[0]?.values).toContain('[0.1,0.2,0.3]')
     expect(calls[0]?.values).toContain('voyage-3')
+  })
+})
+
+describe('PgMailStore.getOutboundMessage — attachments', () => {
+  const ct = (s: string) => ({ ct: s, iv: '', tag: '', v: 1 })
+  const MESSAGE_ID = '44444444-4444-4444-4444-444444444444'
+  const STORED_REF = 'attachments/u/ref-1'
+  const inlineB64 = Buffer.from('inline-bytes').toString('base64')
+
+  function routes(): Route[] {
+    return [
+      {
+        when: (t) => t.includes('m.html_ct, m.text_ct from messages'),
+        rows: [
+          { thread_id: 'thread-1', subject_ct: ct('Re: Q3'), html_ct: ct('<p>hi</p>'), text_ct: ct('hi') },
+        ],
+      },
+      {
+        when: (t) => t.includes('c.email, c.name, r.kind'),
+        rows: [{ email: 'to@acme.com', name: 'To', kind: 'to' }],
+      },
+      {
+        when: (t) => t.includes('outbound = false and provider_message_id is not null'),
+        rows: [{ provider_message_id: 'parent-9' }],
+      },
+      {
+        when: (t) => t.includes('content_ct, storage_ref_ct from attachments'),
+        rows: [
+          { name: 'inline.txt', mime: 'text/plain', content_ct: ct(inlineB64), storage_ref_ct: null },
+          { name: 'big.pdf', mime: 'application/pdf', content_ct: null, storage_ref_ct: ct(STORED_REF) },
+        ],
+      },
+    ]
+  }
+
+  it('returns inline bytes as-is and fetches stored bytes from the StorageProvider', async () => {
+    const { db } = scriptedDb(routes())
+    const storage = new FakeStorageProvider()
+    await storage.put(STORED_REF, new Uint8Array([9, 8, 7]))
+    const store = new PgMailStore(db, storage)
+
+    const outbound = await store.getOutboundMessage(USER_ID, MESSAGE_ID, passthroughCrypto)
+    expect(outbound).not.toBeNull()
+    const atts = outbound!.attachments!
+    expect(atts).toHaveLength(2)
+
+    const inline = atts.find((a) => a.name === 'inline.txt')!
+    expect(Buffer.from(inline.content).toString()).toBe('inline-bytes')
+
+    const stored = atts.find((a) => a.name === 'big.pdf')!
+    expect(stored.mime).toBe('application/pdf')
+    expect(stored.content).toEqual(new Uint8Array([9, 8, 7]))
+  })
+
+  it('omits the attachments array when the message has none', async () => {
+    const noAttachments = routes().filter(
+      (r) => !r.when('content_ct, storage_ref_ct from attachments'),
+    )
+    const { db } = scriptedDb(noAttachments)
+    const store = new PgMailStore(db, new FakeStorageProvider())
+    const outbound = await store.getOutboundMessage(USER_ID, MESSAGE_ID, passthroughCrypto)
+    expect(outbound?.attachments).toBeUndefined()
   })
 })
 

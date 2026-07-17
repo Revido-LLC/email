@@ -36,6 +36,13 @@ export const users = pgTable('users', {
   emailVerified: boolean('email_verified').notNull().default(false),
   /** Preferred output language for AI artifacts (W5). */
   outputLanguage: outputLanguageEnum('output_language').notNull().default('match'),
+  /**
+   * UI theme preference (`light` | `dark` | `system`), synced across devices so
+   * the choice follows the user. Nullable: null means "no server preference yet",
+   * and the client falls back to its localStorage cache. Plaintext UI metadata,
+   * never message content.
+   */
+  theme: text('theme'),
   /** Encrypted learned writing-voice profile used to draft "in your voice" (AI). */
   voiceProfileCt: encrypted('voice_profile_ct'),
   ...timestamps(),

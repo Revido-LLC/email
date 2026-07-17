@@ -1,14 +1,17 @@
 /**
- * AI preferences — the four per-feature toggles on the Settings › AI tab.
+ * Account settings endpoints.
  *
- * The schema has no dedicated preferences column, so these persist as 0/1
- * `usage_counters` rows under a reserved `ai-prefs` period (user-scoped RLS). This
- * is a deliberate stopgap: when a real `settings` jsonb column lands on `users`,
- * only this file changes. Defaults are all-on, so a fresh user reads `true` for
- * each toggle.
+ * - AI preferences (Settings › AI): the four per-feature toggles. The schema has
+ *   no dedicated preferences column, so these persist as 0/1 `usage_counters` rows
+ *   under a reserved `ai-prefs` period (user-scoped RLS). A deliberate stopgap:
+ *   when a real `settings` jsonb column lands on `users`, only this file changes.
+ *   Defaults are all-on, so a fresh user reads `true` for each toggle.
+ * - Appearance (Settings › Appearance): the theme preference, stored on the
+ *   `users.theme` column so the choice follows the user across devices. Nullable —
+ *   an un-set preference reads as `null` and the client falls back to localStorage.
  */
 import { withUser } from '@revido/db/client'
-import { usageCounters } from '@revido/db/schema'
+import { usageCounters, users } from '@revido/db/schema'
 import type { DbTransaction } from '@revido/db/client'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -73,4 +76,47 @@ settingsRouter.patch('/ai', async (c) => {
     return readPrefs(tx, userId)
   })
   return c.json(prefs)
+})
+
+/* ------------------------------------------------------------------ */
+/* Appearance — the cross-device theme preference (users.theme).       */
+/* ------------------------------------------------------------------ */
+
+const THEME_VALUES = ['light', 'dark', 'system'] as const
+type Theme = (typeof THEME_VALUES)[number]
+
+interface Appearance {
+  theme: Theme | null
+}
+
+const updateAppearanceSchema = z.object({
+  theme: z.enum(THEME_VALUES),
+})
+
+/** Coerce a stored column value to a known theme, or `null` if unset/unknown. */
+function normalizeTheme(value: string | null): Theme | null {
+  return value !== null && (THEME_VALUES as readonly string[]).includes(value)
+    ? (value as Theme)
+    : null
+}
+
+/** GET /settings/appearance — the stored theme, or `null` when never set. */
+settingsRouter.get('/appearance', async (c) => {
+  const userId = c.get('userId')
+  const theme = await withUser(userId, async (tx) => {
+    const [row] = await tx.select({ theme: users.theme }).from(users).where(eq(users.id, userId))
+    return normalizeTheme(row?.theme ?? null)
+  })
+  return c.json<Appearance>({ theme })
+})
+
+/** PATCH /settings/appearance — set the theme (validated enum); echoes it back. */
+settingsRouter.patch('/appearance', async (c) => {
+  const userId = c.get('userId')
+  const body = await readJson(c, updateAppearanceSchema)
+  const theme = await withUser(userId, async (tx) => {
+    await tx.update(users).set({ theme: body.theme }).where(eq(users.id, userId))
+    return body.theme
+  })
+  return c.json<Appearance>({ theme })
 })

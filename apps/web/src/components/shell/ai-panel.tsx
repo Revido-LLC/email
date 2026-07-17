@@ -26,6 +26,7 @@ import {
   X,
 } from 'lucide-react'
 import * as React from 'react'
+import { capture } from '@/lib/analytics'
 import { useAppState } from '@/lib/app-state'
 import { useAiChat } from '@/lib/hooks/ai'
 import { useMessages, useNeedsYou, useThread, useToday, useToggleExtractedFact } from '@/lib/hooks'
@@ -293,9 +294,11 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
   }, [messages, text, isStreaming])
 
   const send = React.useCallback(
-    (question: string) => {
+    (question: string, surface: 'assistant' | 'command' = 'assistant') => {
       const q = question.trim()
       if (!q || isStreaming) return
+      // Content-free: the fact a question was asked + which surface — never the text.
+      capture('chat_query_sent', { surface })
       setMessages((prev) => [...prev, { role: 'user', text: q }])
       setInput('')
       committedRef.current = false
@@ -317,7 +320,7 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
   // primary (desktop) panel consumes it, so it isn't sent twice.
   React.useEffect(() => {
     if (consumeQuery && aiChatQuery && aiChatQuery.trim()) {
-      send(aiChatQuery)
+      send(aiChatQuery, 'command')
       setAiChatQuery(null)
     }
   }, [consumeQuery, aiChatQuery, send, setAiChatQuery])

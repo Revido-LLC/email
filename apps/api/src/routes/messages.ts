@@ -5,7 +5,8 @@
  * persists it encrypted, and enqueues a deferred `send` job (10s undo window).
  * `POST /messages/:id/cancel` is the undo — it removes the still-pending job and
  * the never-sent message. `POST /messages/:id/load-images` clears the blocked-image
- * flag and returns the stored sanitized HTML (the image proxy itself is Wave 5).
+ * flag and returns the sanitized HTML with remote `<img src>` rewritten to the
+ * SSRF-guarded image proxy, so revealed images are always fetched through it.
  */
 import { withUser } from '@revido/db/client'
 import { accounts, messages } from '@revido/db/schema'
@@ -13,6 +14,7 @@ import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getUserCrypto } from '../lib/crypto'
 import { HttpError, notFound, readJson } from '../lib/http'
+import { imageProxyBase, rewriteImagesToProxy } from '../lib/image-proxy'
 import { protectedRouter } from '../lib/protected'
 import { cancelSend, sendCompose, type RecipientInput } from '../lib/send'
 
@@ -89,5 +91,6 @@ messagesRouter.post('/:id/load-images', async (c) => {
     return crypto.decrypt(row.htmlCt)
   })
   if (html === undefined) return notFound(c)
-  return c.json({ html })
+  // Route every revealed remote image through the SSRF-guarded proxy.
+  return c.json({ html: rewriteImagesToProxy(html, imageProxyBase()) })
 })

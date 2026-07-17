@@ -22,7 +22,7 @@ import { getLlmClient } from '../lib/ai'
 import { getUserCrypto } from '../lib/crypto'
 import { errorHandler, HttpError, readJson } from '../lib/http'
 import { assembleThreads } from '../lib/mappers'
-import { recordAiUsage, UsageMetric } from '../lib/metering'
+import { enforceAiCap, recordAiUsage, UsageMetric } from '../lib/metering'
 import { rateLimit } from '../lib/rate-limit'
 import { requireUser, type Variables } from '../middleware/auth'
 
@@ -90,6 +90,7 @@ agentsAiRouter.use('*', requireUser)
 agentsAiRouter.post('/compile', async (c) => {
   const userId = c.get('userId')
   const { description } = await readJson(c, compileSchema)
+  await enforceAiCap(userId, UsageMetric.agentCompiles)
 
   const result = await getLlmClient().complete({
     model: 'escalation',

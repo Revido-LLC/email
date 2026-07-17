@@ -4,10 +4,20 @@ import { useAppState } from '@/lib/app-state'
 
 /**
  * Renders a message's pre-sanitized HTML body inside a sandboxed iframe so email
- * markup can never touch the app's styles or run scripts. The sandbox keeps
- * scripts disabled (no `allow-scripts`); `allow-same-origin` is present only so
- * the parent can measure the rendered body and auto-size the frame — reading the
- * content document, nothing more.
+ * markup can never touch the app's styles or run scripts.
+ *
+ * Two independent layers keep it inert:
+ *  - The sandbox has NO `allow-scripts` (never combined with `allow-same-origin`),
+ *    so scripts can't run and the frame can't reach the top document.
+ *    `allow-same-origin` is present only so the parent can measure the rendered
+ *    body to auto-size the frame.
+ *  - An in-document CSP (`default-src 'none'`) is the belt to that suspenders:
+ *    even if the sandbox were ever loosened, nothing loads or executes. `img-src`
+ *    allows only inline (`data:`) images and the SSRF-guarded image proxy — so a
+ *    body's raw remote `<img>` srcs (present until the user reveals images) simply
+ *    fail to load, which is what actually blocks tracking pixels; revealed bodies
+ *    have their srcs rewritten to the proxy origin, which IS allowed. `style-src`
+ *    permits the inline styles email bodies rely on.
  */
 export function EmailFrame({ html }: { html: string }) {
   const { theme } = useAppState()
@@ -58,9 +68,39 @@ export function EmailFrame({ html }: { html: string }) {
   )
 }
 
+/**
+ * Origin the image proxy is served from (kept in sync with the API's
+ * `BETTER_AUTH_URL` via `VITE_API_URL`). Added to the iframe's `img-src` so
+ * proxied images load; empty for a same-origin deploy, where `'self'` covers it.
+ */
+function proxyImgOrigin(): string {
+  const raw = import.meta.env.VITE_API_URL
+  if (!raw) return ''
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+    return new URL(raw, base).origin
+  } catch {
+    return ''
+  }
+}
+
+/** The in-document CSP: nothing loads or runs except inline styles and proxied/inline images. */
+function frameCsp(): string {
+  const proxy = proxyImgOrigin()
+  const imgSrc = `img-src 'self' data:${proxy ? ` ${proxy}` : ''}`
+  return [
+    "default-src 'none'",
+    imgSrc,
+    "style-src 'unsafe-inline'",
+    'font-src data:',
+    "base-uri 'none'",
+    "form-action 'none'",
+  ].join('; ')
+}
+
 function buildDoc(html: string): string {
   const c = readColors()
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta http-equiv="Content-Security-Policy" content="${frameCsp()}"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>
     html,body{margin:0;padding:0;background:${c.bg};color-scheme:${c.scheme};}
     body{font:400 15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${c.fg};-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;word-break:break-word;overflow-wrap:anywhere;}
     p{margin:0 0 12px;}

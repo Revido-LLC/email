@@ -41,7 +41,7 @@ import { getEmbeddingsClient, getLlmClient } from '../lib/ai'
 import { loadThreadForPrompt, loadUserAiContext, type UserAiContext } from '../lib/ai-context'
 import { getUserCrypto, type UserCrypto } from '../lib/crypto'
 import { errorHandler, notFound, readJson } from '../lib/http'
-import { recordAiUsage, UsageMetric } from '../lib/metering'
+import { enforceAiCap, recordAiUsage, UsageMetric } from '../lib/metering'
 import { rateLimit } from '../lib/rate-limit'
 import { requireUser, type Variables } from '../middleware/auth'
 
@@ -191,6 +191,7 @@ function textStream(c: Context, userId: string, built: BuiltPrompt, maxTokens: n
 aiRouter.post('/draft', async (c) => {
   const userId = c.get('userId')
   const { threadId, prompt } = await readJson(c, draftSchema)
+  await enforceAiCap(userId, UsageMetric.aiDrafts)
   const crypto = await getUserCrypto(userId)
 
   const built = await withUser(userId, async (tx) => {
@@ -213,6 +214,7 @@ aiRouter.post('/draft', async (c) => {
 aiRouter.post('/rewrite', async (c) => {
   const userId = c.get('userId')
   const body = await readJson(c, rewriteSchema)
+  await enforceAiCap(userId, UsageMetric.aiDrafts)
   const crypto = await getUserCrypto(userId)
 
   const ai = await withUser(userId, (tx) => loadUserAiContext(tx, crypto, userId))
@@ -238,6 +240,7 @@ function parseReplies(result: LlmResult): string[] {
 aiRouter.post('/quick-replies', async (c) => {
   const userId = c.get('userId')
   const { threadId } = await readJson(c, quickRepliesSchema)
+  await enforceAiCap(userId, UsageMetric.aiDrafts)
   const crypto = await getUserCrypto(userId)
 
   const prepared = await withUser(userId, async (tx) => {
@@ -351,6 +354,7 @@ function toRetrievedChunk(ch: Chunk): RetrievedChunk {
 aiRouter.post('/chat', async (c) => {
   const userId = c.get('userId')
   const { message } = await readJson(c, chatSchema)
+  await enforceAiCap(userId, UsageMetric.chatQueries)
   const crypto = await getUserCrypto(userId)
 
   const [queryVector] = await getEmbeddingsClient().embed([message], { inputType: 'query' })

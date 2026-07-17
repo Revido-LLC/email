@@ -96,6 +96,25 @@ describe('makeSendConsumer', () => {
     expect(deps.saveCredentials).not.toHaveBeenCalled()
   })
 
+  it('forwards decrypted inline attachments to the adapter', async () => {
+    const sent: OutboundMessage[] = []
+    const content = new Uint8Array([1, 2, 3, 4])
+    const deps: SendDeps = {
+      loadAccount: () => Promise.resolve(fakeAccount()),
+      adapterFor: () => fakeAdapter({ sent }),
+      mail: {
+        getOutboundMessage: () =>
+          Promise.resolve(outbound({ attachments: [{ name: 'q3.pdf', mime: 'application/pdf', content }] })),
+        markSent: async () => {},
+      },
+      saveCredentials: vi.fn(() => Promise.resolve()),
+    }
+
+    await makeSendConsumer(deps)(PAYLOAD, JOB)
+
+    expect(sent[0]!.attachments).toEqual([{ name: 'q3.pdf', mime: 'application/pdf', content }])
+  })
+
   it('is a no-op when the message was withdrawn before the deferred send ran', async () => {
     const send = vi.fn()
     const markSent = vi.fn()

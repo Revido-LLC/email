@@ -164,6 +164,8 @@ export interface OutboundMessageData {
   html: string
   text: string
   inReplyToProviderMessageId?: string
+  /** Inline attachments (decrypted from `content_ct`), passed to `adapter.send`. */
+  attachments?: { name: string; mime: string; content: Uint8Array }[]
 }
 
 export interface SendStore {

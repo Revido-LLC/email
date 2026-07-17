@@ -513,6 +513,20 @@ export class PgMailStore implements MailStore {
       `
       const inReplyTo = parent[0]?.provider_message_id ?? undefined
 
+      // Inline attachments linked to this message (large-file `storage_ref_ct`
+      // objects are skipped until object storage lands — see the API attachments route).
+      const attachmentRows = await sql<
+        { name: string; mime: string | null; content_ct: Ciphertext | null }[]
+      >`
+        select name, mime, content_ct from attachments
+        where message_id = ${messageId} and content_ct is not null
+      `
+      const attachments = attachmentRows.map((a) => ({
+        name: a.name,
+        mime: a.mime ?? 'application/octet-stream',
+        content: new Uint8Array(Buffer.from(crypto.decrypt(a.content_ct!), 'base64')),
+      }))
+
       return {
         to: byKind('to'),
         cc: byKind('cc'),
@@ -521,6 +535,7 @@ export class PgMailStore implements MailStore {
         html: row.html_ct ? crypto.decrypt(row.html_ct) : '',
         text: row.text_ct ? crypto.decrypt(row.text_ct) : '',
         inReplyToProviderMessageId: inReplyTo,
+        attachments: attachments.length ? attachments : undefined,
       }
     })
   }

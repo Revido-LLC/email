@@ -42,6 +42,7 @@ export function makeSendConsumer(deps: SendDeps): JobConsumer {
       html: outbound.html,
       text: outbound.text,
       inReplyToProviderMessageId: outbound.inReplyToProviderMessageId,
+      attachments: outbound.attachments,
     })
     await deps.mail.markSent(account.userId, messageId, sent.providerMessageId)
   }

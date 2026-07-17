@@ -9,6 +9,7 @@ export * from './provider-adapter'
 export * from './prompts'
 export * from './agent-plan'
 export * from './language'
+export * from './llm'
 
 // Concrete provider adapters + their fetch-injection plumbing.
 export { GmailAdapter, parseGmailMessage } from './adapters/gmail'

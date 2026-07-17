@@ -19,6 +19,7 @@
  */
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { requireUser, type Variables } from '../middleware/auth'
 import { errorHandler, HttpError } from '../lib/http'
 import { linkMailbox } from '../lib/mailbox-link'
@@ -109,6 +110,22 @@ interface StateClaims {
 
 const STATE_TTL_MS = 10 * 60 * 1000
 
+/**
+ * Per-flow CSRF nonce cookie. The same random `nonce` is embedded in the signed
+ * state AND set here as an httpOnly, SameSite=Lax cookie at `/start`; the callback
+ * requires both to match, so only the browser that began the flow can complete it
+ * (the signed state alone can't bind the flow to a browser). SameSite=Lax so the
+ * cookie survives the provider's top-level GET redirect back to the callback.
+ */
+const NONCE_COOKIE = 'rm_oauth_nonce'
+const OAUTH_COOKIE_PATH = '/auth/oauth'
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a)
+  const bb = Buffer.from(b)
+  return ab.length === bb.length && timingSafeEqual(ab, bb)
+}
+
 function signState(claims: StateClaims): string {
   const secret = requireEnv(process.env.BETTER_AUTH_SECRET, 'missing_auth_secret')
   const payload = Buffer.from(JSON.stringify(claims)).toString('base64url')
@@ -146,7 +163,17 @@ oauthRouter.post('/:provider/start', requireUser, (c) => {
   const userId = c.get('userId')
   const clientId = requireEnv(config.clientId(), 'missing_client_id')
 
-  const state = signState({ userId, provider, nonce: randomUUID(), iat: Date.now() })
+  const nonce = randomUUID()
+  const state = signState({ userId, provider, nonce, iat: Date.now() })
+  // Bind the flow to this browser: the callback requires this cookie to match the
+  // nonce inside the signed state (CSRF defense for mailbox linking).
+  setCookie(c, NONCE_COOKIE, nonce, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax',
+    path: OAUTH_COOKIE_PATH,
+    maxAge: STATE_TTL_MS / 1000,
+  })
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: callbackUrl(provider),
@@ -159,14 +186,32 @@ oauthRouter.post('/:provider/start', requireUser, (c) => {
   return c.json({ redirectUrl: `${config.authorizeUrl()}?${params.toString()}` })
 })
 
-/** GET /auth/oauth/:provider/callback — exchange code, link mailbox, redirect. */
-oauthRouter.get('/:provider/callback', async (c) => {
+/**
+ * GET /auth/oauth/:provider/callback — exchange code, link mailbox, redirect.
+ *
+ * `requireUser`-gated (the Better Auth session cookie is SameSite=Lax, so it rides
+ * the provider's top-level GET redirect). Linking is bound three ways so a forged
+ * callback can't attach a mailbox to someone else's account: the signed state, the
+ * session user matching `claims.userId`, and the per-flow nonce cookie.
+ */
+oauthRouter.get('/:provider/callback', requireUser, async (c) => {
   const provider = parseProvider(c.req.param('provider'))
   const config = PROVIDERS[provider]
   const code = c.req.query('code')
   if (!code) throw new HttpError(400, 'missing_code')
   const claims = verifyState(c.req.query('state'))
   if (claims.provider !== provider) throw new HttpError(400, 'provider_mismatch')
+
+  // CSRF: the state's user must be the currently-authenticated user...
+  if (c.get('userId') !== claims.userId) {
+    throw new HttpError(401, 'state_session_mismatch')
+  }
+  // ...and the per-flow nonce cookie must match the nonce inside the signed state.
+  const cookieNonce = getCookie(c, NONCE_COOKIE)
+  if (!cookieNonce || !safeEqual(cookieNonce, claims.nonce)) {
+    throw new HttpError(401, 'oauth_state_mismatch')
+  }
+  deleteCookie(c, NONCE_COOKIE, { path: OAUTH_COOKIE_PATH })
 
   const clientId = requireEnv(config.clientId(), 'missing_client_id')
   const clientSecret = requireEnv(config.clientSecret(), 'missing_client_secret')

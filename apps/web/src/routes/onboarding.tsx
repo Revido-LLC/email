@@ -17,6 +17,7 @@ import { ArrowRight, Check, Loader2, Monitor, Moon, Sparkles, Sun } from 'lucide
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '@/lib/icons'
+import { capture } from '@/lib/analytics'
 import { formatNumber } from '@/i18n/format'
 import { useAppState, type ThemePreference } from '@/lib/app-state'
 import { useAgentProposals, useEnableProposedAgents, useMe, useOnboardingScan } from '@/lib/hooks'
@@ -316,6 +317,8 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
       .filter(([, on]) => on)
       .map(([id]) => id)
     if (toEnable.length > 0) enableAgents.mutate(toEnable)
+    // Activation: reached the end of onboarding. Metadata-only (a count).
+    capture('onboarding_completed', { agentsEnabled: toEnable.length })
     onContinue()
   }
 
@@ -356,7 +359,10 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
         </Button>
         <button
           type="button"
-          onClick={onContinue}
+          onClick={() => {
+            capture('onboarding_completed', { agentsEnabled: 0 })
+            onContinue()
+          }}
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           {t('onboarding.proposals.skip')}

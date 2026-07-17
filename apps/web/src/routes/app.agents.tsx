@@ -10,6 +10,7 @@ import {
   type CreateAgentInput,
   type WizardSeed,
 } from '@/components/agents/create-agent-dialog'
+import { capture } from '@/lib/analytics'
 import { useAgents, useCreateAgent, useToggleAgent } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/agents')({
@@ -39,7 +40,11 @@ function AgentsScreen() {
 
   function handleCreate(input: CreateAgentInput) {
     createAgent.mutate(input, {
-      onSuccess: (agent) => setNewIds((prev) => new Set(prev).add(agent.id)),
+      onSuccess: (agent) => {
+        // Content-free: where the agent was created, never its name/rules.
+        capture('agent_created', { source: 'agents' })
+        setNewIds((prev) => new Set(prev).add(agent.id))
+      },
     })
     setNl('')
   }

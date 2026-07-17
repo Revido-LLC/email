@@ -3,6 +3,7 @@ import { Button, Card, CardContent, Input, Label, Sparkle, Textarea } from '@rev
 import { ArrowLeft, ArrowRight, CalendarCheck, Check, Sparkles } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { capture } from '@/lib/analytics'
 import { useMe, useSubmitLead } from '@/lib/hooks'
 
 export const Route = createFileRoute('/talk')({
@@ -78,7 +79,13 @@ function TalkScreen() {
                 className="space-y-5"
                 onSubmit={(e) => {
                   e.preventDefault()
-                  submitLead.mutate(form, { onSuccess: () => setSent(true) })
+                  submitLead.mutate(form, {
+                    onSuccess: () => {
+                      // Content-free: the fact of a submit, never the field values.
+                      capture('lead_submitted')
+                      setSent(true)
+                    },
+                  })
                 }}
               >
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -20,6 +20,7 @@ import { motion } from 'motion/react'
 import { Trans, useTranslation } from 'react-i18next'
 import { OAuthButtons } from '@/components/landing/oauth-buttons'
 import { ProductMock } from '@/components/landing/product-mock'
+import { capture } from '@/lib/analytics'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -318,7 +319,7 @@ function Footer() {
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <Button asChild variant="primary">
-              <Link to="/talk">
+              <Link to="/talk" onClick={() => capture('landing_cta_clicked', { cta: 'talk' })}>
                 {t('common.talkToRevido')} <ArrowRight className="size-4" />
               </Link>
             </Button>

@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Button, cn } from '@revido/ui'
 import { Chrome } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { capture } from '@/lib/analytics'
 
 /** Chrome glyph stands in for Google (no real brand marks in a mock). */
 function GoogleGlyph() {
@@ -35,13 +36,16 @@ export function OAuthButtons({
   return (
     <div className={cn('flex gap-2', stacked ? 'flex-col sm:flex-row' : 'flex-wrap', className)}>
       <Button asChild variant="primary" size={size} className={buttonWidth}>
-        <Link to="/onboarding">
+        <Link to="/onboarding" onClick={() => capture('landing_cta_clicked', { cta: 'oauth-google' })}>
           <GoogleGlyph />
           {t('landing.oauth.google')}
         </Link>
       </Button>
       <Button asChild variant="outline" size={size} className={buttonWidth}>
-        <Link to="/onboarding">
+        <Link
+          to="/onboarding"
+          onClick={() => capture('landing_cta_clicked', { cta: 'oauth-microsoft' })}
+        >
           <MicrosoftGlyph />
           {t('landing.oauth.microsoft')}
         </Link>

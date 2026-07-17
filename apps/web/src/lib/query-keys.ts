@@ -13,6 +13,7 @@ export const queryKeys = {
   today: () => ['today'] as const,
   usage: () => ['usage'] as const,
   aiPreferences: () => ['settings', 'ai'] as const,
+  appearance: () => ['settings', 'appearance'] as const,
   threads: {
     all: () => ['threads'] as const,
     detail: (id: string) => ['threads', 'detail', id] as const,

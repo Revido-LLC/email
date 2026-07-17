@@ -8,6 +8,7 @@ const read = (name: string) =>
 const rls = read('0001_rls_policies.sql')
 const authJobs = read('0002_auth_jobs.sql')
 const attachmentsPending = read('0004_attachments_pending.sql')
+const usersTheme = read('0005_users_theme.sql')
 
 describe('0001 RLS migration (plain Postgres + GUC)', () => {
   it('creates the non-owner app_user role and grants it schema/table access', () => {
@@ -72,5 +73,14 @@ describe('0004 attachments pending migration', () => {
     expect(attachmentsPending).toContain(
       'CREATE INDEX "attachments_user_message_idx" ON "attachments" USING btree ("user_id","message_id")',
     )
+  })
+})
+
+describe('0005 users theme migration', () => {
+  it('adds a nullable text theme column to users', () => {
+    expect(usersTheme).toContain('ALTER TABLE "users" ADD COLUMN "theme" text')
+    // Nullable — no NOT NULL, so an un-set preference reads as null (client
+    // falls back to its localStorage cache).
+    expect(usersTheme).not.toContain('NOT NULL')
   })
 })

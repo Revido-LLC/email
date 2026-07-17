@@ -6,11 +6,22 @@ import { createRoot } from 'react-dom/client'
 import { I18nextProvider } from 'react-i18next'
 import i18n from './i18n/config'
 import { AppStateProvider } from './lib/app-state'
+import { SessionProvider } from './lib/session'
 import { routeTree } from './routeTree.gen'
 import './styles.css'
 
+// Real-data defaults: keep data fresh but avoid refetch storms. Screens read
+// from mock data today; a later wave swaps them onto the React Query hook layer
+// (`@/lib/hooks`), at which point these defaults govern every read.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: Infinity, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: true,
+      retry: 1,
+    },
+  },
 })
 
 const router = createRouter({
@@ -30,11 +41,13 @@ createRoot(rootEl).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <AppStateProvider>
-          <TooltipProvider delayDuration={300}>
-            <RouterProvider router={router} />
-          </TooltipProvider>
-        </AppStateProvider>
+        <SessionProvider>
+          <AppStateProvider>
+            <TooltipProvider delayDuration={300}>
+              <RouterProvider router={router} />
+            </TooltipProvider>
+          </AppStateProvider>
+        </SessionProvider>
       </QueryClientProvider>
     </I18nextProvider>
   </StrictMode>,

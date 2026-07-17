@@ -22,6 +22,7 @@
     "@revido/db": "workspace:*",
     "@supabase/supabase-js": "^2.47.0",
     "better-auth": "^1.6.23",
+    "drizzle-orm": "^0.38.0",
     "hono": "^4.6.14",
     "openai": "^4.77.0",
     "voyageai": "^0.0.4",

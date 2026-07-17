@@ -29,6 +29,7 @@ import {
 } from '@revido/db/schema'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { onMailboxLinked } from './lib/mailbox-link'
 
 /** Gmail scope that permits reading + modifying (send/label/trash) mail. */
 const GOOGLE_MAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
@@ -81,8 +82,28 @@ export const auth = betterAuth({
       scope: MS_MAIL_SCOPES,
     },
   },
-  // databaseHooks/after: api-service wires: on account link → encrypt tokens into
-  // domain accounts + enqueue backfill. The seam is `onMailboxLinked` below.
+  // On account link (primary social sign-in), capture the mail-scoped OAuth tokens
+  // into the domain `accounts` table (encrypted) and enqueue a backfill. The seam
+  // is `onMailboxLinked`; it is best-effort and never throws, so a capture failure
+  // cannot break sign-in.
+  databaseHooks: {
+    account: {
+      create: {
+        after: async (createdAccount) => {
+          await onMailboxLinked(createdAccount.userId, {
+            providerId: createdAccount.providerId,
+            accountId: createdAccount.accountId,
+            accessToken: createdAccount.accessToken,
+            refreshToken: createdAccount.refreshToken,
+            idToken: createdAccount.idToken,
+            scope: createdAccount.scope,
+            accessTokenExpiresAt: createdAccount.accessTokenExpiresAt,
+            refreshTokenExpiresAt: createdAccount.refreshTokenExpiresAt,
+          })
+        },
+      },
+    },
+  },
 })
 
 /** The provider linkage Better Auth persists in its `account` row. */

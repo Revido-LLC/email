@@ -24,6 +24,7 @@ import { approvalsRouter } from './approvals'
 import { attachmentsRouter } from './attachments'
 import { categoriesRouter } from './categories'
 import { commitmentsRouter } from './commitments'
+import { imageProxyRouter } from './image-proxy'
 import { leadsRouter } from './leads'
 import { meRouter } from './me'
 import { messagesRouter } from './messages'
@@ -64,6 +65,8 @@ export const routers: RouterEntry[] = [
   { path: '/account', router: accountMgmtRouter },
   { path: '/messages', router: messagesRouter },
   { path: '/attachments', router: attachmentsRouter },
+  // SSRF-guarded remote-image relay (session-gated + per-IP rate limited).
+  { path: '/image-proxy', router: imageProxyRouter },
   // AI surface (api-ai): self-managed rate limiting; the agents-ai router shares
   // the `/agents` base path with the CRUD router (Hono merges both route tables).
   { path: '/ai', router: aiRouter },

@@ -20,13 +20,11 @@ const h = vi.hoisted(() => ({
 
 vi.mock('@revido/db/client', () => {
   class FakeQuery {
-    private table: unknown
     constructor(
       private readonly rows: unknown[],
       private readonly onDelete: (table: unknown) => void,
     ) {}
     delete(table: unknown): this {
-      this.table = table
       this.onDelete(table)
       return this
     }

@@ -34,10 +34,21 @@ export interface WorkerContext {
   email: EmailSender
   adapterFor: AdapterFactory
   kms: KmsProvider
+  /**
+   * Route backfill's bulk historical triage through the Batches API (−50% cost).
+   * Off (`ANTHROPIC_BATCHES_DISABLED`) falls back to per-message real-time triage.
+   */
+  batchTriage: boolean
   loadAccount(accountId: string): Promise<AccountContext>
   loadUser(userId: string): Promise<UserContext>
   now(): Date
   logger: Logger
+}
+
+/** Batches on unless `ANTHROPIC_BATCHES_DISABLED` is `1` / `true` (case-insensitive). */
+export function isBatchTriageEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  const disabled = env.ANTHROPIC_BATCHES_DISABLED
+  return !(disabled === '1' || disabled?.toLowerCase() === 'true')
 }
 
 export function createWorkerContext(env: NodeJS.ProcessEnv = process.env): WorkerContext {
@@ -52,6 +63,7 @@ export function createWorkerContext(env: NodeJS.ProcessEnv = process.env): Worke
     email: new ResendEmailSender(env),
     adapterFor: createAdapterFactory(env),
     kms,
+    batchTriage: isBatchTriageEnabled(env),
     loadAccount: (accountId) => loadAccountContext(db, accountId, kms),
     loadUser: (userId) => loadUserContext(db, userId, kms),
     now: () => new Date(),

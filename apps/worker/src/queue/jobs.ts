@@ -11,9 +11,13 @@
  *    `chaser` (user confirms a follow-up).
  *  - the worker's node-cron scheduler enqueues `renew_watch`, `reconcile`,
  *    `digest`, `voice_profile` (per user), and `agent_run` (scheduled sweep);
- *    sync consumers enqueue `triage` + `embed` (and `summary` for new threads), and
- *    the incremental consumer enqueues `agent_run` (new-mail trigger) per enabled
- *    new-mail agent for each thread that gained inbound mail.
+ *    the incremental consumer enqueues `triage` + `embed` (and `summary` for new
+ *    threads) real-time, plus `agent_run` (new-mail trigger) per enabled new-mail
+ *    agent for each thread that gained inbound mail; the `backfill` consumer routes
+ *    a whole page's triage through the Batches API — it submits one batch and
+ *    enqueues a `triage_batch` poll job — while still embedding every new message.
+ *    The `triage_batch` consumer re-enqueues itself until the batch ends, then
+ *    persists each result and fans out `summary` per freshly-triaged thread.
  *
  * PAYLOAD SCHEMAS (the minimal, agreed shapes — keep in sync with api-service):
  *  - backfill      : { accountId }                 progressive newest-first import
@@ -25,7 +29,10 @@
  *    the worker resolves the account service-side — Gmail by address, Outlook by the
  *    persisted watch subscription id — before applying the delta.
  *  - send          : { accountId, messageId }        deferred send (runAt = +10s)
- *  - triage        : { accountId, threadId, messageId }
+ *  - triage        : { accountId, threadId, messageId }  real-time single-message triage
+ *  - triage_batch  : { accountId, batchId, items:[{ messageId, threadId }] }
+ *                    poll a submitted Batches triage job; carries the id map to
+ *                    re-key the UNORDERED results back onto their thread/message.
  *  - summary       : { accountId, threadId }         summary + extraction (+escalation)
  *  - embed         : { accountId, messageId }        embed body → pgvector (RAG)
  *  - voice_profile : { userId }                      learn the user's writing voice
@@ -51,6 +58,7 @@ export const QUEUE = {
   incremental: 'incremental',
   send: 'send',
   triage: 'triage',
+  triageBatch: 'triage_batch',
   summary: 'summary',
   embed: 'embed',
   voiceProfile: 'voice_profile',
@@ -103,6 +111,18 @@ export const triagePayload = z.object({
   threadId: z.string().uuid(),
   messageId: z.string().uuid(),
 })
+/** One message the batch triaged, and the thread its result must be written back to. */
+export const triageBatchItem = z.object({
+  messageId: z.string().uuid(),
+  threadId: z.string().uuid(),
+})
+export const triageBatchPayload = z.object({
+  accountId: z.string().uuid(),
+  /** The provider batch id returned by `submitBatch`. */
+  batchId: z.string().min(1),
+  /** custom_id(messageId) → threadId map for re-keying the unordered results. */
+  items: z.array(triageBatchItem).min(1),
+})
 export const summaryPayload = z.object({
   accountId: z.string().uuid(),
   threadId: z.string().uuid(),
@@ -130,6 +150,8 @@ export type BackfillPayload = z.infer<typeof backfillPayload>
 export type IncrementalPayload = z.infer<typeof incrementalPayload>
 export type SendPayload = z.infer<typeof sendPayload>
 export type TriagePayload = z.infer<typeof triagePayload>
+export type TriageBatchItem = z.infer<typeof triageBatchItem>
+export type TriageBatchPayload = z.infer<typeof triageBatchPayload>
 export type SummaryPayload = z.infer<typeof summaryPayload>
 export type EmbedPayload = z.infer<typeof embedPayload>
 export type VoiceProfilePayload = z.infer<typeof voiceProfilePayload>

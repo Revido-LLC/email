@@ -8,6 +8,7 @@ import {
   type AnthropicCreateParams,
   type AnthropicMessage,
   type AnthropicMessagesClient,
+  type AnthropicStreamEvent,
 } from './anthropic'
 import { FakeLlmClient } from './fake'
 import { MODELS, parseJsonFromText, resolveModel, type LlmCompletionRequest } from './types'
@@ -253,5 +254,103 @@ describe('parseJsonFromText', () => {
     expect(parseJsonFromText('```json\n{"a":1}\n```')).toEqual({ a: 1 })
     expect(parseJsonFromText('Here you go: {"b":2} — done')).toEqual({ b: 2 })
     expect(parseJsonFromText('not json at all')).toBeUndefined()
+  })
+})
+
+describe('buildCreateParams — optional fields', () => {
+  it('forwards stop sequences, temperature, and user metadata', () => {
+    const params = buildCreateParams(
+      req({ stopSequences: ['STOP'], temperature: 0.2, userId: 'user-7' }),
+    )
+    expect(params.stop_sequences).toEqual(['STOP'])
+    expect(params.temperature).toBe(0.2)
+    expect(params.metadata).toEqual({ user_id: 'user-7' })
+  })
+
+  it('omits empty optional fields (no stop_sequences / metadata / output_config)', () => {
+    const params = buildCreateParams(req({ stopSequences: [] }))
+    expect(params.stop_sequences).toBeUndefined()
+    expect(params.metadata).toBeUndefined()
+    expect(params.output_config).toBeUndefined()
+  })
+
+  it('maps adaptive thinking with a display mode to the wire shape', () => {
+    expect(buildCreateParams(req({ thinking: { type: 'adaptive', display: 'omitted' } })).thinking).toEqual(
+      { type: 'adaptive', display: 'omitted' },
+    )
+  })
+})
+
+describe('AnthropicLlmClient.stream', () => {
+  it('emits text deltas then a done event carrying model, stopReason, and usage', async () => {
+    const events: AnthropicStreamEvent[] = [
+      {
+        type: 'message_start',
+        message: { model: 'claude-sonnet-5', usage: { input_tokens: 12, cache_read_input_tokens: 8 } },
+      },
+      { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Hel' } },
+      { type: 'content_block_delta', delta: { type: 'text_delta', text: 'lo' } },
+      { type: 'content_block_delta', delta: { type: 'input_json_delta', text: 'IGNORED' } },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 5 } },
+    ]
+    const client: AnthropicMessagesClient = {
+      create: () => Promise.reject(new Error('unused')),
+      async createStream() {
+        async function* gen(): AsyncIterable<AnthropicStreamEvent> {
+          for (const e of events) yield e
+        }
+        return gen()
+      },
+      batches: {
+        create: () => Promise.resolve({ id: 'x' }),
+        retrieve: () => Promise.resolve({ processing_status: 'ended' }),
+        results: () => Promise.reject(new Error('unused')),
+      },
+    }
+    const llm = new AnthropicLlmClient(client)
+    const out = []
+    for await (const e of llm.stream(req({ model: 'summary' }))) out.push(e)
+
+    expect(out).toEqual([
+      { type: 'text', text: 'Hel' },
+      { type: 'text', text: 'lo' },
+      {
+        type: 'done',
+        stopReason: 'end_turn',
+        model: 'claude-sonnet-5',
+        usage: {
+          inputTokens: 12,
+          outputTokens: 5,
+          cacheReadInputTokens: 8,
+          cacheCreationInputTokens: 0,
+        },
+      },
+    ])
+  })
+})
+
+describe('AnthropicLlmClient batch polling', () => {
+  it('polls until the batch ends, then maps canceled/expired statuses', async () => {
+    const rec = recorder({
+      retrieveStatuses: ['in_progress', 'in_progress', 'ended'],
+      batchResults: [
+        { custom_id: 'a', result: { type: 'canceled' } },
+        { custom_id: 'b', result: { type: 'expired' } },
+        { custom_id: 'c', result: { type: 'weird-unknown', error: { message: 'x' } } },
+      ],
+    })
+    const llm = new AnthropicLlmClient(rec.client, { batchPollIntervalMs: 0 })
+    const results = await llm.collectBatch('batch_123')
+    expect(results.get('a')?.status).toBe('canceled')
+    expect(results.get('b')?.status).toBe('expired')
+    // An unrecognized result type falls back to 'errored'.
+    expect(results.get('c')?.status).toBe('errored')
+    expect(results.get('a')?.error).toBeUndefined()
+  })
+
+  it('treats an unknown processing status as still in-progress', async () => {
+    const rec = recorder({ retrieveStatuses: ['queued'] })
+    const llm = new AnthropicLlmClient(rec.client)
+    expect(await llm.pollBatch('batch_123')).toEqual({ status: 'in_progress' })
   })
 })

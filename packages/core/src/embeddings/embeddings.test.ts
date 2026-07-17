@@ -40,6 +40,24 @@ describe('VoyageEmbeddingsClient', () => {
   })
 })
 
+describe('VoyageEmbeddingsClient edge cases', () => {
+  it('returns [] and makes no request for empty input', async () => {
+    const fetchImpl = vi.fn()
+    const client = new VoyageEmbeddingsClient({ apiKey: 'vk', fetchImpl })
+    expect(await client.embed([])).toEqual([])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('throws with the status and body when the provider errors', async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        ({ ok: false, status: 429, json: async () => ({}), text: async () => 'rate limited' }) as Response,
+    )
+    const client = new VoyageEmbeddingsClient({ apiKey: 'vk', fetchImpl })
+    await expect(client.embed(['a'])).rejects.toThrow(/429 rate limited/)
+  })
+})
+
 describe('OpenAiEmbeddingsClient', () => {
   it('pins dimensions to 1024 in the request', async () => {
     const fetchImpl = vi.fn(async (_url: string | URL, _init?: RequestInit) =>
@@ -48,6 +66,34 @@ describe('OpenAiEmbeddingsClient', () => {
     const client = new OpenAiEmbeddingsClient({ apiKey: 'sk', fetchImpl })
     await client.embed(['hi'])
     expect(JSON.parse(fetchImpl.mock.calls[0]![1]!.body as string).dimensions).toBe(1024)
+  })
+
+  it('preserves input order when the provider returns rows out of order', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        data: [
+          { embedding: [3], index: 2 },
+          { embedding: [1], index: 0 },
+          { embedding: [2], index: 1 },
+        ],
+      }),
+    )
+    const client = new OpenAiEmbeddingsClient({ apiKey: 'sk', fetchImpl })
+    expect(await client.embed(['a', 'b', 'c'])).toEqual([[1], [2], [3]])
+  })
+
+  it('returns [] for empty input and throws on a non-ok status', async () => {
+    const fetchImpl = vi.fn(
+      async () => ({ ok: false, status: 500, text: async () => 'boom' }) as Response,
+    )
+    const client = new OpenAiEmbeddingsClient({ apiKey: 'sk', fetchImpl })
+    expect(await client.embed([])).toEqual([])
+    expect(fetchImpl).not.toHaveBeenCalled()
+    await expect(client.embed(['x'])).rejects.toThrow(/OpenAI embeddings failed: 500 boom/)
+  })
+
+  it('throws without an api key', () => {
+    expect(() => new OpenAiEmbeddingsClient({ apiKey: '' })).toThrow(/OPENAI_API_KEY/)
   })
 })
 
@@ -59,6 +105,14 @@ describe('FakeEmbeddingsClient', () => {
     expect(a).toBeDefined()
     expect(a).toEqual(b)
     expect(Math.hypot(...a!)).toBeCloseTo(1, 5)
+  })
+
+  it('defaults to 1024 dims, embeds each input, and separates distinct text', async () => {
+    const client = new FakeEmbeddingsClient()
+    expect(client.dimensions).toBe(1024)
+    const [a, b] = await client.embed(['hello', 'goodbye'])
+    expect(a).toHaveLength(1024)
+    expect(a).not.toEqual(b)
   })
 })
 

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Thread } from '@revido/db'
 import {
   actionNeedsApproval,
+  agentActionSchema,
+  agentConditionSchema,
   agentPlanSchema,
   compilePredicate,
   planRequiresApproval,
@@ -125,6 +127,71 @@ describe('compilePredicate', () => {
     expect(match(makeThread())).toBe(false)
   })
 
+  it('resolves the other scalar fields (priority, unread, starred, snoozed, language, name)', () => {
+    expect(
+      compilePredicate(plan([{ field: 'priority', op: 'is', value: 'normal' }]))(makeThread()),
+    ).toBe(true)
+    expect(compilePredicate(plan([{ field: 'unread', op: 'is', value: 'true' }]))(makeThread())).toBe(
+      true,
+    )
+    expect(
+      compilePredicate(plan([{ field: 'starred', op: 'is', value: 'false' }]))(makeThread()),
+    ).toBe(true)
+    // snoozed derives a boolean from snoozedUntil being non-null.
+    expect(
+      compilePredicate(plan([{ field: 'snoozed', op: 'is', value: 'true' }]))(
+        makeThread({ snoozedUntil: '2026-08-01T00:00:00Z' }),
+      ),
+    ).toBe(true)
+    expect(
+      compilePredicate(plan([{ field: 'snoozed', op: 'is', value: 'false' }]))(makeThread()),
+    ).toBe(true)
+    expect(
+      compilePredicate(plan([{ field: 'language', op: 'is', value: 'nl' }]))(
+        makeThread({ language: 'nl' }),
+      ),
+    ).toBe(true)
+    expect(
+      compilePredicate(plan([{ field: 'name', op: 'contains', value: 'Billing' }]))(makeThread()),
+    ).toBe(true)
+  })
+
+  it('applies is-not / not-contains across an array field with "every"', () => {
+    // labels = ['finance', 'q3']; is-not 'personal' holds for all ⇒ true.
+    expect(
+      compilePredicate(plan([{ field: 'labels', op: 'is-not', value: 'personal' }]))(makeThread()),
+    ).toBe(true)
+    // is-not 'finance' fails because one label equals it.
+    expect(
+      compilePredicate(plan([{ field: 'labels', op: 'is-not', value: 'finance' }]))(makeThread()),
+    ).toBe(false)
+    expect(
+      compilePredicate(plan([{ field: 'labels', op: 'not-contains', value: 'xyz' }]))(makeThread()),
+    ).toBe(true)
+  })
+
+  it('coerces truthy strings (yes/1/y) for boolean fields', () => {
+    for (const value of ['true', '1', 'yes', 'y']) {
+      expect(
+        compilePredicate(plan([{ field: 'unread', op: 'is', value }]))(makeThread({ unread: true })),
+      ).toBe(true)
+    }
+  })
+
+  it('never matches when the matches-regex is invalid', () => {
+    const match = compilePredicate(plan([{ field: 'subject', op: 'matches', value: '([' }]))
+    expect(match(makeThread())).toBe(false)
+  })
+
+  it('gt/lt return false when the field has no numeric value', () => {
+    expect(
+      compilePredicate(plan([{ field: 'subject', op: 'gt', value: '5' }]))(makeThread()),
+    ).toBe(false)
+    expect(compilePredicate(plan([{ field: 'labels', op: 'lt', value: '5' }]))(makeThread())).toBe(
+      false,
+    )
+  })
+
   it('selects the expected subset from a mixed set of threads', () => {
     const threads = [
       makeThread({ id: 'a', category: 'receipts', priorityScore: 70 }),
@@ -154,6 +221,17 @@ describe('approval helpers', () => {
   })
 })
 
+describe('approval helpers — full consequential set', () => {
+  it('gates send, unsubscribe, delete, and forward; auto-runs the rest', () => {
+    for (const t of ['send', 'unsubscribe', 'delete', 'forward'] as const) {
+      expect(actionNeedsApproval(t)).toBe(true)
+    }
+    for (const t of ['label', 'archive', 'draft', 'star', 'mark-read'] as const) {
+      expect(actionNeedsApproval(t)).toBe(false)
+    }
+  })
+})
+
 describe('agentPlanSchema', () => {
   it('parses a well-formed plan', () => {
     const parsed = agentPlanSchema.parse({
@@ -162,5 +240,24 @@ describe('agentPlanSchema', () => {
       actions: [{ type: 'label', label: 'Label Receipts' }],
     })
     expect(parsed.conditions).toHaveLength(1)
+  })
+
+  it('rejects an unknown trigger', () => {
+    expect(
+      agentPlanSchema.safeParse({ trigger: 'on-star', conditions: [], actions: [] }).success,
+    ).toBe(false)
+  })
+})
+
+describe('agentConditionSchema / agentActionSchema', () => {
+  it('rejects an unsupported operator', () => {
+    expect(
+      agentConditionSchema.safeParse({ field: 'category', op: 'like', value: 'x' }).success,
+    ).toBe(false)
+  })
+
+  it('rejects an unknown action type', () => {
+    expect(agentActionSchema.safeParse({ type: 'nuke', label: 'x' }).success).toBe(false)
+    expect(agentActionSchema.safeParse({ type: 'archive', label: 'Archive' }).success).toBe(true)
   })
 })

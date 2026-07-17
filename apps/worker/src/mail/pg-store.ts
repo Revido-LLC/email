@@ -33,6 +33,7 @@ import type {
   CreateCommitmentInput,
   CreateReminderInput,
   DigestData,
+  EnabledAgentRef,
   EnqueueApprovalInput,
   ListAgentThreadsOptions,
   MailStore,
@@ -597,6 +598,16 @@ export class PgMailStore implements MailStore {
   }
 
   // -- agents ----------------------------------------------------------------
+
+  async listNewMailAgents(userId: string): Promise<EnabledAgentRef[]> {
+    return this.db.asService(
+      (sql) => sql<EnabledAgentRef[]>`
+        select id from agents
+        where user_id = ${userId} and enabled = true and trigger = 'new-mail'
+        order by created_at asc
+      `,
+    )
+  }
 
   async getAgentPlan(userId: string, agentId: string): Promise<StoredAgentPlan | null> {
     return this.db.withUser(userId, async (sql) => {

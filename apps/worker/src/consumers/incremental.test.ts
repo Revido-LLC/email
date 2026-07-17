@@ -7,6 +7,7 @@ import type {
 } from '@revido/core'
 import type { AccountContext, AccountCrypto } from '../db/accounts'
 import type {
+  EnabledAgentRef,
   PersistTarget,
   PersistedMessage,
   ResolvedAccountRef,
@@ -102,6 +103,8 @@ function harness(
     connectReturns?: (creds: ProviderCredentials) => ProviderCredentials
     /** Account returned by the provider-push resolvers (null = unresolvable). */
     resolved?: ResolvedAccountRef | null
+    /** Enabled new-mail agents the store reports for this user (default: none). */
+    agents?: EnabledAgentRef[]
   } = {},
 ): Harness {
   const persisted: RawFetchedMessage[] = []
@@ -115,6 +118,7 @@ function harness(
   if (opts.incremental) adapter.incremental = opts.incremental
   const resolved =
     opts.resolved === undefined ? { accountId: ACCOUNT_ID, userId: USER_ID } : opts.resolved
+  const agents = opts.agents ?? []
 
   const deps: IncrementalDeps = {
     loadAccount: () => Promise.resolve(fakeAccount(opts.provider ?? 'gmail')),
@@ -143,6 +147,7 @@ function harness(
         resolvedBySubscription.push(subscriptionId)
         return resolved
       },
+      listNewMailAgents: () => Promise.resolve(agents),
     },
     jobs: {
       enqueue: async (queue, payload) => {
@@ -344,5 +349,91 @@ describe('makeIncrementalConsumer', () => {
     expect(incremental).not.toHaveBeenCalled()
     expect(h.persisted).toHaveLength(0)
     expect(h.cursors).toHaveLength(0)
+  })
+})
+
+describe('makeIncrementalConsumer — event-driven agent trigger', () => {
+  const AGENT_A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  const AGENT_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+
+  function inbound(providerMessageId: string, providerThreadId: string): RawFetchedMessage {
+    return fakeMessage({ providerMessageId, providerThreadId, outbound: false })
+  }
+
+  it('enqueues one agent_run per enabled agent, scoped to the affected thread', async () => {
+    const delta: IncrementalDelta = {
+      upserted: [inbound('in', 'ta')],
+      deletedProviderMessageIds: [],
+      nextCursor: '200',
+    }
+    const h = harness(delta, { agents: [{ id: AGENT_A }, { id: AGENT_B }] })
+    await makeIncrementalConsumer(h.deps)(PAYLOAD, JOB)
+
+    const runs = h.enqueued.filter((e) => e.queue === QUEUE.agentRun)
+    expect(runs.map((r) => r.payload)).toEqual([
+      { userId: USER_ID, agentId: AGENT_A, threadIds: ['db-ta'] },
+      { userId: USER_ID, agentId: AGENT_B, threadIds: ['db-ta'] },
+    ])
+  })
+
+  it('enqueues nothing when the user has no enabled new-mail agents (disabled ⇒ absent)', async () => {
+    const delta: IncrementalDelta = {
+      upserted: [inbound('in', 'ta')],
+      deletedProviderMessageIds: [],
+      nextCursor: '200',
+    }
+    const h = harness(delta, { agents: [] })
+    await makeIncrementalConsumer(h.deps)(PAYLOAD, JOB)
+    expect(h.enqueued.filter((e) => e.queue === QUEUE.agentRun)).toHaveLength(0)
+  })
+
+  it('dedupes a burst on one thread to a single run per agent', async () => {
+    const delta: IncrementalDelta = {
+      upserted: [inbound('in1', 'ta'), inbound('in2', 'ta'), inbound('in3', 'ta')],
+      deletedProviderMessageIds: [],
+      nextCursor: '200',
+    }
+    const h = harness(delta, { agents: [{ id: AGENT_A }] })
+    await makeIncrementalConsumer(h.deps)(PAYLOAD, JOB)
+    const runs = h.enqueued.filter((e) => e.queue === QUEUE.agentRun)
+    expect(runs).toHaveLength(1)
+    expect(runs[0]?.payload).toEqual({ userId: USER_ID, agentId: AGENT_A, threadIds: ['db-ta'] })
+  })
+
+  it('scopes a separate run to each distinct affected thread', async () => {
+    const delta: IncrementalDelta = {
+      upserted: [inbound('in1', 'ta'), inbound('in2', 'tb')],
+      deletedProviderMessageIds: [],
+      nextCursor: '200',
+    }
+    const h = harness(delta, { agents: [{ id: AGENT_A }] })
+    await makeIncrementalConsumer(h.deps)(PAYLOAD, JOB)
+    const runs = h.enqueued.filter((e) => e.queue === QUEUE.agentRun)
+    expect(runs.map((r) => r.payload)).toEqual([
+      { userId: USER_ID, agentId: AGENT_A, threadIds: ['db-ta'] },
+      { userId: USER_ID, agentId: AGENT_A, threadIds: ['db-tb'] },
+    ])
+  })
+
+  it('does not fire agents for a new OUTBOUND (sent) message', async () => {
+    const delta: IncrementalDelta = {
+      upserted: [fakeMessage({ providerMessageId: 'out', providerThreadId: 'ta', outbound: true })],
+      deletedProviderMessageIds: [],
+      nextCursor: '200',
+    }
+    const h = harness(delta, { agents: [{ id: AGENT_A }] })
+    await makeIncrementalConsumer(h.deps)(PAYLOAD, JOB)
+    expect(h.enqueued.filter((e) => e.queue === QUEUE.agentRun)).toHaveLength(0)
+  })
+
+  it('does not re-fire agents for an already-seen (idempotent) inbound message', async () => {
+    const delta: IncrementalDelta = {
+      upserted: [inbound('dup', 'ta')],
+      deletedProviderMessageIds: [],
+      nextCursor: '200',
+    }
+    const h = harness(delta, { agents: [{ id: AGENT_A }], newIds: new Set() })
+    await makeIncrementalConsumer(h.deps)(PAYLOAD, JOB)
+    expect(h.enqueued.filter((e) => e.queue === QUEUE.agentRun)).toHaveLength(0)
   })
 })

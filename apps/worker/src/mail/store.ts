@@ -270,7 +270,19 @@ export interface ListAgentThreadsOptions {
   limit?: number
 }
 
+/** An enabled, new-mail-triggered agent to fan an event-driven `agent_run` out over. */
+export interface EnabledAgentRef {
+  id: string
+}
+
 export interface AgentStore {
+  /**
+   * List a user's ENABLED, new-mail-triggered agents (service role — agent config
+   * is plaintext). Backs the event-driven trigger: new inbound mail fans out an
+   * `agent_run` per returned agent. Scheduled-trigger agents fire on the cron
+   * sweep instead (see `scheduler.ts`), so they are intentionally excluded here.
+   */
+  listNewMailAgents(userId: string): Promise<EnabledAgentRef[]>
   /** Rebuild an agent's plan from its stored (plaintext) config, or null. */
   getAgentPlan(userId: string, agentId: string): Promise<StoredAgentPlan | null>
   /** Load candidate threads as domain `Thread`s (subject decrypted) for matching. */

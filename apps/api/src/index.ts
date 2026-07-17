@@ -3,7 +3,8 @@
  *
  * Boots `@hono/node-server` on `$PORT`. The app itself (Better Auth handler,
  * health probe, the router seam) lives in `./app`; api-service extends it by
- * registering routers in `./routes`.
+ * registering routers in `./routes`. The full HTTP surface — 24 read + 42 write
+ * endpoints — is specified in `docs/api-contract.md`.
  */
 import { serve } from '@hono/node-server'
 import { app, type AppType } from './app'

@@ -141,6 +141,11 @@ describe('makeBackfillConsumer', () => {
       threadId: 'db-ta',
     })
 
+    // One summary per changed thread (the inbound thread only; outbound isn't summarized).
+    const summaryJobs = h.enqueued.filter((e) => e.queue === QUEUE.summary)
+    expect(summaryJobs).toHaveLength(1)
+    expect(summaryJobs[0]?.payload).toEqual({ accountId: ACCOUNT_ID, threadId: 'db-ta' })
+
     expect(h.progress[0]).toEqual({
       accountId: ACCOUNT_ID,
       userId: USER_ID,

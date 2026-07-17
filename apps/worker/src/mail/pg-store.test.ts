@@ -165,6 +165,63 @@ describe('PgMailStore.deleteMessages', () => {
   })
 })
 
+describe('PgMailStore.saveCursor', () => {
+  it('persists the subscription id alongside the cursor (service role)', async () => {
+    const { db, calls } = scriptedDb([
+      { when: (t) => t.includes('from accounts'), rows: [{ provider: 'outlook' }] },
+    ])
+    await new PgMailStore(db).saveCursor({
+      accountId: ACCOUNT_ID,
+      userId: USER_ID,
+      deltaLink: 'delta-url',
+      subscriptionId: 'sub-99',
+    })
+    const insert = calls.find((c) => c.text.includes('insert into sync_state'))
+    expect(insert?.text).toContain('subscription_id')
+    expect(insert?.values).toContain('sub-99')
+    expect(insert?.values).toContain('delta-url')
+  })
+})
+
+describe('PgMailStore.resolveAccountByEmail', () => {
+  it('matches provider + address case-insensitively and returns the account ref', async () => {
+    const { db, calls } = scriptedDb([
+      {
+        when: (t) => t.includes('from accounts'),
+        rows: [{ account_id: ACCOUNT_ID, user_id: USER_ID }],
+      },
+    ])
+    const ref = await new PgMailStore(db).resolveAccountByEmail('gmail', 'Me@Example.com')
+    expect(ref).toEqual({ accountId: ACCOUNT_ID, userId: USER_ID })
+    expect(calls[0]?.text).toContain('lower(email) = lower(')
+    expect(calls[0]?.values).toEqual(expect.arrayContaining(['gmail', 'Me@Example.com']))
+  })
+
+  it('returns null when no account matches the mailbox', async () => {
+    const { db } = scriptedDb([{ when: (t) => t.includes('from accounts'), rows: [] }])
+    expect(await new PgMailStore(db).resolveAccountByEmail('gmail', 'nobody@x.com')).toBeNull()
+  })
+})
+
+describe('PgMailStore.resolveAccountBySubscription', () => {
+  it('resolves an account from the persisted Graph subscription id', async () => {
+    const { db, calls } = scriptedDb([
+      {
+        when: (t) => t.includes('from sync_state'),
+        rows: [{ account_id: ACCOUNT_ID, user_id: USER_ID }],
+      },
+    ])
+    const ref = await new PgMailStore(db).resolveAccountBySubscription('sub-99')
+    expect(ref).toEqual({ accountId: ACCOUNT_ID, userId: USER_ID })
+    expect(calls[0]?.values).toContain('sub-99')
+  })
+
+  it('returns null for an unknown (stale) subscription id', async () => {
+    const { db } = scriptedDb([{ when: (t) => t.includes('from sync_state'), rows: [] }])
+    expect(await new PgMailStore(db).resolveAccountBySubscription('gone')).toBeNull()
+  })
+})
+
 describe('PgMailStore.applyTriage', () => {
   it('encrypts the tldr and writes category/priority as queryable plaintext', async () => {
     const { db, calls } = scriptedDb([])

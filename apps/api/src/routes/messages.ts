@@ -73,8 +73,9 @@ messagesRouter.post('/', async (c) => {
 messagesRouter.post('/:id/cancel', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
-  await cancelSend(userId, id)
-  return c.json({ cancelled: true })
+  // Report the real outcome: a send the worker has already claimed can't be undone.
+  const cancelled = await cancelSend(userId, id)
+  return c.json({ cancelled })
 })
 
 /** POST /messages/:id/load-images — reveal blocked remote images. */

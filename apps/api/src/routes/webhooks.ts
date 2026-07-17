@@ -11,7 +11,11 @@
  * lean on cryptographic/secret verification and the shared IP rate limiter.
  *
  * Env: `GMAIL_PUSH_AUDIENCE` (expected `aud`), `GMAIL_PUSH_SA_EMAIL` (expected push
- * service-account email), `GRAPH_CLIENT_STATE` (subscription shared secret).
+ * service-account email), `GRAPH_CLIENT_STATE` (subscription shared secret). These
+ * verification claims are OPTIONAL for local/dev (skipped when unset) but REQUIRED
+ * in production: `requireInProd` refuses the webhook (500) if any is missing under
+ * `NODE_ENV==='production'`, so the checks can never silently fail open on a real
+ * deploy. Signature / issuer / expiry (see `lib/oidc`) are always enforced.
  */
 import { Hono } from 'hono'
 import { errorHandler, HttpError } from '../lib/http'
@@ -24,13 +28,24 @@ export const webhooksRouter = new Hono<{ Variables: Variables }>()
 webhooksRouter.onError(errorHandler)
 webhooksRouter.use('*', rateLimit({ windowMs: 60_000, max: 120 }))
 
+/**
+ * A verification secret that MUST be present in production. Returns the value in
+ * dev (possibly undefined ⇒ that specific claim check is skipped); refuses the
+ * webhook in production when absent, so verification never silently fails open.
+ */
+function requireInProd(value: string | undefined, name: string): string | undefined {
+  if (!value && process.env.NODE_ENV === 'production') {
+    throw new HttpError(500, 'webhook_misconfigured', `${name} must be set in production`)
+  }
+  return value
+}
+
 /** POST /webhooks/gmail — verified Gmail Pub/Sub push. */
 webhooksRouter.post('/gmail', async (c) => {
+  const audience = requireInProd(process.env.GMAIL_PUSH_AUDIENCE, 'GMAIL_PUSH_AUDIENCE')
+  const email = requireInProd(process.env.GMAIL_PUSH_SA_EMAIL, 'GMAIL_PUSH_SA_EMAIL')
   const token = bearerToken(c.req.header('authorization'))
-  await verifyGoogleOidcToken(token, {
-    audience: process.env.GMAIL_PUSH_AUDIENCE,
-    email: process.env.GMAIL_PUSH_SA_EMAIL,
-  })
+  await verifyGoogleOidcToken(token, { audience, email })
 
   const body = (await c.req.json().catch(() => ({}))) as {
     message?: { data?: string }
@@ -71,7 +86,7 @@ webhooksRouter.post('/graph', async (c) => {
       tenantId?: string
     }[]
   }
-  const expectedClientState = process.env.GRAPH_CLIENT_STATE
+  const expectedClientState = requireInProd(process.env.GRAPH_CLIENT_STATE, 'GRAPH_CLIENT_STATE')
   const notifications = body.value ?? []
 
   for (const n of notifications) {

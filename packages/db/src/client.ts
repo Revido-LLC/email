@@ -13,6 +13,15 @@
  *   RLS. Used for system tables that have no `app_user` grant / policy:
  *   `user_keys`, `audit_log`, the Better Auth tables, and `jobs`.
  *
+ * ⚠️ DEPLOY REQUIREMENT — the `DATABASE_URL` role MUST be a superuser or a
+ * `BYPASSRLS` role. The content tables are `ENABLE + FORCE ROW LEVEL SECURITY`, and
+ * `FORCE` applies RLS to the TABLE OWNER too. So `asService` only actually bypasses
+ * RLS (which the service-role reads/writes to `sync_state`, cross-user account
+ * resolution, etc. depend on) when the connection role has `rolbypassrls` or is a
+ * superuser. Railway's default `postgres` role is a superuser, so this holds out of
+ * the box — but a least-privilege role would silently see ZERO rows on those tables.
+ * `assertServiceRoleBypassesRls()` logs a loud warning at startup if it doesn't.
+ *
  * Environment variables (never hardcode secrets; documented for `.env.example`):
  *   DATABASE_URL   Postgres connection string (Railway; the owner/service role).
  */
@@ -115,10 +124,77 @@ export async function withUser<T>(
  * Run `fn` inside a transaction as the connection (owner) role, which bypasses
  * RLS. Use for system tables that are not app_user-accessible: `user_keys`,
  * `audit_log`, the Better Auth tables, and `jobs`.
+ *
+ * NOTE: on the `FORCE ROW LEVEL SECURITY` content tables this only bypasses RLS if
+ * the connection role is a superuser or has `BYPASSRLS` — see the file header and
+ * {@link assertServiceRoleBypassesRls}.
  */
 export async function asService<T>(
   fn: (tx: DbTransaction) => Promise<T>,
   db: Database = getDb(),
 ): Promise<T> {
   return db.transaction(fn)
+}
+
+/** The privilege probe result: does the connection role bypass RLS on FORCE tables? */
+export interface ServiceRolePrivilege {
+  role: string
+  isSuperuser: boolean
+  bypassRls: boolean
+  /** True when the role can bypass RLS on `FORCE`d tables (superuser OR rolbypassrls). */
+  bypasses: boolean
+}
+
+/**
+ * One-time startup probe: confirm the connection (service) role can bypass RLS on
+ * the `FORCE`d content tables. If it can't, the many `asService` reads/writes to
+ * those tables (sync cursors, cross-user account resolution from webhooks, …) would
+ * silently return/affect zero rows. Logs a loud warning rather than throwing, so a
+ * misconfigured deploy is visible without hard-crashing the process.
+ *
+ * Returns the probe result (also useful in tests). Never throws on a query error —
+ * it logs and reports `bypasses: true` optimistically so a transient probe failure
+ * doesn't spam warnings.
+ */
+export async function assertServiceRoleBypassesRls(
+  db: Database = getDb(),
+  logger: Pick<Console, 'warn'> = console,
+): Promise<ServiceRolePrivilege> {
+  try {
+    const rows = (await asService(
+      (tx) =>
+        tx.execute(sql`
+          select current_user as role,
+                 current_setting('is_superuser') = 'on' as is_superuser,
+                 coalesce(
+                   (select rolbypassrls from pg_roles where rolname = current_user),
+                   false
+                 ) as bypass_rls
+        `),
+      db,
+    )) as unknown as { role: string; is_superuser: boolean; bypass_rls: boolean }[]
+    const row = rows[0]
+    const isSuperuser = Boolean(row?.is_superuser)
+    const bypassRls = Boolean(row?.bypass_rls)
+    const result: ServiceRolePrivilege = {
+      role: row?.role ?? 'unknown',
+      isSuperuser,
+      bypassRls,
+      bypasses: isSuperuser || bypassRls,
+    }
+    if (!result.bypasses) {
+      logger.warn(
+        `[db] SERVICE ROLE WARNING: connection role "${result.role}" is neither a superuser ` +
+          'nor a BYPASSRLS role. FORCE ROW LEVEL SECURITY applies to the owner too, so ' +
+          'asService() will see/affect ZERO rows on content tables (sync_state, accounts, …). ' +
+          'Grant BYPASSRLS to the DATABASE_URL role.',
+      )
+    }
+    return result
+  } catch (err) {
+    logger.warn(
+      `[db] could not verify service-role RLS bypass: ${err instanceof Error ? err.message : String(err)}`,
+    )
+    return { role: 'unknown', isSuperuser: false, bypassRls: false, bypasses: true }
+  }
 }

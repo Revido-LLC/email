@@ -12,6 +12,7 @@ import type {
   DigestBundle,
   OutputLanguage,
   Priority,
+  Provider,
   ReminderKind,
   Thread,
 } from '@revido/db'
@@ -57,6 +58,14 @@ export interface SaveCursorInput {
   userId: string
   historyId?: string | null
   deltaLink?: string | null
+  /** Persisted provider push subscription id (Graph) — how a webhook resolves the account. */
+  subscriptionId?: string | null
+}
+
+/** A connected account resolved from provider push identifiers (webhook has no session). */
+export interface ResolvedAccountRef {
+  accountId: string
+  userId: string
 }
 
 /** Idempotent upsert of contacts/threads/messages/attachments (encrypts at rest). */
@@ -66,9 +75,13 @@ export interface SyncStore {
   getSyncState(accountId: string): Promise<SyncStateRow | null>
   /** Advance backfill progress (only touches backfill columns). */
   saveBackfillProgress(input: SaveBackfillProgressInput): Promise<void>
-  /** Advance the incremental push cursor (only touches history/delta columns). */
+  /** Advance the incremental push cursor (only touches history/delta/subscription columns). */
   saveCursor(input: SaveCursorInput): Promise<void>
   setSyncProgress(accountId: string, progress: number, label?: string): Promise<void>
+  /** Resolve an account by provider + mailbox address (Gmail push carries no id). */
+  resolveAccountByEmail(provider: Provider, email: string): Promise<ResolvedAccountRef | null>
+  /** Resolve an account by its persisted Graph subscription id (Outlook push). */
+  resolveAccountBySubscription(subscriptionId: string): Promise<ResolvedAccountRef | null>
 }
 
 /** Decrypted inputs for triage. */

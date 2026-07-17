@@ -136,6 +136,12 @@ export const syncState = pgTable(
     historyId: text('history_id'),
     /** Microsoft Graph delta link cursor. */
     deltaLink: text('delta_link'),
+    /**
+     * Provider push subscription/watch id (Graph subscription id, Gmail watch id).
+     * Persisted so a webhook push — which carries no account id — can resolve the
+     * account it belongs to (Outlook resolves by this id).
+     */
+    subscriptionId: text('subscription_id'),
     /** Cursor for the initial backfill scan. */
     backfillCursor: text('backfill_cursor'),
     backfillComplete: boolean('backfill_complete').notNull().default(false),

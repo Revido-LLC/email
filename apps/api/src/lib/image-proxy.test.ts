@@ -168,6 +168,31 @@ describe('fetchProxiedImage', () => {
       status: 403,
     })
   })
+
+  it('enforces the overall deadline across the streaming body read (slowloris)', async () => {
+    // Headers arrive fine, then the body emits one chunk and stalls forever. A real
+    // fetch errors its body stream when the request signal aborts; we mimic that so
+    // the read rejects, and assert the overall deadline maps it to a 504 timeout.
+    const fetchImpl = vi.fn((_input: unknown, init?: { signal?: AbortSignal }) => {
+      const signal = init?.signal
+      const body = new ReadableStream<Uint8Array>({
+        start(ctrl) {
+          ctrl.enqueue(new Uint8Array([1, 2, 3]))
+          const abort = (): void => ctrl.error(new DOMException('aborted', 'AbortError'))
+          if (signal?.aborted) abort()
+          else signal?.addEventListener('abort', abort)
+          // Otherwise never close/enqueue → the read loop would hang without the deadline.
+        },
+      })
+      return Promise.resolve(
+        new Response(body, { status: 200, headers: { 'content-type': 'image/png' } }),
+      )
+    }) as unknown as typeof fetch
+
+    await expect(
+      fetchProxiedImage('https://cdn.example.com/slow.png', { timeoutMs: 20, fetchImpl }),
+    ).rejects.toMatchObject({ code: 'image_timeout' })
+  })
 })
 
 describe('imageProxyBase', () => {

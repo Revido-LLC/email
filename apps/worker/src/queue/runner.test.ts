@@ -57,7 +57,9 @@ describe('processNextJob', () => {
   })
 
   it('retries with exponential backoff on failure below the cap', async () => {
-    const store = new FakeJobStore([job({ attempts: 1 })])
+    // attempts is incremented at claim time, so a claimed row on its 2nd attempt
+    // arrives with attempts=2 (the store no longer re-increments in the runner).
+    const store = new FakeJobStore([job({ attempts: 2 })])
     const registry: ConsumerRegistry = {
       triage: () => Promise.reject(new Error('boom')),
     }
@@ -67,8 +69,22 @@ describe('processNextJob', () => {
     const failure = store.failures[0]
     expect(failure?.attempts).toBe(2)
     expect(failure?.error).toContain('boom')
-    // attempts-so-far after increment = 2 ⇒ backoff 5s * 2^(2-1) = 10s.
+    // current attempt = 2 ⇒ backoff 5s * 2^(2-1) = 10s.
     expect(failure?.runAt.getTime()).toBe(NOW.getTime() + 10_000)
+  })
+
+  it('dead-letters a claim that already exceeded max attempts without running it', async () => {
+    // A poison job that crashed the process every run is reclaimed past the cap.
+    const consumer = vi.fn().mockResolvedValue(undefined)
+    const store = new FakeJobStore([job({ attempts: 6, maxAttempts: 5 })])
+    await processNextJob(store, { triage: consumer }, opts)
+
+    expect(consumer).not.toHaveBeenCalled()
+    expect(store.completed).toHaveLength(0)
+    const failure = store.failures[0]
+    expect(failure?.attempts).toBe(6)
+    expect(failure?.maxAttempts).toBe(5)
+    expect(failure?.error).toContain('exceeded max attempts')
   })
 
   it('dead-letters immediately when no consumer is registered', async () => {

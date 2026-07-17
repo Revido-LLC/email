@@ -7,6 +7,7 @@
  * endpoints — is specified in `docs/api-contract.md`.
  */
 import { serve } from '@hono/node-server'
+import { assertServiceRoleBypassesRls } from '@revido/db/client'
 import { app, type AppType } from './app'
 
 export { app }
@@ -16,4 +17,7 @@ if (process.env.NODE_ENV !== 'test') {
   const port = Number(process.env.PORT ?? 8787)
   serve({ fetch: app.fetch, port })
   console.log(`[api] listening on :${port}`)
+  // One-time deploy sanity check: warn loudly if the connection role can't bypass
+  // the FORCE'd RLS content tables (otherwise every asService read silently empties).
+  void assertServiceRoleBypassesRls()
 }

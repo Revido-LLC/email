@@ -1,6 +1,6 @@
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { describe, expect, it, vi } from 'vitest'
-import { asService, type Database, withUser } from './client'
+import { asService, assertServiceRoleBypassesRls, type Database, withUser } from './client'
 
 const dialect = new PgDialect()
 
@@ -64,5 +64,59 @@ describe('asService', () => {
     expect(db.transaction).toHaveBeenCalledTimes(1)
     // No role/GUC statements are issued for the service path.
     expect(executed).toHaveLength(0)
+  })
+})
+
+/** A fake db whose service transaction resolves `tx.execute` to a scripted probe row. */
+function probeDb(rows: unknown[]) {
+  const tx = { execute: vi.fn(async () => rows) }
+  const db = {
+    transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
+  } as unknown as Database
+  return db
+}
+
+describe('assertServiceRoleBypassesRls', () => {
+  it('is satisfied by a superuser role and does not warn', async () => {
+    const warn = vi.fn()
+    const result = await assertServiceRoleBypassesRls(
+      probeDb([{ role: 'postgres', is_superuser: true, bypass_rls: false }]),
+      { warn },
+    )
+    expect(result.bypasses).toBe(true)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('is satisfied by a BYPASSRLS role and does not warn', async () => {
+    const warn = vi.fn()
+    const result = await assertServiceRoleBypassesRls(
+      probeDb([{ role: 'svc', is_superuser: false, bypass_rls: true }]),
+      { warn },
+    )
+    expect(result.bypasses).toBe(true)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('warns loudly when the role is neither superuser nor BYPASSRLS', async () => {
+    const warn = vi.fn()
+    const result = await assertServiceRoleBypassesRls(
+      probeDb([{ role: 'least_priv', is_superuser: false, bypass_rls: false }]),
+      { warn },
+    )
+    expect(result.bypasses).toBe(false)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0]?.[0])).toContain('BYPASSRLS')
+  })
+
+  it('never throws on a probe error (reports optimistically, logs)', async () => {
+    const warn = vi.fn()
+    const db = {
+      transaction: vi.fn(async () => {
+        throw new Error('connection reset')
+      }),
+    } as unknown as Database
+    const result = await assertServiceRoleBypassesRls(db, { warn })
+    expect(result.bypasses).toBe(true)
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 })

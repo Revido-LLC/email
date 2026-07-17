@@ -75,7 +75,7 @@ const WATCH: WatchRegistration = {
 }
 
 describe('makeRenewWatchConsumer', () => {
-  it('registers a Gmail watch and seeds the historyId cursor', async () => {
+  it('registers a Gmail watch and seeds the historyId cursor + subscription id', async () => {
     const h = renewHarness('gmail', WATCH)
     await makeRenewWatchConsumer(h.deps)(PAYLOAD, JOB)
     expect(h.cursors[0]).toEqual({
@@ -83,10 +83,11 @@ describe('makeRenewWatchConsumer', () => {
       userId: USER_ID,
       historyId: '900100',
       deltaLink: undefined,
+      subscriptionId: 'sub-1',
     })
   })
 
-  it('registers an Outlook subscription and seeds the deltaLink cursor', async () => {
+  it('registers an Outlook subscription and seeds the deltaLink cursor + subscription id', async () => {
     const h = renewHarness('outlook', { ...WATCH, cursor: 'delta-url' })
     await makeRenewWatchConsumer(h.deps)(PAYLOAD, JOB)
     expect(h.cursors[0]).toEqual({
@@ -94,6 +95,7 @@ describe('makeRenewWatchConsumer', () => {
       userId: USER_ID,
       historyId: undefined,
       deltaLink: 'delta-url',
+      subscriptionId: 'sub-1',
     })
   })
 

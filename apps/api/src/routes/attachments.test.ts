@@ -51,8 +51,9 @@ vi.mock('@revido/db/client', () => {
   }
 })
 
-const { attachmentsRouter } = await import('./attachments')
+const { attachmentsRouter, createAttachmentsRouter } = await import('./attachments')
 const { makeUserCrypto } = await import('../lib/crypto')
+const { FakeStorageProvider } = await import('@revido/core')
 
 const DEK = new Uint8Array(32).fill(7)
 
@@ -62,10 +63,10 @@ beforeEach(() => {
   h.session.value = { user: { id: '11111111-1111-4111-8111-111111111111' } }
 })
 
-async function upload(file: File): Promise<Response> {
+async function upload(file: File, router = attachmentsRouter): Promise<Response> {
   const form = new FormData()
   form.append('file', file)
-  return attachmentsRouter.request('/', { method: 'POST', body: form })
+  return router.request('/', { method: 'POST', body: form })
 }
 
 describe('POST /attachments', () => {
@@ -86,13 +87,41 @@ describe('POST /attachments', () => {
     const values = h.insertedValues[0]!
     expect(values.messageId).toBeNull()
     expect(values.sizeBytes).toBe(Buffer.from('hello attachment').byteLength)
+    // Inline: no object-store ref, bytes round-trip through the DEK.
+    expect(values.storageRefCt).toBeNull()
     const decrypted = makeUserCrypto(DEK).decrypt(values.contentCt as never)
     expect(Buffer.from(decrypted, 'base64').toString()).toBe('hello attachment')
   })
 
-  it('rejects a file over the 10 MB cap with 413 and persists nothing', async () => {
-    const oversized = new Uint8Array(10 * 1024 * 1024 + 1)
-    const res = await upload(new File([oversized], 'big.bin', { type: 'application/octet-stream' }))
+  it('stores a file above the 10 MB inline cap in object storage with an encrypted ref', async () => {
+    h.insertedRows = [{ id: 'att-2' }]
+    const storage = new FakeStorageProvider()
+    const router = createAttachmentsRouter(storage)
+    // 11 MB: above the inline cap, below the 25 MB hard cap.
+    const big = new Uint8Array(11 * 1024 * 1024).fill(0xab)
+    const res = await upload(new File([big], 'big.bin', { type: 'application/octet-stream' }), router)
+
+    expect(res.status).toBe(201)
+    // Exactly one object was written to the store.
+    expect(storage.size).toBe(1)
+
+    const values = h.insertedValues[0]!
+    // Stored, not inline: content_ct is null and storage_ref_ct decrypts to the ref.
+    expect(values.contentCt).toBeNull()
+    expect(values.storageRefCt).toBeTruthy()
+    const ref = makeUserCrypto(DEK).decrypt(values.storageRefCt as never)
+    expect(ref).toMatch(/^attachments\/11111111-1111-4111-8111-111111111111\//)
+    // The bytes the store holds under that ref match the upload (spot-checked to
+    // avoid a multi-megabyte deep-equal).
+    const stored = await storage.get(ref)
+    expect(stored.byteLength).toBe(big.byteLength)
+    expect(stored[0]).toBe(0xab)
+    expect(stored[stored.byteLength - 1]).toBe(0xab)
+  })
+
+  it('rejects a file over the 25 MB hard cap with 413 and persists nothing', async () => {
+    const oversized = new Uint8Array(25 * 1024 * 1024 + 1)
+    const res = await upload(new File([oversized], 'huge.bin', { type: 'application/octet-stream' }))
 
     expect(res.status).toBe(413)
     expect(await res.json()).toMatchObject({ error: 'attachment_too_large' })

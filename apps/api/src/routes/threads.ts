@@ -35,7 +35,7 @@ const patchThreadSchema = z.object({
   snoozedUntil: z.string().datetime().nullable().optional(),
 })
 const extractedSchema = z.object({ done: z.boolean() })
-const replySchema = z.object({ html: z.string() })
+const replySchema = z.object({ html: z.string(), attachmentIds: z.array(z.string()).optional() })
 
 export const threadsRouter = protectedRouter()
 
@@ -254,8 +254,8 @@ threadsRouter.patch('/:id/extracted/:index', async (c) => {
 threadsRouter.post('/:id/reply', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
-  const { html } = await readJson(c, replySchema)
+  const { html, attachmentIds } = await readJson(c, replySchema)
   const crypto = await getUserCrypto(userId)
-  const message = await sendReply(userId, crypto, id, html)
+  const message = await sendReply(userId, crypto, id, html, attachmentIds)
   return c.json(message)
 })

@@ -45,6 +45,14 @@ export interface IncrementalDelta {
   nextCursor: SyncCursor
 }
 
+/** A file to attach to an outbound message (decrypted bytes, ready to encode). */
+export interface OutboundAttachment {
+  name: string
+  mime: string
+  /** Raw attachment bytes; each adapter base64-encodes for its own wire format. */
+  content: Uint8Array
+}
+
 export interface OutboundMessage {
   to: { name: string; email: string }[]
   cc?: { name: string; email: string }[]
@@ -54,6 +62,8 @@ export interface OutboundMessage {
   text: string
   /** For replies: the provider message id being replied to (threading headers). */
   inReplyToProviderMessageId?: string
+  /** Files to attach — MIME `multipart/mixed` (Gmail) / Graph fileAttachment (Outlook). */
+  attachments?: OutboundAttachment[]
 }
 
 export interface WatchRegistration {

@@ -7,6 +7,7 @@ const read = (name: string) =>
 
 const rls = read('0001_rls_policies.sql')
 const authJobs = read('0002_auth_jobs.sql')
+const attachmentsPending = read('0004_attachments_pending.sql')
 
 describe('0001 RLS migration (plain Postgres + GUC)', () => {
   it('creates the non-owner app_user role and grants it schema/table access', () => {
@@ -57,5 +58,19 @@ describe('0002 auth + jobs migration', () => {
       expect(authJobs).toContain(`REVOKE ALL PRIVILEGES ON TABLE "${table}" FROM "app_user"`)
       expect(authJobs).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`)
     }
+  })
+})
+
+describe('0004 attachments pending migration', () => {
+  it('makes message_id nullable so a pending upload can exist before its message', () => {
+    expect(attachmentsPending).toContain(
+      'ALTER TABLE "attachments" ALTER COLUMN "message_id" DROP NOT NULL',
+    )
+  })
+
+  it('adds the (user_id, message_id) index for pending lookups', () => {
+    expect(attachmentsPending).toContain(
+      'CREATE INDEX "attachments_user_message_idx" ON "attachments" USING btree ("user_id","message_id")',
+    )
   })
 })

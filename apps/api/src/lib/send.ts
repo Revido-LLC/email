@@ -8,9 +8,10 @@
  * recipient normalization, and job enqueue stay identical. The API never talks to
  * a provider directly; it records intent and hands the actual send to the worker.
  */
-import { asService, withUser } from '@revido/db/client'
+import { asService, withUser, type DbTransaction } from '@revido/db/client'
 import {
   accounts,
+  attachments,
   contacts,
   jobs,
   messageRecipients,
@@ -19,7 +20,7 @@ import {
   threads,
 } from '@revido/db/schema'
 import type { Message } from '@revido/db'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { upsertContact } from './contacts'
 import type { UserCrypto } from './crypto'
 import { HttpError } from './http'
@@ -46,6 +47,36 @@ export interface ComposeInput {
   cc?: RecipientInput[]
   subject: string
   html: string
+  /** Ids of PENDING uploads (`POST /attachments`) to attach on send. */
+  attachmentIds?: string[]
+}
+
+/**
+ * Claim the caller's PENDING attachment uploads for a just-created message.
+ *
+ * Sets `message_id` on the rows whose ids the composer collected from
+ * `POST /attachments`, guarded so a caller can only ever link their own rows that
+ * are still pending (`message_id IS NULL`) — a used or foreign id is a no-op, not
+ * a hijack. The worker then loads these by `message_id` and attaches their
+ * decrypted bytes to the outbound provider message.
+ */
+export async function linkPendingAttachments(
+  tx: DbTransaction,
+  userId: string,
+  messageId: string,
+  attachmentIds: string[] | undefined,
+): Promise<void> {
+  if (!attachmentIds || attachmentIds.length === 0) return
+  await tx
+    .update(attachments)
+    .set({ messageId })
+    .where(
+      and(
+        inArray(attachments.id, attachmentIds),
+        eq(attachments.userId, userId),
+        isNull(attachments.messageId),
+      ),
+    )
 }
 
 /** Compose a new message (creating a thread when none is given) and enqueue send. */
@@ -128,6 +159,9 @@ export async function sendCompose(
     }
     if (recipientRows.length) await tx.insert(messageRecipients).values(recipientRows)
 
+    // Claim the composer's pending uploads for this message.
+    await linkPendingAttachments(tx, userId, messageRow.id, input.attachmentIds)
+
     // Seed participants on a freshly created thread.
     if (!input.threadId && participantContactIds.size) {
       await tx
@@ -157,6 +191,7 @@ export async function sendReply(
   crypto: UserCrypto,
   threadId: string,
   html: string,
+  attachmentIds?: string[],
 ): Promise<Message> {
   const now = new Date()
   const result = await withUser(userId, async (tx) => {
@@ -214,6 +249,9 @@ export async function sendReply(
         })),
       )
     }
+
+    // Claim the composer's pending uploads for this reply.
+    await linkPendingAttachments(tx, userId, messageRow.id, attachmentIds)
 
     await tx
       .update(threads)

@@ -29,6 +29,13 @@
       "when": 1784289308755,
       "tag": "0003_sync_state_subscription_id",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784289308756,
+      "tag": "0004_attachments_pending",
+      "breakpoints": true
     }
   ]
 }

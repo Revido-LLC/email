@@ -211,6 +211,7 @@ export class GmailAdapter implements ProviderAdapter {
       text: message.text,
       inReplyTo,
       references,
+      attachments: message.attachments,
     })
     const payload: { raw: string; threadId?: string } = { raw: encodeBase64Url(rfc822) }
     if (threadId) payload.threadId = threadId

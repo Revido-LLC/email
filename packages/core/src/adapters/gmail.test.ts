@@ -102,6 +102,34 @@ describe('GmailAdapter.send', () => {
     expect(raw).toContain('References: <CADX-root@mail.acme.com> <CADX-msg-1@mail.acme.com>')
     expect(raw).toContain('Content-Type: multipart/alternative')
   })
+
+  it('emits a multipart/mixed with a base64 attachment part', async () => {
+    const { fetchImpl, calls } = makeFakeFetch([
+      { when: (u) => u.includes('/messages/send'), json: sendResponse },
+    ])
+    const adapter = new GmailAdapter({ fetchImpl })
+    const content = Buffer.from('hello attachment')
+    const res = await adapter.send(creds, {
+      to: [{ name: 'Sam Rivera', email: 'sam@acme.com' }],
+      subject: 'Here is the file',
+      html: '<p>See attached.</p>',
+      text: 'See attached.',
+      attachments: [{ name: 'notes.txt', mime: 'text/plain', content }],
+    })
+
+    expect(res.providerMessageId).toBe('msg-sent-1')
+    const sendCall = calls.find((c) => c.method === 'POST' && c.url.includes('/messages/send'))
+    const payload = JSON.parse(sendCall!.body!) as { raw: string }
+    const raw = decodeBase64Url(payload.raw)
+    // The top-level part is now multipart/mixed, wrapping the alternative body.
+    expect(raw).toContain('Content-Type: multipart/mixed')
+    expect(raw).toContain('Content-Type: multipart/alternative')
+    // The attachment part carries the name + base64-encoded content.
+    expect(raw).toContain('Content-Type: text/plain; name="notes.txt"')
+    expect(raw).toContain('Content-Disposition: attachment; filename="notes.txt"')
+    expect(raw).toContain('Content-Transfer-Encoding: base64')
+    expect(raw).toContain(content.toString('base64'))
+  })
 })
 
 describe('GmailAdapter.connect', () => {

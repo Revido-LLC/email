@@ -20,6 +20,7 @@ import type { Provider } from '@revido/db'
 import type {
   BackfillPage,
   IncrementalDelta,
+  OutboundAttachment,
   OutboundMessage,
   ProviderAdapter,
   ProviderCredentials,
@@ -29,6 +30,24 @@ import type {
 } from '../provider-adapter'
 import { authedJson, type FetchImpl } from './http'
 import type { Address } from './mime'
+
+/** A Microsoft Graph `fileAttachment` resource (base64 `contentBytes`). */
+interface GraphFileAttachment {
+  '@odata.type': '#microsoft.graph.fileAttachment'
+  name: string
+  contentType: string
+  contentBytes: string
+}
+
+/** Encode an outbound attachment as a Graph `fileAttachment`. */
+function graphAttachment(att: OutboundAttachment): GraphFileAttachment {
+  return {
+    '@odata.type': '#microsoft.graph.fileAttachment',
+    name: att.name,
+    contentType: att.mime || 'application/octet-stream',
+    contentBytes: Buffer.from(att.content).toString('base64'),
+  }
+}
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0'
 const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
@@ -180,6 +199,7 @@ export class OutlookAdapter implements ProviderAdapter {
       (addrs ?? []).map((a) => ({
         emailAddress: { name: a.name || undefined, address: a.email },
       }))
+    const fileAttachments = (message.attachments ?? []).map(graphAttachment)
 
     if (message.inReplyToProviderMessageId) {
       // Graph builds a reply draft that already carries the threading headers.
@@ -202,6 +222,16 @@ export class OutlookAdapter implements ProviderAdapter {
           }),
         },
       )
+      // Attachments can't be PATCHed onto a message; POST each to the draft's
+      // /attachments collection before sending it.
+      for (const attachment of fileAttachments) {
+        await authedJson<void>(
+          this.fetchImpl,
+          creds.accessToken,
+          `${GRAPH_BASE}/me/messages/${encodeURIComponent(draft.id)}/attachments`,
+          { method: 'POST', body: JSON.stringify(attachment) },
+        )
+      }
       await authedJson<void>(
         this.fetchImpl,
         creds.accessToken,
@@ -220,6 +250,7 @@ export class OutlookAdapter implements ProviderAdapter {
           toRecipients: recipients(message.to),
           ccRecipients: recipients(message.cc),
           bccRecipients: recipients(message.bcc),
+          ...(fileAttachments.length ? { attachments: fileAttachments } : {}),
         },
         saveToSentItems: true,
       }),

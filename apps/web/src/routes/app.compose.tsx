@@ -9,7 +9,8 @@ import { Button, Checkbox, Kbd } from '@revido/ui'
 import {
   AttachButton,
   AttachmentsZone,
-  type MockAttachment,
+  formatBytes,
+  type ComposerAttachment,
 } from '@/components/composer/attachments-zone'
 import { ComposerEditor } from '@/components/composer/composer-editor'
 import { draftToHtml, type ToneKey } from '@/components/composer/draft-data'
@@ -17,7 +18,7 @@ import { PromptBar } from '@/components/composer/prompt-bar'
 import { RecipientsField } from '@/components/composer/recipients-field'
 import { UndoToast } from '@/components/composer/undo-toast'
 import { useAiDraft, useAiRewrite } from '@/lib/hooks/ai'
-import { useCancelSend, useSendMessage } from '@/lib/hooks'
+import { useCancelSend, useSendMessage, useUploadAttachment } from '@/lib/hooks'
 import { useSignatures } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/compose')({
@@ -33,9 +34,45 @@ function ComposeScreen() {
 
   const [recipients, setRecipients] = React.useState<string[]>([])
   const [subject, setSubject] = React.useState('')
-  const [attachments, setAttachments] = React.useState<MockAttachment[]>([])
+  const [attachments, setAttachments] = React.useState<ComposerAttachment[]>([])
   const [remind, setRemind] = React.useState(false)
   const [status, setStatus] = React.useState<SendStatus>('composing')
+
+  // Attachment uploads: each dropped/picked file POSTs to /attachments and its
+  // returned id is collected for send. Chips reflect per-file upload state.
+  const uploadAttachment = useUploadAttachment()
+  const uploading = attachments.some((a) => a.status === 'uploading')
+
+  const handleAddFiles = React.useCallback(
+    (files: File[]) => {
+      for (const file of files) {
+        const localId = `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 7)}`
+        setAttachments((prev) => [
+          ...prev,
+          { localId, name: file.name, size: formatBytes(file.size), status: 'uploading' },
+        ])
+        uploadAttachment.mutate(file, {
+          onSuccess: (att) =>
+            setAttachments((prev) =>
+              prev.map((a) =>
+                a.localId === localId
+                  ? { ...a, status: 'ready', serverId: att.id, size: att.size }
+                  : a,
+              ),
+            ),
+          onError: () =>
+            setAttachments((prev) =>
+              prev.map((a) => (a.localId === localId ? { ...a, status: 'error' } : a)),
+            ),
+        })
+      }
+    },
+    [uploadAttachment],
+  )
+
+  const handleRemoveAttachment = React.useCallback((localId: string) => {
+    setAttachments((prev) => prev.filter((a) => a.localId !== localId))
+  }, [])
 
   // AI writing — draft (POST /ai/draft) and tone rewrite (POST /ai/rewrite) are
   // SSE token streams; the active one's text is pushed into the editor as it lands.
@@ -99,13 +136,18 @@ function ComposeScreen() {
   const handleSend = React.useCallback(() => {
     if (status !== 'composing') return
     if (sendMessage.isPending) return
+    // Don't send mid-upload — an id that hasn't landed yet would be dropped.
+    if (attachments.some((a) => a.status === 'uploading')) return
+    const attachmentIds = attachments
+      .filter((a) => a.status === 'ready' && a.serverId)
+      .map((a) => a.serverId!)
     setStatus('sending')
     sendMessage.mutate(
       {
         to: recipients.map((r): Contact => ({ name: r, email: r })),
         subject,
         html: editor?.getHTML() ?? '',
-        attachmentIds: [],
+        attachmentIds,
         remindIfNoReply: remind,
       },
       {
@@ -113,7 +155,7 @@ function ComposeScreen() {
         onError: () => setStatus('composing'),
       },
     )
-  }, [status, sendMessage, recipients, subject, editor, remind])
+  }, [status, sendMessage, recipients, subject, editor, remind, attachments])
 
   // ⌘↵ / Ctrl+↵ sends.
   React.useEffect(() => {
@@ -214,8 +256,8 @@ function ComposeScreen() {
           {/* Attachments */}
           <AttachmentsZone
             attachments={attachments}
-            onAdd={(files) => setAttachments((prev) => [...prev, ...files])}
-            onRemove={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+            onAddFiles={handleAddFiles}
+            onRemove={handleRemoveAttachment}
           />
         </div>
       </div>
@@ -224,7 +266,7 @@ function ComposeScreen() {
       <div className="glass-thin border-x-0 border-b-0">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <AttachButton onAttach={(file) => setAttachments((prev) => [...prev, file])} />
+            <AttachButton onFiles={handleAddFiles} />
             <label className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
               <Checkbox checked={remind} onCheckedChange={(v) => setRemind(v === true)} />
               <span className="flex items-center gap-1.5">
@@ -237,8 +279,13 @@ function ComposeScreen() {
             <Button variant="ghost" onClick={() => navigate({ to: '/app' })}>
               Discard
             </Button>
-            <Button variant="primary" onClick={handleSend} className="gap-2.5">
-              Send
+            <Button
+              variant="primary"
+              onClick={handleSend}
+              disabled={uploading}
+              className="gap-2.5"
+            >
+              {uploading ? 'Uploading…' : 'Send'}
               <span className="flex items-center gap-1">
                 <Kbd className="bg-primary-foreground/15 text-primary-foreground">⌘</Kbd>
                 <Kbd className="bg-primary-foreground/15 text-primary-foreground">

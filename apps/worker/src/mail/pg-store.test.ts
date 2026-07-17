@@ -250,6 +250,68 @@ describe('PgMailStore.applyTriage', () => {
   })
 })
 
+describe('PgMailStore.applySummary', () => {
+  it('encrypts the summary + each fact label/value/href, keeping type/position plaintext', async () => {
+    const { db, calls } = scriptedDb([])
+    const store = new PgMailStore(db)
+    await store.applySummary({
+      userId: USER_ID,
+      threadId: 'thread-1',
+      crypto: passthroughCrypto,
+      summary: 'Order shipped; $249 due Friday.',
+      facts: [
+        { type: 'amount', label: 'Total', value: '$249.00' },
+        { type: 'link', label: 'Unsubscribe', value: 'Unsubscribe', href: 'https://x.test/u' },
+      ],
+    })
+
+    // Prior facts are cleared before re-insert so enrichment is idempotent per thread.
+    expect(calls.some((c) => c.text.includes('delete from extracted_facts'))).toBe(true)
+
+    const encrypted = jsonBinds(calls).map((c) => (c as { ct: string }).ct)
+    expect(encrypted).toContain('Order shipped; $249 due Friday.') // summary ct
+    expect(encrypted).toContain('Total') // fact label ct
+    expect(encrypted).toContain('$249.00') // fact value ct
+    expect(encrypted).toContain('https://x.test/u') // fact href ct
+
+    // `type` (+ position) is queryable plaintext; the value/label never appear bare.
+    const scalars = scalarBinds(calls)
+    expect(scalars).toContain('amount')
+    expect(scalars).toContain('link')
+    expect(scalars).not.toContain('$249.00')
+    expect(scalars).not.toContain('Total')
+  })
+
+  it('writes no fact rows when extraction found nothing', async () => {
+    const { db, calls } = scriptedDb([])
+    await new PgMailStore(db).applySummary({
+      userId: USER_ID,
+      threadId: 'thread-1',
+      crypto: passthroughCrypto,
+      summary: 'Nothing structured here.',
+      facts: [],
+    })
+    expect(calls.some((c) => c.text.includes('insert into extracted_facts'))).toBe(false)
+  })
+})
+
+describe('PgMailStore.listNewMailAgents', () => {
+  it('selects only enabled, new-mail-triggered agents as the service role', async () => {
+    const { db, calls, withUserCount } = scriptedDb([
+      { when: (t) => t.includes('from agents'), rows: [{ id: 'agent-1' }, { id: 'agent-2' }] },
+    ])
+    const agents = await new PgMailStore(db).listNewMailAgents(USER_ID)
+    expect(agents).toEqual([{ id: 'agent-1' }, { id: 'agent-2' }])
+
+    const q = calls.find((c) => c.text.includes('from agents'))
+    expect(q?.text).toContain('enabled = true')
+    expect(q?.text).toContain("trigger = 'new-mail'")
+    expect(q?.values).toContain(USER_ID)
+    // Agent config is plaintext and read service-side — no withUser/RLS transaction.
+    expect(withUserCount()).toBe(0)
+  })
+})
+
 describe('PgMailStore.increment', () => {
   it('bumps a usage counter for the current YYYY-MM period by default', async () => {
     const { db, calls } = scriptedDb([])

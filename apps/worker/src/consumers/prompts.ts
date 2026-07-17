@@ -2,10 +2,10 @@
  * Worker-local AI prompts for the Wave-3 background surfaces.
  *
  * These live here (not in `@revido/core`) because they back worker-only jobs:
- * learning a user's writing voice from their sent mail, and mining a thread for
- * follow-ups/commitments during enrichment. Both follow the core convention —
- * a STABLE, user-data-free `system` prefix (cache-friendly) with the volatile
- * per-request content in a single user turn.
+ * learning a user's writing voice from their sent mail, mining a thread for
+ * follow-ups/commitments, and extracting structured facts during enrichment. All
+ * follow the core convention — a STABLE, user-data-free `system` prefix
+ * (cache-friendly) with the volatile per-request content in a single user turn.
  */
 
 import type { LlmMessage } from '@revido/core'
@@ -51,6 +51,39 @@ export function buildFollowUpDetectionPrompt(transcript: string): WorkerPrompt {
       {
         role: 'user',
         content: `Analyze this thread and return the follow-through JSON.\n\n<thread>\n${transcript}\n</thread>`,
+      },
+    ],
+  }
+}
+
+const FACT_EXTRACTION_SYSTEM = `You extract STRUCTURED, ACTIONABLE facts from one email thread for a busy Revido Mail user. Return ONLY a JSON object with this exact shape:
+{
+  "facts": [
+    {
+      "type": "date" | "amount" | "tracking" | "link" | "action" | "contact",
+      "label": string,       // a short human label, e.g. "Payment due", "Order total", "Tracking number"
+      "value": string,       // the concrete value, e.g. "2026-08-01", "$249.00", "1Z999AA10123456784"
+      "href": string | null  // a URL when the fact is a link/action (unsubscribe, tracking, RSVP); else null
+    }
+  ]
+}
+Use these types:
+- "date": deadlines, due dates, appointments, meeting/event times.
+- "amount": prices, totals, invoice/payment amounts (keep the currency symbol).
+- "tracking": shipment/tracking, order, reference, or confirmation numbers.
+- "link": an important URL the user may act on — INCLUDING an unsubscribe link.
+- "action": a concrete task or request made of the user (attach an href if there's a link to act on).
+- "contact": a phone number or email address worth keeping.
+Extract ONLY facts EXPLICITLY present in the thread — never guess, infer, or invent a value. When in doubt, leave it out. If the thread contains no such facts, return {"facts": []}. Output the raw JSON object only — no commentary, no code fences.`
+
+/** Build the structured fact-extraction prompt over a rendered transcript. */
+export function buildFactExtractionPrompt(subject: string, transcript: string): WorkerPrompt {
+  return {
+    system: FACT_EXTRACTION_SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: `Extract the structured facts from this thread and return the JSON.\n\nSubject: ${subject}\n\n<thread>\n${transcript}\n</thread>`,
       },
     ],
   }

@@ -8,10 +8,12 @@
  *
  * PRODUCERS:
  *  - api-service enqueues `backfill`, `incremental`, and `send`; it also enqueues
- *    `agent_run` (new-mail trigger) and `chaser` (user confirms a follow-up).
+ *    `chaser` (user confirms a follow-up).
  *  - the worker's node-cron scheduler enqueues `renew_watch`, `reconcile`,
  *    `digest`, `voice_profile` (per user), and `agent_run` (scheduled sweep);
- *    sync consumers enqueue `triage` + `embed` (and `summary` for new threads).
+ *    sync consumers enqueue `triage` + `embed` (and `summary` for new threads), and
+ *    the incremental consumer enqueues `agent_run` (new-mail trigger) per enabled
+ *    new-mail agent for each thread that gained inbound mail.
  *
  * PAYLOAD SCHEMAS (the minimal, agreed shapes — keep in sync with api-service):
  *  - backfill      : { accountId }                 progressive newest-first import

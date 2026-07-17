@@ -14,19 +14,24 @@
  * Once resolved it idempotently upserts the changed messages, deletes removed
  * ones, advances the provider cursor (historyId for Gmail, deltaLink for Outlook),
  * and enqueues `embed` + `triage` for each new message plus one `summary` per
- * changed thread. A missing cursor means no watch has seeded one yet — the job is
- * a no-op until `renew_watch` runs.
+ * changed thread. New INBOUND mail is also the event-driven agent trigger: for
+ * each thread that gained an inbound message this delta it fans out one `agent_run`
+ * per enabled new-mail agent — deduped to ONE run per (agent, thread) so a burst of
+ * N messages in a thread can't fan out N× (the hourly cron sweep is the full-inbox
+ * fallback). A missing cursor means no watch has seeded one yet — the job is a
+ * no-op until `renew_watch` runs.
  */
 
 import type { AccountContext } from '../db/accounts'
 import type { AdapterFactory } from '../adapters'
 import type { ProviderCredentials } from '@revido/core'
-import type { SyncStore } from '../mail/store'
+import type { AgentStore, SyncStore } from '../mail/store'
 import type { JobStore } from '../queue/store'
 import type { JobConsumer, Logger } from '../queue/runner'
 import {
   QUEUE,
   incrementalPayload,
+  type AgentRunPayload,
   type EmbedPayload,
   type IncrementalPayload,
   type SummaryPayload,
@@ -44,7 +49,8 @@ export interface IncrementalDeps {
     | 'saveCursor'
     | 'resolveAccountByEmail'
     | 'resolveAccountBySubscription'
-  >
+  > &
+    Pick<AgentStore, 'listNewMailAgents'>
   jobs: Pick<JobStore, 'enqueue'>
   saveCredentials(account: AccountContext, creds: ProviderCredentials): Promise<void>
   logger?: Pick<Logger, 'info'>
@@ -102,8 +108,9 @@ export function makeIncrementalConsumer(deps: IncrementalDeps): JobConsumer {
 
     const delta = await adapter.incremental(creds, startCursor)
 
-    // Enqueue at most one summary per thread that gained a new message this delta.
-    const summarizedThreads = new Set<string>()
+    // Distinct threads that gained a NEW inbound message this delta. Drives both
+    // the one-summary-per-thread dedup and the event-driven agent trigger below.
+    const newInboundThreads = new Set<string>()
     for (const msg of delta.upserted) {
       const persisted = await deps.mail.persistMessage(
         { accountId, userId: account.userId, crypto: account.crypto },
@@ -119,14 +126,20 @@ export function makeIncrementalConsumer(deps: IncrementalDeps): JobConsumer {
             messageId: persisted.messageId,
           }
           await deps.jobs.enqueue(QUEUE.triage, triageJob)
-          if (!summarizedThreads.has(persisted.threadId)) {
-            summarizedThreads.add(persisted.threadId)
+          if (!newInboundThreads.has(persisted.threadId)) {
+            newInboundThreads.add(persisted.threadId)
             const summaryJob: SummaryPayload = { accountId, threadId: persisted.threadId }
             await deps.jobs.enqueue(QUEUE.summary, summaryJob)
           }
         }
       }
     }
+
+    // Event-driven agent trigger: fan an `agent_run` out per enabled new-mail agent,
+    // scoped to each affected thread. Agents are looked up once and reused, and the
+    // per-thread set already deduped the burst — so N messages in one thread yield
+    // exactly one run per agent for that thread.
+    await enqueueAgentRuns(deps, account.userId, newInboundThreads)
 
     if (delta.deletedProviderMessageIds.length > 0) {
       await deps.mail.deleteMessages(account.userId, delta.deletedProviderMessageIds)
@@ -138,5 +151,27 @@ export function makeIncrementalConsumer(deps: IncrementalDeps): JobConsumer {
       historyId: account.provider === 'gmail' ? delta.nextCursor : undefined,
       deltaLink: account.provider === 'outlook' ? delta.nextCursor : undefined,
     })
+  }
+}
+
+/**
+ * Fan an `agent_run` out per enabled new-mail agent for each affected thread. The
+ * enabled-agent lookup runs once (skipped entirely when nothing new arrived), and
+ * the caller's thread set is already deduped, so this enqueues exactly one run per
+ * (agent, thread). No enabled agents ⇒ nothing enqueued.
+ */
+async function enqueueAgentRuns(
+  deps: IncrementalDeps,
+  userId: string,
+  threadIds: ReadonlySet<string>,
+): Promise<void> {
+  if (threadIds.size === 0) return
+  const agents = await deps.mail.listNewMailAgents(userId)
+  if (agents.length === 0) return
+  for (const threadId of threadIds) {
+    for (const agent of agents) {
+      const job: AgentRunPayload = { userId, agentId: agent.id, threadIds: [threadId] }
+      await deps.jobs.enqueue(QUEUE.agentRun, job)
+    }
   }
 }

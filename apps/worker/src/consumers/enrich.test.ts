@@ -7,7 +7,12 @@ import type {
   CreateReminderInput,
   ThreadForSummary,
 } from '../mail/store'
-import { makeSummaryConsumer, parseFollowUpDetection, type SummaryDeps } from './enrich'
+import {
+  makeSummaryConsumer,
+  parseFactExtraction,
+  parseFollowUpDetection,
+  type SummaryDeps,
+} from './enrich'
 
 const passthroughCrypto: AccountCrypto = {
   encrypt: (plaintext) => ({ ct: plaintext, iv: '', tag: '', v: 1 }),
@@ -138,5 +143,113 @@ describe('parseFollowUpDetection', () => {
       commitments: [],
     })
     expect(parseFollowUpDetection('not json')).toBeNull()
+  })
+})
+
+/** An inbound-only thread: no outbound message ⇒ follow-up detection is skipped, so
+ *  the extraction JSON call is the only strict-JSON call the consumer makes. */
+function inboundOnlyThread(): ThreadForSummary {
+  return {
+    subject: 'Your order shipped',
+    priority: 'normal',
+    outputLanguage: 'en',
+    detectedLanguage: 'en',
+    messages: [
+      {
+        from: { name: 'Shop', email: 'orders@shop.test' },
+        date: '2026-07-15T00:00:00Z',
+        body: 'Total $249.00, due 2026-08-01. Track at https://x.test/t . Unsubscribe: https://x.test/u',
+        outbound: false,
+      },
+    ],
+  }
+}
+
+/** Return the given extraction JSON for strict-JSON requests, plain summary text otherwise. */
+function extractionLlm(json: unknown): FakeLlmClient {
+  return new FakeLlmClient({
+    respond: (req) =>
+      req.responseFormat?.type === 'json' ? JSON.stringify(json) : 'A concise summary.',
+  })
+}
+
+describe('makeSummaryConsumer fact extraction', () => {
+  function depsWith(llm: FakeLlmClient, sink: ApplySummaryInput[]): SummaryDeps {
+    return {
+      loadAccount: () => Promise.resolve(fakeAccount()),
+      mail: {
+        getThread: () => Promise.resolve(inboundOnlyThread()),
+        applySummary: async (input) => {
+          sink.push(input)
+        },
+        createReminder: vi.fn(),
+        createCommitment: vi.fn(),
+        increment: vi.fn(),
+      },
+      llm,
+    }
+  }
+
+  it('mines structured facts and writes them alongside the summary', async () => {
+    const summaries: ApplySummaryInput[] = []
+    const llm = extractionLlm({
+      facts: [
+        { type: 'amount', label: 'Total', value: '$249.00' },
+        { type: 'date', label: 'Payment due', value: '2026-08-01' },
+        { type: 'link', label: 'Unsubscribe', value: 'Unsubscribe', href: 'https://x.test/u' },
+      ],
+    })
+    await makeSummaryConsumer(depsWith(llm, summaries))(PAYLOAD, JOB)
+
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0]?.summary).toBe('A concise summary.')
+    // type/href/label/value pass through to the store as-is (the store encrypts label/value/href).
+    expect(summaries[0]?.facts).toEqual([
+      { type: 'amount', label: 'Total', value: '$249.00' },
+      { type: 'date', label: 'Payment due', value: '2026-08-01' },
+      { type: 'link', label: 'Unsubscribe', value: 'Unsubscribe', href: 'https://x.test/u' },
+    ])
+  })
+
+  it('writes no facts when the extraction is empty', async () => {
+    const summaries: ApplySummaryInput[] = []
+    await makeSummaryConsumer(depsWith(extractionLlm({ facts: [] }), summaries))(PAYLOAD, JOB)
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0]?.facts).toEqual([])
+  })
+
+  it('does not crash on malformed extraction JSON — the summary still lands with no facts', async () => {
+    const summaries: ApplySummaryInput[] = []
+    const llm = new FakeLlmClient({
+      respond: (req) => (req.responseFormat?.type === 'json' ? 'definitely {not valid' : 'Summary.'),
+    })
+    await expect(
+      makeSummaryConsumer(depsWith(llm, summaries))(PAYLOAD, JOB),
+    ).resolves.toBeUndefined()
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0]?.summary).toBe('Summary.')
+    expect(summaries[0]?.facts).toEqual([])
+  })
+})
+
+describe('parseFactExtraction', () => {
+  it('keeps well-formed facts, skips malformed ones, and coerces junk to none', () => {
+    expect(
+      parseFactExtraction({
+        facts: [
+          { type: 'amount', label: 'Total', value: '$10' },
+          { type: 'bogus', label: 'x', value: 'y' }, // unknown type → skipped
+          { type: 'date', label: '', value: '2026-01-01' }, // empty label → skipped
+          { type: 'link', label: 'U', value: 'U', href: 'https://x.test' },
+        ],
+      }),
+    ).toEqual([
+      { type: 'amount', label: 'Total', value: '$10' },
+      { type: 'link', label: 'U', value: 'U', href: 'https://x.test' },
+    ])
+    expect(parseFactExtraction({ facts: [] })).toEqual([])
+    expect(parseFactExtraction({ nope: true })).toEqual([]) // missing facts ⇒ default []
+    expect(parseFactExtraction('not json')).toEqual([])
+    expect(parseFactExtraction(null)).toEqual([])
   })
 })

@@ -1,6 +1,6 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Link } from '@tanstack/react-router'
-import { CATEGORIES, USER, type Thread, type ThreadBadge } from '@revido/mock-data'
+import type { Thread, ThreadBadge } from '@revido/db'
 import {
   Badge,
   Button,
@@ -24,6 +24,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import * as React from 'react'
+import { CATEGORIES } from '@/lib/categories'
+import { useMe } from '@/lib/hooks'
 
 const BADGE_ICON: Record<ThreadBadge['kind'], LucideIcon> = {
   attachment: Paperclip,
@@ -69,8 +71,9 @@ export function ThreadRow({
   onHover,
   innerRef,
 }: ThreadRowProps) {
+  const { data: me } = useMe()
   const meta = CATEGORIES[thread.category]
-  const sender = thread.participants.find((p) => p.email !== USER.email) ?? thread.participants[0]!
+  const sender = thread.participants.find((p) => p.email !== me?.email) ?? thread.participants[0]!
   const showBox = selectMode || selected
 
   return (

@@ -2,7 +2,10 @@ import * as React from 'react'
 import i18n, { LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/i18n/config'
 
 export type AiTab = 'insights' | 'chat'
+/** The resolved, applied theme. */
 export type Theme = 'light' | 'dark'
+/** The user's chosen preference — `system` follows the OS setting live. */
+export type ThemePreference = 'light' | 'dark' | 'system'
 export type { Locale }
 
 interface AppState {
@@ -16,7 +19,14 @@ interface AppState {
   setMobileAiOpen: (open: boolean) => void
   aiTab: AiTab
   setAiTab: (tab: AiTab) => void
+  /** A question handed to the assistant chat (e.g. from ⌘K "Ask AI"); consumed once. */
+  aiChatQuery: string | null
+  setAiChatQuery: (query: string | null) => void
+  /** The resolved theme actually applied to the document (`light` | `dark`). */
   theme: Theme
+  /** The user's stored preference (`light` | `dark` | `system`). */
+  themePreference: ThemePreference
+  setThemePreference: (preference: ThemePreference) => void
   toggleTheme: () => void
   commandOpen: boolean
   setCommandOpen: (open: boolean) => void
@@ -43,24 +53,61 @@ function detectDefaultLocale(): Locale {
   return SUPPORTED_LOCALES.find((l) => lang.startsWith(l)) ?? 'en'
 }
 
+/** The OS's current color-scheme preference. */
+function systemTheme(): Theme {
+  if (typeof window === 'undefined') return 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+/** Resolve a stored preference to the theme to actually apply. */
+function resolveTheme(preference: ThemePreference): Theme {
+  return preference === 'system' ? systemTheme() : preference
+}
+
+/**
+ * Read the initial theme preference, migrating the legacy `rm.theme` value
+ * (`light` | `dark`, written before the picker existed) into an explicit choice.
+ */
+function readInitialThemePreference(): ThemePreference {
+  const stored = readStored<ThemePreference | null>('rm.themePreference', null)
+  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
+  const legacy = readStored<Theme | null>('rm.theme', null)
+  if (legacy === 'light' || legacy === 'dark') return legacy
+  return 'system'
+}
+
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [navCollapsed, setNavCollapsed] = React.useState(() => readStored('rm.navCollapsed', false))
   const [aiPanelOpen, setAiPanelOpen] = React.useState(() => readStored('rm.aiPanelOpen', true))
   const [mobileAiOpen, setMobileAiOpen] = React.useState(false)
   const [aiTab, setAiTab] = React.useState<AiTab>('insights')
+  const [aiChatQuery, setAiChatQuery] = React.useState<string | null>(null)
   const [commandOpen, setCommandOpen] = React.useState(false)
-  const [theme, setTheme] = React.useState<Theme>(() => {
-    const stored = readStored<Theme | null>('rm.theme', null)
-    if (stored) return stored
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-      return 'dark'
-    return 'light'
-  })
+  const [themePreference, setThemePreference] =
+    React.useState<ThemePreference>(readInitialThemePreference)
+  const [theme, setTheme] = React.useState<Theme>(() => resolveTheme(readInitialThemePreference()))
   const [locale, setLocale] = React.useState<Locale>(() => {
     const stored = readStored<string | null>(LOCALE_STORAGE_KEY, null)
     return isSupportedLocale(stored) ? stored : detectDefaultLocale()
   })
 
+  // Persist the preference and recompute the resolved theme from it.
+  React.useEffect(() => {
+    window.localStorage.setItem('rm.themePreference', JSON.stringify(themePreference))
+    setTheme(resolveTheme(themePreference))
+  }, [themePreference])
+
+  // While following the system, track OS changes live.
+  React.useEffect(() => {
+    if (themePreference !== 'system' || typeof window === 'undefined') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => setTheme(mq.matches ? 'dark' : 'light')
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [themePreference])
+
+  // Apply the resolved theme to the document. `rm.theme` is kept in sync for
+  // backward compatibility (older reads) though the class is the source of truth.
   React.useEffect(() => {
     const root = document.documentElement
     root.classList.toggle('dark', theme === 'dark')
@@ -91,8 +138,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setMobileAiOpen,
     aiTab,
     setAiTab,
+    aiChatQuery,
+    setAiChatQuery,
     theme,
-    toggleTheme: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+    themePreference,
+    setThemePreference,
+    // Toggle flips to the opposite of the *resolved* theme, pinning an explicit
+    // preference (so a Shift+T from `system` lands on a concrete light/dark).
+    toggleTheme: () =>
+      setThemePreference((prev) => (resolveTheme(prev) === 'dark' ? 'light' : 'dark')),
     commandOpen,
     setCommandOpen,
     locale,

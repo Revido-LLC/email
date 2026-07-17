@@ -5,10 +5,16 @@ import { cn } from '@revido/ui'
 
 /**
  * The "To" field. Entered addresses become removable chips; the raw input keeps
- * flowing after each one. Backspace on an empty input pops the last chip.
+ * flowing after each one. Backspace on an empty input pops the last chip. The
+ * chip list is controlled by the parent so the composer can send to it.
  */
-export function RecipientsField() {
-  const [recipients, setRecipients] = React.useState<string[]>([])
+export function RecipientsField({
+  recipients,
+  onChange,
+}: {
+  recipients: string[]
+  onChange: (next: string[]) => void
+}) {
   const [value, setValue] = React.useState('')
 
   function commit() {
@@ -18,7 +24,7 @@ export function RecipientsField() {
       .trim()
     setValue('')
     if (!next) return
-    setRecipients((prev) => (prev.includes(next) ? prev : [...prev, next]))
+    onChange(recipients.includes(next) ? recipients : [...recipients, next])
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -26,7 +32,7 @@ export function RecipientsField() {
       e.preventDefault()
       commit()
     } else if (e.key === 'Backspace' && !value && recipients.length) {
-      setRecipients((prev) => prev.slice(0, -1))
+      onChange(recipients.slice(0, -1))
     }
   }
 
@@ -41,7 +47,7 @@ export function RecipientsField() {
           <button
             type="button"
             aria-label={`Remove ${r}`}
-            onClick={() => setRecipients((prev) => prev.filter((x) => x !== r))}
+            onClick={() => onChange(recipients.filter((x) => x !== r))}
             className={cn(
               'flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors',
               'hover:bg-secondary hover:text-foreground',

@@ -1,9 +1,10 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { getReminders, type Reminder, type ReminderKind } from '@revido/mock-data'
+import type { Reminder, ReminderKind } from '@revido/db'
 import { AiTag, Badge, Button, Sparkle, cn } from '@revido/ui'
-import { AlarmClock, Bell, ChevronRight, Clock, Moon, Send } from 'lucide-react'
+import { AlarmClock, Bell, ChevronRight, Clock, Loader2, Moon, Send } from 'lucide-react'
 import * as React from 'react'
+import { useReminders, useSendChaser, useSnoozeReminder } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/reminders')({
   component: RemindersScreen,
@@ -43,7 +44,8 @@ const GROUPS: {
 ]
 
 function RemindersScreen() {
-  const reminders = getReminders()
+  const { data, isPending } = useReminders()
+  const reminders = data ?? []
 
   return (
     <div className="h-full overflow-y-auto">
@@ -62,12 +64,18 @@ function RemindersScreen() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <div className="space-y-6">
-          {GROUPS.map((group) => {
-            const items = reminders.filter((r) => r.kind === group.kind)
-            return <ReminderGroup key={group.kind} group={group} items={items} />
-          })}
-        </div>
+        {isPending ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {GROUPS.map((group) => {
+              const items = reminders.filter((r) => r.kind === group.kind)
+              return <ReminderGroup key={group.kind} group={group} items={items} />
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -146,12 +154,21 @@ function ReminderRow({ reminder, token }: { reminder: Reminder; token: string })
         <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </Link>
 
-      {reminder.draftReply && <ChaserBlock draft={reminder.draftReply} />}
+      {reminder.draftReply && <ChaserBlock reminderId={reminder.id} draft={reminder.draftReply} />}
     </div>
   )
 }
 
-function ChaserBlock({ draft }: { draft: string }) {
+/** Snooze a reminder by a week by default. */
+function inOneWeek(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 7)
+  return d.toISOString()
+}
+
+function ChaserBlock({ reminderId, draft }: { reminderId: string; draft: string }) {
+  const sendChaser = useSendChaser()
+  const snoozeReminder = useSnoozeReminder()
   const [resolved, setResolved] = React.useState<null | 'sent' | 'snoozed'>(null)
 
   return (
@@ -167,10 +184,24 @@ function ChaserBlock({ draft }: { draft: string }) {
           </span>
         ) : (
           <>
-            <Button size="sm" variant="ai" onClick={() => setResolved('sent')}>
+            <Button
+              size="sm"
+              variant="ai"
+              onClick={() => {
+                setResolved('sent')
+                sendChaser.mutate(reminderId)
+              }}
+            >
               <Sparkle className="text-ai-foreground" /> Send chaser
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setResolved('snoozed')}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setResolved('snoozed')
+                snoozeReminder.mutate({ id: reminderId, until: inOneWeek() })
+              }}
+            >
               <Moon className="size-3.5" /> Snooze
             </Button>
           </>

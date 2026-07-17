@@ -82,6 +82,82 @@ export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T>
   return body as T
 }
 
+/** Handlers for a Server-Sent-Events stream consumed via `apiStream`. */
+export interface SSEStreamHandlers {
+  /** Called once per SSE frame with the `event:` name and parsed `data:` payload. */
+  onEvent: (event: string, data: unknown) => void
+  /** Abort signal to cancel the in-flight stream. */
+  signal?: AbortSignal
+}
+
+/**
+ * POST a JSON body and consume the Server-Sent-Events response as a stream.
+ *
+ * The AI endpoints (`/ai/draft`, `/ai/rewrite`, `/ai/chat`) stream `token` events
+ * followed by a terminal `done` (chat adds a `citations` event first). Because the
+ * request carries a POST body, `EventSource` can't be used — we read the response
+ * body with a `ReadableStream` reader and split it into SSE frames ourselves.
+ */
+export async function apiStream(
+  path: string,
+  body: unknown,
+  handlers: SSEStreamHandlers,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    signal: handlers.signal,
+    headers: {
+      Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body ?? {}),
+  })
+  if (!res.ok || !res.body) {
+    const errBody = await parseBody(res)
+    const message =
+      typeof errBody === 'object' && errBody !== null && 'message' in errBody
+        ? String((errBody as { message: unknown }).message)
+        : `Request to ${path} failed (${res.status})`
+    throw new ApiError(res.status, message, errBody)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  const flush = (raw: string) => {
+    const frame = raw.replace(/\r/g, '').trim()
+    if (!frame) return
+    let event = 'message'
+    const dataLines: string[] = []
+    for (const line of frame.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim()
+      else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+    }
+    const dataStr = dataLines.join('\n')
+    let data: unknown
+    try {
+      data = dataStr ? JSON.parse(dataStr) : undefined
+    } catch {
+      data = dataStr
+    }
+    handlers.onEvent(event, data)
+  }
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    let idx: number
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      flush(buffer.slice(0, idx))
+      buffer = buffer.slice(idx + 2)
+    }
+  }
+  if (buffer.trim()) flush(buffer)
+}
+
 /** FormData passes through untouched; anything else is JSON-encoded. */
 function withBody(data: unknown): ApiFetchInit {
   if (data === undefined) return {}

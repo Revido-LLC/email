@@ -1,12 +1,6 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, useParams } from '@tanstack/react-router'
-import {
-  TODAY_BRIEF,
-  getMessages,
-  getThread,
-  type ExtractedFact,
-  type Thread,
-} from '@revido/mock-data'
+import type { ExtractedFact } from '@revido/db'
 import {
   AiTag,
   Badge,
@@ -33,6 +27,8 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { useAppState } from '@/lib/app-state'
+import { useAiChat } from '@/lib/hooks/ai'
+import { useMessages, useNeedsYou, useThread, useToday, useToggleExtractedFact } from '@/lib/hooks'
 
 const factIcon: Record<ExtractedFact['type'], React.ReactNode> = {
   date: <Calendar className="size-3.5" />,
@@ -47,7 +43,7 @@ export function AIPanel() {
   const { aiPanelOpen, setAiPanelOpen, mobileAiOpen, setMobileAiOpen, aiTab, setAiTab } =
     useAppState()
   const params = useParams({ strict: false }) as { threadId?: string }
-  const thread = params.threadId ? getThread(params.threadId) : undefined
+  const threadId = params.threadId
 
   const renderHeader = (onClose: () => void, label: string, icon: React.ReactNode) => (
     <div className="flex items-center justify-between px-4 pt-3.5">
@@ -63,7 +59,10 @@ export function AIPanel() {
     </div>
   )
 
-  const renderBody = () => (
+  // The body renders in both the desktop and mobile asides; only the `primary`
+  // (desktop) instance consumes the command-palette "Ask AI" query so it isn't
+  // sent twice.
+  const renderBody = (primary: boolean) => (
     <Tabs
       value={aiTab}
       onValueChange={(v) => setAiTab(v as 'insights' | 'chat')}
@@ -78,12 +77,14 @@ export function AIPanel() {
 
       <TabsContent value="insights" className="min-h-0 flex-1">
         <ScrollArea className="h-full">
-          <div className="p-4">{thread ? <ThreadInsights thread={thread} /> : <DayInsights />}</div>
+          <div className="p-4">
+            {threadId ? <ThreadInsights threadId={threadId} /> : <DayInsights />}
+          </div>
         </ScrollArea>
       </TabsContent>
 
       <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
-        <ChatTab />
+        <ChatTab threadId={threadId} consumeQuery={primary} />
       </TabsContent>
     </Tabs>
   )
@@ -98,7 +99,7 @@ export function AIPanel() {
             'Collapse panel (⌘J)',
             <PanelRightClose className="size-4" />,
           )}
-          {renderBody()}
+          {renderBody(true)}
         </aside>
       ) : (
         <div className="hidden h-full w-12 shrink-0 flex-col items-center glass-thin border-y-0 border-r-0 py-3 lg:flex">
@@ -132,17 +133,29 @@ export function AIPanel() {
           )}
         >
           {renderHeader(() => setMobileAiOpen(false), 'Close assistant', <X className="size-4" />)}
-          {renderBody()}
+          {renderBody(false)}
         </aside>
       </div>
     </>
   )
 }
 
-function ThreadInsights({ thread }: { thread: Thread }) {
-  const messages = getMessages(thread.id)
-  const actions = thread.extracted.filter((f) => f.type === 'action')
+function ThreadInsights({ threadId }: { threadId: string }) {
+  const { data: thread, isPending } = useThread(threadId)
+  const { data: messages } = useMessages(threadId)
+  const toggleFact = useToggleExtractedFact()
+
+  if (isPending) return <PanelSkeleton />
+  if (!thread) return null
+
+  // Preserve each fact's index within `thread.extracted` so the toggle hits the
+  // right row server-side.
+  const actions = thread.extracted
+    .map((fact, index) => ({ fact, index }))
+    .filter((f) => f.fact.type === 'action')
   const facts = thread.extracted.filter((f) => f.type !== 'action')
+  const messageCount = messages?.length ?? 0
+
   return (
     <div className="space-y-5">
       <section>
@@ -157,10 +170,16 @@ function ThreadInsights({ thread }: { thread: Thread }) {
         <section>
           <h4 className="mb-2 text-sm font-semibold">Action items</h4>
           <div className="space-y-2">
-            {actions.map((a, i) => (
-              <label key={i} className="flex items-start gap-2.5 text-sm">
-                <Checkbox defaultChecked={a.done} className="mt-0.5" />
-                <span className="text-muted-foreground">{a.label}</span>
+            {actions.map(({ fact, index }) => (
+              <label key={index} className="flex items-start gap-2.5 text-sm">
+                <Checkbox
+                  defaultChecked={fact.done}
+                  className="mt-0.5"
+                  onCheckedChange={(v) =>
+                    toggleFact.mutate({ id: thread.id, index, done: v === true })
+                  }
+                />
+                <span className="text-muted-foreground">{fact.label}</span>
               </label>
             ))}
           </div>
@@ -183,75 +202,65 @@ function ThreadInsights({ thread }: { thread: Thread }) {
       )}
 
       <Separator />
-      <section>
-        <div className="mb-2 flex items-center gap-1.5">
-          <Sparkle />
-          <h4 className="text-sm font-semibold">Suggested reply</h4>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground">
-          {suggestedReply(thread)}
-        </div>
-        <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="ai" className="flex-1">
-            <Sparkles className="size-3.5" /> Use draft
-          </Button>
-          <Button size="sm" variant="outline">
-            Edit
-          </Button>
-        </div>
-      </section>
-
       <div className="text-2xs text-muted-foreground/70">
-        {messages.length} message{messages.length === 1 ? '' : 's'} in this thread
+        {messageCount} message{messageCount === 1 ? '' : 's'} in this thread
       </div>
     </div>
   )
 }
 
-function suggestedReply(thread: Thread): string {
-  if (thread.category === 'to-reply' && thread.id === 't-acme')
-    return 'Hi John — yes, the $48,000 includes the analytics dashboard, and July 22 works for kickoff. I’ll send a calendar hold. Thursday call sounds great.'
-  return 'Thanks for the note — happy to help. Let me pull the details together and get back to you shortly.'
-}
-
 function DayInsights() {
-  const { stats } = TODAY_BRIEF
+  const { data: brief, isPending } = useToday()
+  const { data: needsYou } = useNeedsYou()
+
+  if (isPending) return <PanelSkeleton />
+  const stats = brief?.stats
+
   return (
     <div className="space-y-5">
-      <section>
-        <div className="mb-2 flex items-center gap-1.5">
-          <Sparkle />
-          <h4 className="text-sm font-semibold">Your day</h4>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <Stat n={stats.needYou} label="need you" tone="text-primary" />
-          <Stat n={stats.promises} label="promises" tone="text-cat-awaiting-reply" />
-          <Stat n={stats.agentsHandled} label="handled" tone="text-ai" />
-        </div>
-      </section>
-      <Separator />
+      {stats && (
+        <section>
+          <div className="mb-2 flex items-center gap-1.5">
+            <Sparkle />
+            <h4 className="text-sm font-semibold">Your day</h4>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Stat n={stats.needYou} label="need you" tone="text-primary" />
+            <Stat n={stats.promises} label="promises" tone="text-cat-awaiting-reply" />
+            <Stat n={stats.agentsHandled} label="handled" tone="text-ai" />
+          </div>
+        </section>
+      )}
+      {stats && <Separator />}
       <section className="space-y-2.5">
         <h4 className="text-sm font-semibold">Worth your attention</h4>
-        {TODAY_BRIEF.needsYou.slice(0, 3).map((id) => {
-          const t = getThread(id)
-          if (!t) return null
-          return (
-            <Link
-              key={id}
-              to="/app/thread/$threadId"
-              params={{ threadId: id }}
-              className="block rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40"
-            >
-              <div className="truncate text-sm font-medium">{t.subject}</div>
-              <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.tldr}</div>
-            </Link>
-          )
-        })}
+        {(needsYou ?? []).slice(0, 3).map((t) => (
+          <Link
+            key={t.id}
+            to="/app/thread/$threadId"
+            params={{ threadId: t.id }}
+            className="block rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40"
+          >
+            <div className="truncate text-sm font-medium">{t.subject}</div>
+            <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.tldr}</div>
+          </Link>
+        ))}
       </section>
       <div className="rounded-xl border border-ai/20 bg-ai/5 p-3 text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Tip:</span> Ask me anything about your inbox
         in the Chat tab — “what did John say about the contract?”
       </div>
+    </div>
+  )
+}
+
+function PanelSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      <div className="h-3 w-full animate-pulse rounded bg-muted" />
+      <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+      <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
     </div>
   )
 }
@@ -270,108 +279,71 @@ interface ChatMsg {
   text: string
   citations?: { threadId: string; label: string }[]
 }
-const SEED_CHAT: ChatMsg[] = [
-  { role: 'user', text: 'What did John say about the contract?' },
-  {
-    role: 'ai',
-    text: 'John approved the Q3 proposal direction. He needs two confirmations before signing: that the $48,000 price includes the analytics dashboard, and that you can kick off by July 22. He offered a Thursday call.',
-    citations: [{ threadId: 't-acme', label: 'Q3 proposal — Acme' }],
-  },
-]
 
-const CANNED_REPLIES: ChatMsg[] = [
-  {
-    role: 'ai',
-    text: 'Invoice #1042 from Meridian Labs is 6 days overdue at $12,500 — worth chasing today. Better news on the other side: the $4,800 from Acme Corp has cleared in your Mercury account.',
-    citations: [
-      { threadId: 't-quickbooks', label: 'Invoice #1042 overdue' },
-      { threadId: 't-mercury', label: 'Acme payment cleared' },
-    ],
-  },
-  {
-    role: 'ai',
-    text: 'Your cloud and tooling spend this cycle is about $562: AWS is estimating $342.19, and Anthropic billed $220.00 through Stripe.',
-    citations: [
-      { threadId: 't-aws', label: 'AWS bill $342.19' },
-      { threadId: 't-stripe', label: 'Anthropic receipt' },
-    ],
-  },
-  {
-    role: 'ai',
-    text: 'Your Amazon package is on track to arrive Thursday — nothing you need to do on it.',
-    citations: [{ threadId: 't-amazon', label: 'Package arriving Thursday' }],
-  },
-]
-
-function ChatTab() {
+function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: boolean }) {
+  const { aiChatQuery, setAiChatQuery } = useAppState()
+  const { text, isStreaming, citations, start, reset } = useAiChat()
   const [input, setInput] = React.useState('')
-  const [messages, setMessages] = React.useState<ChatMsg[]>(SEED_CHAT)
-  const [pending, setPending] = React.useState(false)
-  const replyCursor = React.useRef(0)
-  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [messages, setMessages] = React.useState<ChatMsg[]>([])
+  const committedRef = React.useRef(true)
   const endRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, pending])
+  }, [messages, text, isStreaming])
 
-  React.useEffect(() => () => clearTimeout(timer.current), [])
+  const send = React.useCallback(
+    (question: string) => {
+      const q = question.trim()
+      if (!q || isStreaming) return
+      setMessages((prev) => [...prev, { role: 'user', text: q }])
+      setInput('')
+      committedRef.current = false
+      void start({ threadId, message: q })
+    },
+    [isStreaming, start, threadId],
+  )
 
-  const send = () => {
-    if (!input.trim() || pending) return
-    setMessages((prev) => [...prev, { role: 'user', text: input.trim() }])
-    setInput('')
-    setPending(true)
-    timer.current = setTimeout(() => {
-      const reply = CANNED_REPLIES[replyCursor.current % CANNED_REPLIES.length]
-      replyCursor.current += 1
-      if (reply) setMessages((prev) => [...prev, reply])
-      setPending(false)
-    }, 700)
-  }
+  // Commit the streamed answer (with its citations) once the stream ends.
+  React.useEffect(() => {
+    if (!isStreaming && !committedRef.current && text) {
+      committedRef.current = true
+      setMessages((prev) => [...prev, { role: 'ai', text, citations }])
+      reset()
+    }
+  }, [isStreaming, text, citations, reset])
+
+  // Pick up an "Ask AI" query handed over from the command palette. Only the
+  // primary (desktop) panel consumes it, so it isn't sent twice.
+  React.useEffect(() => {
+    if (consumeQuery && aiChatQuery && aiChatQuery.trim()) {
+      send(aiChatQuery)
+      setAiChatQuery(null)
+    }
+  }, [consumeQuery, aiChatQuery, send, setAiChatQuery])
 
   return (
     <>
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-4">
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}
-            >
-              <div
-                className={cn(
-                  'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm',
-                  m.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'border border-border bg-card',
-                )}
-              >
-                {m.role === 'ai' && <AiTag className="mb-1.5" />}
-                <p className={m.role === 'ai' ? 'text-muted-foreground' : ''}>{m.text}</p>
-                {m.citations && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {m.citations.map((c) => (
-                      <Link
-                        key={c.threadId}
-                        to="/app/thread/$threadId"
-                        params={{ threadId: c.threadId }}
-                        className="inline-flex items-center gap-1 rounded-full bg-ai/12 px-2 py-0.5 text-2xs font-medium text-ai hover:brightness-95"
-                      >
-                        <Link2 className="size-3" />
-                        {c.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+          {messages.length === 0 && !isStreaming && (
+            <div className="rounded-xl border border-ai/20 bg-ai/5 p-3 text-sm text-muted-foreground">
+              <AiTag className="mb-1.5" />
+              <p>Ask about your inbox — “what did I promise Priya?” or “find that $48k proposal.”</p>
             </div>
+          )}
+          {messages.map((m, i) => (
+            <ChatBubble key={i} message={m} />
           ))}
-          {pending && (
+          {isStreaming && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm">
                 <AiTag className="mb-1.5" />
-                <p className="animate-pulse text-muted-foreground">Thinking…</p>
+                {text ? (
+                  <p className="text-muted-foreground">{text}</p>
+                ) : (
+                  <p className="animate-pulse text-muted-foreground">Thinking…</p>
+                )}
               </div>
             </div>
           )}
@@ -386,7 +358,7 @@ function ChatTab() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                send()
+                send(input)
               }
             }}
             rows={1}
@@ -397,8 +369,8 @@ function ChatTab() {
             size="icon-sm"
             variant="ai"
             aria-label="Send"
-            onClick={send}
-            disabled={!input.trim() || pending}
+            onClick={() => send(input)}
+            disabled={!input.trim() || isStreaming}
           >
             <ArrowUp className="size-4" />
           </Button>
@@ -408,5 +380,38 @@ function ChatTab() {
         </p>
       </div>
     </>
+  )
+}
+
+function ChatBubble({ message }: { message: ChatMsg }) {
+  return (
+    <div className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+      <div
+        className={cn(
+          'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm',
+          message.role === 'user'
+            ? 'bg-primary text-primary-foreground'
+            : 'border border-border bg-card',
+        )}
+      >
+        {message.role === 'ai' && <AiTag className="mb-1.5" />}
+        <p className={message.role === 'ai' ? 'text-muted-foreground' : ''}>{message.text}</p>
+        {message.citations && message.citations.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {message.citations.map((c) => (
+              <Link
+                key={c.threadId}
+                to="/app/thread/$threadId"
+                params={{ threadId: c.threadId }}
+                className="inline-flex items-center gap-1 rounded-full bg-ai/12 px-2 py-0.5 text-2xs font-medium text-ai hover:brightness-95"
+              >
+                <Link2 className="size-3" />
+                {c.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

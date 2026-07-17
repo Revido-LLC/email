@@ -1,5 +1,5 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { type Approval } from '@revido/mock-data'
+import type { Approval } from '@revido/db'
 import { AiTag, Badge, Button, Kbd, Textarea } from '@revido/ui'
 import { Link } from '@tanstack/react-router'
 import { Check, Clock, Pencil, ShieldAlert, X } from 'lucide-react'

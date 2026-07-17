@@ -1,13 +1,17 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { USER, type Attachment, type Message } from '@revido/mock-data'
+import type { Attachment, Message } from '@revido/db'
 import { Badge, ContactAvatar, cn } from '@revido/ui'
-import { File, FileArchive, FileText, Image as ImageIcon, ImageOff, Sheet } from 'lucide-react'
+import { File, FileArchive, FileText, Image as ImageIcon, ImageOff, Loader2, Sheet } from 'lucide-react'
 import * as React from 'react'
 import { EmailFrame } from './email-frame'
+import { useLoadRemoteImages, useMe } from '@/lib/hooks'
 
 export function MessageItem({ message, defaultOpen }: { message: Message; defaultOpen: boolean }) {
   const [open, setOpen] = React.useState(defaultOpen)
-  const [showImages, setShowImages] = React.useState(false)
+  const { data: me } = useMe()
+  const loadImages = useLoadRemoteImages()
+  const imagesLoaded = loadImages.data !== undefined
+  const html = loadImages.data?.html ?? message.html
 
   if (!open) {
     return (
@@ -49,7 +53,7 @@ export function MessageItem({ message, defaultOpen }: { message: Message; defaul
             )}
           </div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">
-            {message.from.email} · to {recipients(message)}
+            {message.from.email} · to {recipients(message, me?.email)}
           </div>
         </div>
         <span className="shrink-0 pt-0.5 text-xs text-muted-foreground">
@@ -57,7 +61,7 @@ export function MessageItem({ message, defaultOpen }: { message: Message; defaul
         </span>
       </button>
 
-      {message.imagesBlocked && !showImages && (
+      {message.imagesBlocked && !imagesLoaded && (
         <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl bg-muted/60 px-3 py-2">
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             <ImageOff className="size-3.5 shrink-0" />
@@ -65,16 +69,18 @@ export function MessageItem({ message, defaultOpen }: { message: Message; defaul
           </span>
           <button
             type="button"
-            onClick={() => setShowImages(true)}
-            className="shrink-0 text-xs font-medium text-primary hover:underline"
+            onClick={() => loadImages.mutate(message.id)}
+            disabled={loadImages.isPending}
+            className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-60"
           >
-            Show images
+            {loadImages.isPending && <Loader2 className="size-3 animate-spin" />}
+            {loadImages.isPending ? 'Loading…' : 'Show images'}
           </button>
         </div>
       )}
 
       <div className="px-4 py-3">
-        <EmailFrame html={message.html} />
+        <EmailFrame html={html} />
       </div>
 
       {message.attachments.length > 0 && (
@@ -116,8 +122,8 @@ function AttachmentChip({ attachment }: { attachment: Attachment }) {
   )
 }
 
-function recipients(message: Message): string {
-  const names = message.to.map((t) => (t.email === USER.email ? 'you' : t.name))
+function recipients(message: Message, userEmail?: string): string {
+  const names = message.to.map((t) => (t.email === userEmail ? 'you' : t.name))
   return names.join(', ') || 'you'
 }
 

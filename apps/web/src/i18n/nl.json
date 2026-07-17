@@ -122,6 +122,16 @@
   },
   "onboarding": {
     "footer": "Gebouwd door Revido · wij bouwen op maat gemaakte AI-tools",
+    "appearance": {
+      "title": "Maak het van jou",
+      "subtitle": "Kies een uiterlijk voor Revido Mail — je kunt dit altijd wijzigen.",
+      "continue": "Doorgaan",
+      "options": {
+        "light": "Licht",
+        "dark": "Donker",
+        "system": "Systeem"
+      }
+    },
     "scan": {
       "connecting": {
         "title": "Je inbox wordt gekoppeld…"
@@ -166,7 +176,13 @@
       "reminders": "Herinneringen",
       "agents": "Agents",
       "settings": "Instellingen",
-      "dismissAria": "Sluiten"
+      "dismissAria": "Sluiten",
+      "theme": {
+        "light": "Licht",
+        "dark": "Donker",
+        "system": "Systeem"
+      },
+      "themeAria": "Weergave: {{theme}}. Klik om te wijzigen."
     },
     "commandPalette": {
       "title": "Opdrachtenpalet",
@@ -195,10 +211,21 @@
     },
     "tabs": {
       "accounts": "Accounts",
+      "appearance": "Weergave",
       "ai": "AI",
       "signatures": "Handtekeningen",
       "privacy": "Privacy",
       "usage": "Gebruik"
+    },
+    "appearance": {
+      "title": "Weergave",
+      "description": "Kies hoe Revido Mail eruitziet. Systeem volgt je apparaat.",
+      "note": "Je keuze wordt in deze browser bewaard.",
+      "options": {
+        "light": "Licht",
+        "dark": "Donker",
+        "system": "Systeem"
+      }
     },
     "accounts": {
       "connectAnother": "Nog een account koppelen",
@@ -247,7 +274,8 @@
       "description": "Wordt toegevoegd aan nieuwe mail. HTML is toegestaan.",
       "preview": "Voorbeeld",
       "save": "Handtekening opslaan",
-      "saved": "Opgeslagen."
+      "saved": "Opgeslagen.",
+      "empty": "Nog geen handtekening. Koppel een account om er een te maken."
     },
     "privacy": {
       "guaranteesTitle": "Wat we garanderen",

@@ -1,13 +1,13 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { getMessages, getNeedsYou, getThread } from '@revido/mock-data'
 import { Button } from '@revido/ui'
-import { ArrowLeft, Inbox } from 'lucide-react'
+import { ArrowLeft, Inbox, Loader2 } from 'lucide-react'
 import * as React from 'react'
 import { MessageItem } from '@/components/thread/message-item'
 import { ReplyZone } from '@/components/thread/reply-zone'
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card'
 import { ThreadTopBar } from '@/components/thread/thread-topbar'
+import { useArchiveThread, useMessages, useNeedsYou, useThread } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/thread/$threadId')({
   component: ThreadTakeover,
@@ -16,14 +16,22 @@ export const Route = createFileRoute('/app/thread/$threadId')({
 function ThreadTakeover() {
   const { threadId } = Route.useParams()
   const navigate = useNavigate()
-  const thread = getThread(threadId)
+  const { data: thread, isPending } = useThread(threadId)
+  const { data: messages } = useMessages(threadId)
+  const { data: siblingData } = useNeedsYou()
+  const archiveThread = useArchiveThread()
+
+  // Read siblings through a ref so the keyboard callbacks don't need to re-bind
+  // as the query refetches.
+  const siblingsRef = React.useRef(siblingData ?? [])
+  siblingsRef.current = siblingData ?? []
 
   // j/k next/prev within the Focused Inbox order; e archives + advances; esc → inbox.
   const goInbox = React.useCallback(() => navigate({ to: '/app/inbox' }), [navigate])
 
   const goSibling = React.useCallback(
     (delta: number) => {
-      const siblings = getNeedsYou()
+      const siblings = siblingsRef.current
       if (siblings.length === 0) return
       const idx = siblings.findIndex((t) => t.id === threadId)
       const next =
@@ -35,13 +43,14 @@ function ThreadTakeover() {
   )
 
   const archiveAndAdvance = React.useCallback(() => {
-    const siblings = getNeedsYou()
+    const siblings = siblingsRef.current
     const idx = siblings.findIndex((t) => t.id === threadId)
     const next = idx === -1 ? undefined : siblings[(idx + 1) % siblings.length]
+    archiveThread.mutate(threadId)
     if (next && next.id !== threadId)
       void navigate({ to: '/app/thread/$threadId', params: { threadId: next.id } })
     else void goInbox()
-  }, [navigate, threadId, goInbox])
+  }, [navigate, threadId, goInbox, archiveThread])
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -70,10 +79,11 @@ function ThreadTakeover() {
     return () => window.removeEventListener('keydown', onKey)
   }, [goSibling, archiveAndAdvance, goInbox])
 
+  if (isPending) return <ThreadLoading />
   if (!thread) return <NotFound />
 
-  const messages = getMessages(threadId)
-  const lastId = messages[messages.length - 1]?.id
+  const threadMessages = messages ?? []
+  const lastId = threadMessages[threadMessages.length - 1]?.id
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
@@ -84,7 +94,7 @@ function ThreadTakeover() {
           <ThreadSummaryCard thread={thread} />
 
           <div className="mt-5 space-y-2.5">
-            {messages.map((m) => (
+            {threadMessages.map((m) => (
               <MessageItem key={m.id} message={m} defaultOpen={m.id === lastId} />
             ))}
           </div>
@@ -92,6 +102,14 @@ function ThreadTakeover() {
       </div>
 
       <ReplyZone thread={thread} />
+    </div>
+  )
+}
+
+function ThreadLoading() {
+  return (
+    <div className="flex h-full items-center justify-center text-muted-foreground">
+      <Loader2 className="size-5 animate-spin" />
     </div>
   )
 }

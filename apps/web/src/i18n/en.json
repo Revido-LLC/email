@@ -122,6 +122,16 @@
   },
   "onboarding": {
     "footer": "Built by Revido · we build custom AI tools",
+    "appearance": {
+      "title": "Make it yours",
+      "subtitle": "Pick a look for Revido Mail — you can change it anytime.",
+      "continue": "Continue",
+      "options": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      }
+    },
     "scan": {
       "connecting": {
         "title": "Connecting your inbox…"
@@ -166,7 +176,13 @@
       "reminders": "Reminders",
       "agents": "Agents",
       "settings": "Settings",
-      "dismissAria": "Dismiss"
+      "dismissAria": "Dismiss",
+      "theme": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "themeAria": "Appearance: {{theme}}. Click to change."
     },
     "commandPalette": {
       "title": "Command palette",
@@ -195,10 +211,21 @@
     },
     "tabs": {
       "accounts": "Accounts",
+      "appearance": "Appearance",
       "ai": "AI",
       "signatures": "Signatures",
       "privacy": "Privacy",
       "usage": "Usage"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Choose how Revido Mail looks. System follows your device.",
+      "note": "Your choice is saved to this browser.",
+      "options": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      }
     },
     "accounts": {
       "connectAnother": "Connect another account",
@@ -247,7 +274,8 @@
       "description": "Appended to new mail. HTML is allowed.",
       "preview": "Preview",
       "save": "Save signature",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "empty": "No signature yet. Connect an account to create one."
     },
     "privacy": {
       "guaranteesTitle": "What we guarantee",

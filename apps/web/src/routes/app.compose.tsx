@@ -1,6 +1,6 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { SIGNATURES } from '@revido/mock-data'
+import type { Contact } from '@revido/db'
 import { useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Bell, CheckCircle2, CornerDownLeft, Inbox, PenLine, X } from 'lucide-react'
@@ -12,16 +12,13 @@ import {
   type MockAttachment,
 } from '@/components/composer/attachments-zone'
 import { ComposerEditor } from '@/components/composer/composer-editor'
-import {
-  buildDraftHtml,
-  findScenario,
-  pickScenario,
-  totalWords,
-  type ToneKey,
-} from '@/components/composer/draft-data'
+import { draftToHtml, type ToneKey } from '@/components/composer/draft-data'
 import { PromptBar } from '@/components/composer/prompt-bar'
 import { RecipientsField } from '@/components/composer/recipients-field'
 import { UndoToast } from '@/components/composer/undo-toast'
+import { useAiDraft, useAiRewrite } from '@/lib/hooks/ai'
+import { useCancelSend, useSendMessage } from '@/lib/hooks'
+import { useSignatures } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/compose')({
   component: ComposeScreen,
@@ -29,21 +26,32 @@ export const Route = createFileRoute('/app/compose')({
 
 type SendStatus = 'composing' | 'sending' | 'sent'
 
-const SIGNATURE_HTML = SIGNATURES[0]?.html ?? ''
-
 function ComposeScreen() {
   const navigate = useNavigate()
+  const { data: signatures } = useSignatures()
+  const signatureHtml = signatures?.[0]?.html ?? ''
 
+  const [recipients, setRecipients] = React.useState<string[]>([])
   const [subject, setSubject] = React.useState('')
   const [attachments, setAttachments] = React.useState<MockAttachment[]>([])
   const [remind, setRemind] = React.useState(false)
   const [status, setStatus] = React.useState<SendStatus>('composing')
 
-  // AI draft state
-  const [streaming, setStreaming] = React.useState(false)
-  const [scenarioId, setScenarioId] = React.useState<string | null>(null)
+  // AI writing — draft (POST /ai/draft) and tone rewrite (POST /ai/rewrite) are
+  // SSE token streams; the active one's text is pushed into the editor as it lands.
+  const draft = useAiDraft()
+  const rewrite = useAiRewrite()
+  const [activeStream, setActiveStream] = React.useState<'draft' | 'rewrite' | null>(null)
   const [activeTone, setActiveTone] = React.useState<ToneKey | null>(null)
-  const intervalRef = React.useRef<number | null>(null)
+  const [hasDraft, setHasDraft] = React.useState(false)
+
+  const streaming = draft.isStreaming || rewrite.isStreaming
+  const streamText = activeStream === 'rewrite' ? rewrite.text : activeStream === 'draft' ? draft.text : ''
+
+  // Send / undo-send.
+  const sendMessage = useSendMessage()
+  const cancelSend = useCancelSend()
+  const [sentMessageId, setSentMessageId] = React.useState<string | null>(null)
 
   // Bumping this remounts the composing view to reset all field state.
   const [composeKey, setComposeKey] = React.useState(0)
@@ -59,64 +67,53 @@ function ComposeScreen() {
     },
   })
 
-  const stopStream = React.useCallback(() => {
-    if (intervalRef.current !== null) {
-      window.clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [])
-
-  React.useEffect(() => stopStream, [stopStream])
-
-  const streamParagraphs = React.useCallback(
-    (paragraphs: string[]) => {
-      if (!editor) return
-      stopStream()
-      const total = totalWords(paragraphs)
-      let revealed = 0
-      setStreaming(true)
-      // Keep focus inside the editor (a contentEditable region) for the whole
-      // stream: it reads as live typing, and it stops stray single-key global
-      // shortcuts from firing while a button/chip triggered the draft.
-      editor.commands.setContent('', false)
-      editor.commands.focus('end')
-      intervalRef.current = window.setInterval(() => {
-        revealed += 2
-        editor.commands.setContent(buildDraftHtml(paragraphs, Math.min(revealed, total)), false)
-        editor.commands.focus('end')
-        if (revealed >= total) {
-          stopStream()
-          setStreaming(false)
-        }
-      }, 45)
-    },
-    [editor, stopStream],
-  )
+  // Mirror the streamed text into the editor. Keeping focus at the end reads as
+  // live typing and stops stray single-key global shortcuts from firing.
+  React.useEffect(() => {
+    if (!editor || activeStream === null) return
+    editor.commands.setContent(draftToHtml(streamText), false)
+    editor.commands.focus('end')
+  }, [editor, streamText, activeStream])
 
   const handleDraft = React.useCallback(
     (prompt: string) => {
-      const scenario = pickScenario(prompt)
-      setScenarioId(scenario.id)
+      setActiveStream('draft')
       setActiveTone('default')
-      setSubject((s) => (s.trim() ? s : scenario.subject))
-      streamParagraphs(scenario.tone.default)
+      setHasDraft(true)
+      void draft.start({ prompt })
     },
-    [streamParagraphs],
+    [draft],
   )
 
   const handleTone = React.useCallback(
     (tone: ToneKey) => {
-      const scenario = findScenario(scenarioId)
-      setScenarioId(scenario.id)
+      const current = editor?.getText().trim() ?? ''
+      if (!current) return
+      setActiveStream('rewrite')
       setActiveTone(tone)
-      streamParagraphs(scenario.tone[tone])
+      void rewrite.start({ draft: current, tone })
     },
-    [scenarioId, streamParagraphs],
+    [editor, rewrite],
   )
 
   const handleSend = React.useCallback(() => {
-    setStatus((s) => (s === 'composing' ? 'sending' : s))
-  }, [])
+    if (status !== 'composing') return
+    if (sendMessage.isPending) return
+    setStatus('sending')
+    sendMessage.mutate(
+      {
+        to: recipients.map((r): Contact => ({ name: r, email: r })),
+        subject,
+        html: editor?.getHTML() ?? '',
+        attachmentIds: [],
+        remindIfNoReply: remind,
+      },
+      {
+        onSuccess: (message) => setSentMessageId(message.id),
+        onError: () => setStatus('composing'),
+      },
+    )
+  }, [status, sendMessage, recipients, subject, editor, remind])
 
   // ⌘↵ / Ctrl+↵ sends.
   React.useEffect(() => {
@@ -131,15 +128,18 @@ function ComposeScreen() {
   }, [handleSend])
 
   function composeAnother() {
-    stopStream()
+    draft.reset()
+    rewrite.reset()
     editor?.commands.clearContent()
     editor?.setEditable(true)
+    setRecipients([])
     setSubject('')
     setAttachments([])
     setRemind(false)
-    setScenarioId(null)
+    setActiveStream(null)
     setActiveTone(null)
-    setStreaming(false)
+    setHasDraft(false)
+    setSentMessageId(null)
     setStatus('composing')
     setComposeKey((k) => k + 1)
   }
@@ -179,7 +179,7 @@ function ComposeScreen() {
           <div className="mb-4 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             <div className="flex items-center gap-3 px-4 py-2.5">
               <span className="w-16 shrink-0 text-sm font-medium text-muted-foreground">To</span>
-              <RecipientsField />
+              <RecipientsField recipients={recipients} onChange={setRecipients} />
             </div>
             <div className="h-px bg-border" />
             <div className="flex items-center gap-3 px-4 py-2.5">
@@ -202,13 +202,13 @@ function ComposeScreen() {
               onTone={handleTone}
               activeTone={activeTone}
               streaming={streaming}
-              hasDraft={scenarioId !== null}
+              hasDraft={hasDraft}
             />
           </div>
 
           {/* Editor */}
           <div className="mb-4">
-            <ComposerEditor editor={editor} streaming={streaming} signatureHtml={SIGNATURE_HTML} />
+            <ComposerEditor editor={editor} streaming={streaming} signatureHtml={signatureHtml} />
           </div>
 
           {/* Attachments */}
@@ -251,7 +251,13 @@ function ComposeScreen() {
       </div>
 
       {status === 'sending' && (
-        <UndoToast onUndo={() => setStatus('composing')} onComplete={() => setStatus('sent')} />
+        <UndoToast
+          onUndo={() => {
+            if (sentMessageId) cancelSend.mutate(sentMessageId)
+            setStatus('composing')
+          }}
+          onComplete={() => setStatus('sent')}
+        />
       )}
     </div>
   )

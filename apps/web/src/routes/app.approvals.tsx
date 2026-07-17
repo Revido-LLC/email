@@ -1,5 +1,5 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
-import { APPROVALS, type Approval } from '@revido/mock-data'
+import type { Approval } from '@revido/db'
 import {
   Badge,
   Button,
@@ -14,10 +14,17 @@ import {
   cn,
 } from '@revido/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Check, ChevronDown, PartyPopper, ShieldCheck, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, PartyPopper, ShieldCheck, X } from 'lucide-react'
 import * as React from 'react'
 import { ApprovalCard } from '@/components/agents/approval-card'
 import { Icon } from '@/lib/icons'
+import {
+  useApprovals,
+  useApproveApproval,
+  useApproveEditedApproval,
+  useBatchApproveApprovals,
+  useRejectApproval,
+} from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/approvals')({
   component: ApprovalsScreen,
@@ -32,39 +39,80 @@ interface HistoryEntry {
 }
 
 function ApprovalsScreen() {
-  const [queue, setQueue] = React.useState<Approval[]>(() => APPROVALS)
+  const { data: approvals, isPending } = useApprovals()
+  const approve = useApproveApproval()
+  const reject = useRejectApproval()
+  const approveEdited = useApproveEditedApproval()
+  const batch = useBatchApproveApprovals()
+
+  const [resolvedIds, setResolvedIds] = React.useState<Set<string>>(() => new Set())
   const [history, setHistory] = React.useState<HistoryEntry[]>([])
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editText, setEditText] = React.useState('')
 
+  // Optimistically hide resolved cards until the invalidated query catches up.
+  const queue = React.useMemo(
+    () => (approvals ?? []).filter((a) => !resolvedIds.has(a.id)),
+    [approvals, resolvedIds],
+  )
   const top = queue[0]
 
-  const resolve = React.useCallback((appr: Approval, outcome: Outcome) => {
-    setHistory((prev) => [
-      { id: appr.id, agentName: appr.agentName, action: appr.action, outcome },
-      ...prev,
-    ])
-    setQueue((prev) => prev.filter((a) => a.id !== appr.id))
-    setEditingId((cur) => (cur === appr.id ? null : cur))
-  }, [])
+  const resolve = React.useCallback(
+    (appr: Approval, outcome: Outcome) => {
+      setHistory((prev) => [
+        { id: appr.id, agentName: appr.agentName, action: appr.action, outcome },
+        ...prev,
+      ])
+      setResolvedIds((prev) => new Set(prev).add(appr.id))
+      setEditingId((cur) => (cur === appr.id ? null : cur))
+      if (outcome === 'approved') approve.mutate(appr.id)
+      else if (outcome === 'rejected') reject.mutate(appr.id)
+      else approveEdited.mutate({ id: appr.id, editedPreview: editText })
+    },
+    [approve, reject, approveEdited, editText],
+  )
 
-  const batchApprove = React.useCallback((agentId: string) => {
-    setQueue((prev) => {
-      const doomed = prev.filter((a) => a.agentId === agentId)
-      if (doomed.length) {
-        setHistory((h) => [
-          ...doomed.map((a) => ({
-            id: a.id,
-            agentName: a.agentName,
-            action: a.action,
-            outcome: 'approved' as Outcome,
-          })),
-          ...h,
-        ])
-      }
-      return prev.filter((a) => a.agentId !== agentId)
+  const batchApprove = React.useCallback(
+    (agentId: string) => {
+      const doomed = queue.filter((a) => a.agentId === agentId)
+      if (doomed.length === 0) return
+      setHistory((h) => [
+        ...doomed.map((a) => ({
+          id: a.id,
+          agentName: a.agentName,
+          action: a.action,
+          outcome: 'approved' as Outcome,
+        })),
+        ...h,
+      ])
+      setResolvedIds((prev) => {
+        const next = new Set(prev)
+        for (const a of doomed) next.add(a.id)
+        return next
+      })
+      batch.mutate({ agentId })
+    },
+    [queue, batch],
+  )
+
+  const approveEverything = React.useCallback(() => {
+    if (queue.length === 0) return
+    setHistory((h) => [
+      ...queue.map((a) => ({
+        id: a.id,
+        agentName: a.agentName,
+        action: a.action,
+        outcome: 'approved' as Outcome,
+      })),
+      ...h,
+    ])
+    setResolvedIds((prev) => {
+      const next = new Set(prev)
+      for (const a of queue) next.add(a.id)
+      return next
     })
-  }, [])
+    batch.mutate({})
+  }, [queue, batch])
 
   // Keyboard: a / x / e act on the focused (top) card. Ignored while typing.
   React.useEffect(() => {
@@ -140,11 +188,7 @@ function ApprovalsScreen() {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => {
-                    for (const [agentId] of byAgent) batchApprove(agentId)
-                  }}
-                >
+                <DropdownMenuItem onSelect={approveEverything}>
                   <ShieldCheck /> Approve everything
                   <span className="ml-auto text-2xs text-muted-foreground">{queue.length}</span>
                 </DropdownMenuItem>
@@ -155,7 +199,11 @@ function ApprovalsScreen() {
       </header>
 
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
-        {top ? (
+        {isPending ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+        ) : top ? (
           <>
             <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
               <span>

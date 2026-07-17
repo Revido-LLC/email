@@ -1,4 +1,5 @@
-import { type AgentDef, type CategoryId, type Thread } from '@revido/mock-data'
+import type { AgentDef, CategoryId, Thread } from '@revido/db'
+import type { AgentActionType, AgentPlan } from '@revido/core'
 
 /**
  * A tiny mock "compiler" that turns a plain-English description into a
@@ -185,29 +186,30 @@ function labelFor(category: CategoryId): string {
     .join(' ')
 }
 
-/** Turn a finished plan into a fresh AgentDef to prepend to the local gallery. */
-export function buildAgentDef(
-  plan: CompiledPlan,
-  name: string,
-  description: string,
-  affectedCount: number,
-): AgentDef {
+/** Best-effort map a human action label to a structured plan action type. */
+function actionType(label: string): AgentActionType {
+  const l = label.toLowerCase()
+  if (l.includes('unsubscribe')) return 'unsubscribe'
+  if (l.includes('forward')) return 'forward'
+  if (l.includes('delete')) return 'delete'
+  if (l.includes('send')) return 'send'
+  if (l.includes('archive')) return 'archive'
+  if (l.includes('draft')) return 'draft'
+  if (l.includes('star')) return 'star'
+  if (l.includes('read')) return 'mark-read'
+  return 'label'
+}
+
+/**
+ * Lower the UI's `CompiledPlan` onto the API's `AgentPlan` shape for
+ * `POST /agents`. The client compile stays a preview; the server persists this.
+ */
+export function toAgentPlan(plan: CompiledPlan): AgentPlan {
+  const scheduled = !/new mail/i.test(plan.trigger)
   return {
-    id: `ag-${Date.now()}`,
-    name: name.trim() || plan.suggestedName,
-    description: description.trim() || `Automatically handles mail ${plan.matchLabel}.`,
-    icon: plan.icon,
-    enabled: true,
-    trigger: plan.trigger,
-    conditions: plan.conditions,
-    actions: plan.actions.map((a) => ({
-      type: 'action',
-      label: a.label,
-      needsApproval: a.needsApproval,
-    })),
-    runCount: 0,
-    affectedCount,
-    prebuilt: false,
-    accent: plan.accent,
+    trigger: scheduled ? 'scheduled' : 'new-mail',
+    ...(scheduled ? { schedule: plan.trigger } : {}),
+    conditions: [{ field: 'category', op: 'is', value: plan.category }],
+    actions: plan.actions.map((a) => ({ type: actionType(a.label), label: a.label })),
   }
 }

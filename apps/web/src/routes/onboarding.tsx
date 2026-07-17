@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AGENT_PROPOSALS, ONBOARDING_SCAN, USER, type AgentProposal } from '@revido/mock-data'
+import type { AgentProposal } from '@revido/db'
 import {
   AiTag,
   Button,
@@ -13,21 +13,24 @@ import {
   type CategoryToken,
 } from '@revido/ui'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, Check, Loader2, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Loader2, Monitor, Moon, Sparkles, Sun } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '@/lib/icons'
 import { formatNumber } from '@/i18n/format'
+import { useAppState, type ThemePreference } from '@/lib/app-state'
+import { useAgentProposals, useEnableProposedAgents, useMe, useOnboardingScan } from '@/lib/hooks'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingScreen,
 })
 
-const STAGES = ['connecting', 'reading', 'ready', 'proposals'] as const
+const STAGES = ['appearance', 'connecting', 'reading', 'ready', 'proposals'] as const
 type Stage = (typeof STAGES)[number]
 
 /** How long each auto-advancing stage lingers before moving on. Snappy. */
 const STAGE_MS: Record<Stage, number> = {
+  appearance: 0,
   connecting: 1500,
   reading: 2000,
   ready: 1300,
@@ -37,12 +40,13 @@ const STAGE_MS: Record<Stage, number> = {
 function OnboardingScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [stage, setStage] = React.useState<Stage>('connecting')
+  // The appearance picker leads (user-driven); the scan stages auto-advance.
+  const [stage, setStage] = React.useState<Stage>('appearance')
   const [connected, setConnected] = React.useState(false)
 
-  // Drive the stage machine forward on a timer (proposals is terminal).
+  // Drive the stage machine forward on a timer (appearance + proposals are terminal).
   React.useEffect(() => {
-    if (stage === 'proposals') return
+    if (stage === 'proposals' || stage === 'appearance') return
     const id = setTimeout(() => {
       setStage((s) => STAGES[STAGES.indexOf(s) + 1] ?? s)
     }, STAGE_MS[stage])
@@ -86,7 +90,9 @@ function OnboardingScreen() {
         </header>
 
         <main className="flex flex-1 flex-col items-center justify-center py-10">
-          {stage === 'proposals' ? (
+          {stage === 'appearance' ? (
+            <AppearanceStep onContinue={() => setStage('connecting')} />
+          ) : stage === 'proposals' ? (
             <ProposalsView onContinue={goToInbox} />
           ) : (
             <ScanView stage={stage} connected={connected} />
@@ -108,11 +114,15 @@ function OnboardingScreen() {
 
 function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
   const { t } = useTranslation()
+  const { data: scan } = useOnboardingScan()
+  const { data: me } = useMe()
+  const email = me?.email ?? ''
   const started = stage !== 'connecting'
-  const total = useCountUp(ONBOARDING_SCAN.totalThreads, 1400, started)
-  const needReplies = useCountUp(ONBOARDING_SCAN.needReplies, 1400, started)
-  const newsletters = useCountUp(ONBOARDING_SCAN.newsletters, 1400, started)
-  const invoices = useCountUp(ONBOARDING_SCAN.invoices, 1400, started)
+  const totalThreads = scan?.totalThreads ?? 0
+  const total = useCountUp(totalThreads, 1400, started)
+  const needReplies = useCountUp(scan?.needReplies ?? 0, 1400, started)
+  const newsletters = useCountUp(scan?.newsletters ?? 0, 1400, started)
+  const invoices = useCountUp(scan?.invoices ?? 0, 1400, started)
 
   const beat = stage === 'connecting' ? (connected ? 'connected' : 'connecting') : stage
 
@@ -140,7 +150,7 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
                 <h1 className="text-2xl font-semibold tracking-tight">
                   {t('onboarding.scan.connecting.title')}
                 </h1>
-                <p className="mt-1.5 text-sm text-muted-foreground">{USER.email}</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">{email}</p>
               </>
             )}
 
@@ -150,7 +160,7 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
                   {t('onboarding.scan.connected.title')}
                 </h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">
-                  {t('onboarding.scan.connected.subtitle', { email: USER.email })}
+                  {t('onboarding.scan.connected.subtitle', { email })}
                 </p>
               </>
             )}
@@ -184,14 +194,14 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
                 </div>
 
                 <Progress
-                  value={total / ONBOARDING_SCAN.totalThreads}
+                  value={totalThreads ? total / totalThreads : 0}
                   className="mt-5"
                   barClassName="bg-ai"
                 />
                 <p className="mt-2 text-2xs tabular-nums text-muted-foreground">
                   {t('onboarding.scan.reading.progress', {
                     scanned: formatNumber(total),
-                    total: formatNumber(ONBOARDING_SCAN.totalThreads),
+                    total: formatNumber(totalThreads),
                   })}
                 </p>
               </>
@@ -285,11 +295,29 @@ function ScanStat({ token, value, label }: { token: string; value: number; label
 
 function ProposalsView({ onContinue }: { onContinue: () => void }) {
   const { t } = useTranslation()
-  const proposals = AGENT_PROPOSALS.slice(0, 3)
-  const [enabled, setEnabled] = React.useState<Record<string, boolean>>(() =>
-    Object.fromEntries(proposals.map((p, i) => [p.id, i < 2])),
-  )
+  const { data } = useAgentProposals()
+  const enableAgents = useEnableProposedAgents()
+  const proposals = React.useMemo(() => (data ?? []).slice(0, 3), [data])
+  const [enabled, setEnabled] = React.useState<Record<string, boolean>>({})
+
+  // Default the first two proposals on once they load.
+  const seededRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!seededRef.current && proposals.length > 0) {
+      seededRef.current = true
+      setEnabled(Object.fromEntries(proposals.map((p, i) => [p.id, i < 2])))
+    }
+  }, [proposals])
+
   const onCount = Object.values(enabled).filter(Boolean).length
+
+  const finish = () => {
+    const toEnable = Object.entries(enabled)
+      .filter(([, on]) => on)
+      .map(([id]) => id)
+    if (toEnable.length > 0) enableAgents.mutate(toEnable)
+    onContinue()
+  }
 
   return (
     <motion.div
@@ -322,7 +350,7 @@ function ProposalsView({ onContinue }: { onContinue: () => void }) {
       </div>
 
       <div className="mt-7 flex flex-col items-center gap-3">
-        <Button className="w-full" onClick={onContinue}>
+        <Button className="w-full" onClick={finish}>
           {t('onboarding.proposals.continue')}
           <ArrowRight className="size-4" />
         </Button>
@@ -389,6 +417,93 @@ function ProposalCard({
           aria-label={t('onboarding.proposals.enableAria', { title: proposal.title })}
         />
       </Card>
+    </motion.div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Appearance step — Light / Dark / System, live-previewing the shell  */
+/* ------------------------------------------------------------------ */
+
+function AppearanceStep({ onContinue }: { onContinue: () => void }) {
+  const { t } = useTranslation()
+  const { themePreference, setThemePreference } = useAppState()
+
+  const options: { id: ThemePreference; icon: React.ReactNode }[] = [
+    { id: 'light', icon: <Sun className="size-5" /> },
+    { id: 'dark', icon: <Moon className="size-5" /> },
+    { id: 'system', icon: <Monitor className="size-5" /> },
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="w-full max-w-md"
+    >
+      <div className="mb-6 text-center">
+        <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+          <Sun className="size-6" />
+        </div>
+        <h1 className="text-xl font-semibold tracking-tight">{t('onboarding.appearance.title')}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t('onboarding.appearance.subtitle')}</p>
+      </div>
+
+      {/* A tiny shell preview that re-themes live with the selection. */}
+      <div className="mb-5 overflow-hidden rounded-2xl border border-border shadow-soft">
+        <div className="flex">
+          <div className="w-16 shrink-0 space-y-1.5 border-r border-border bg-subtle p-2.5">
+            <div className="h-2 w-full rounded bg-primary/30" />
+            <div className="h-2 w-3/4 rounded bg-muted" />
+            <div className="h-2 w-2/3 rounded bg-muted" />
+          </div>
+          <div className="flex-1 space-y-2 bg-card p-3">
+            <div className="h-2.5 w-1/2 rounded bg-foreground/20" />
+            <div className="h-2 w-full rounded bg-muted" />
+            <div className="h-2 w-4/5 rounded bg-muted" />
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-ai/12 px-2 py-0.5">
+              <Sparkle className="size-2.5" />
+              <span className="h-1.5 w-8 rounded bg-ai/40" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {options.map((opt) => {
+          const active = themePreference === opt.id
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setThemePreference(opt.id)}
+              aria-pressed={active}
+              className={cn(
+                'flex flex-col items-center gap-2 rounded-2xl border p-4 text-sm font-medium transition-colors',
+                active
+                  ? 'border-primary/40 bg-primary/5 text-primary'
+                  : 'border-border text-muted-foreground hover:border-ring hover:text-foreground',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex size-10 items-center justify-center rounded-xl',
+                  active ? 'bg-primary/12 text-primary' : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {opt.icon}
+              </span>
+              {t(`onboarding.appearance.options.${opt.id}`)}
+            </button>
+          )
+        })}
+      </div>
+
+      <Button className="mt-6 w-full" onClick={onContinue}>
+        {t('onboarding.appearance.continue')}
+        <ArrowRight className="size-4" />
+      </Button>
     </motion.div>
   )
 }

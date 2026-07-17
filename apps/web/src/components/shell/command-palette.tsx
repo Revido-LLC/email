@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
-import { CATEGORY_LIST, THREADS } from '@revido/mock-data'
 import { CategoryDot, Dialog, DialogContent, DialogTitle, Kbd, Sparkle, cn } from '@revido/ui'
+import { CATEGORY_LIST } from '@/lib/categories'
+import { useInboxByRecency } from '@/lib/hooks'
 import { Command } from 'cmdk'
 import {
   Bell,
@@ -24,9 +25,11 @@ const groupCls =
 
 export function CommandPalette() {
   const { t } = useTranslation()
-  const { commandOpen, setCommandOpen, setAiPanelOpen, setAiTab, toggleTheme } = useAppState()
+  const { commandOpen, setCommandOpen, setAiPanelOpen, setAiTab, toggleTheme, setAiChatQuery } =
+    useAppState()
   const navigate = useNavigate()
   const [query, setQuery] = React.useState('')
+  const { data: threads } = useInboxByRecency()
 
   const go = React.useCallback(
     (to: string, params?: Record<string, string>) => {
@@ -37,12 +40,15 @@ export function CommandPalette() {
     [navigate, setCommandOpen],
   )
 
+  // Carry the typed query into the assistant chat so ⌘K → "Ask AI" actually asks it.
   const askAi = React.useCallback(() => {
+    const q = query.trim()
     setCommandOpen(false)
     setQuery('')
     setAiPanelOpen(true)
     setAiTab('chat')
-  }, [setAiPanelOpen, setAiTab, setCommandOpen])
+    if (q) setAiChatQuery(q)
+  }, [query, setAiPanelOpen, setAiTab, setCommandOpen, setAiChatQuery])
 
   return (
     <Dialog open={commandOpen} onOpenChange={setCommandOpen}>
@@ -146,7 +152,7 @@ export function CommandPalette() {
             </Command.Group>
 
             <Command.Group heading={t('shell.commandPalette.groupThreads')} className={groupCls}>
-              {THREADS.slice(0, 12).map((thread) => (
+              {(threads ?? []).slice(0, 12).map((thread) => (
                 <Command.Item
                   key={thread.id}
                   value={`${thread.subject} ${thread.participants.map((p) => p.name).join(' ')}`}

@@ -65,6 +65,7 @@ messagesRouter.post('/', async (c) => {
     cc: body.cc?.map(normalize),
     subject: body.subject ?? '',
     html: body.html,
+    attachmentIds: body.attachmentIds,
   })
   return c.json(message, 201)
 })

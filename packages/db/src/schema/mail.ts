@@ -161,6 +161,13 @@ export const messageRecipients = pgTable(
 /**
  * Attachments. Display metadata (name, size, mime, kind) is plaintext; the
  * Storage object reference and any inline content are ciphertext.
+ *
+ * `message_id` is nullable: the composer uploads a file (`POST /attachments`)
+ * before the outbound message exists, creating a PENDING row (`message_id` null,
+ * `content_ct` holding the encrypted bytes). On send the row is claimed — its
+ * `message_id` is set — which links it to the message the worker sends. The
+ * `(user_id, message_id)` index serves the pending lookup (`message_id IS NULL`)
+ * and the per-message assembly.
  */
 export const attachments = pgTable(
   'attachments',
@@ -169,9 +176,8 @@ export const attachments = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    messageId: uuid('message_id')
-      .notNull()
-      .references(() => messages.id, { onDelete: 'cascade' }),
+    /** The message this is attached to; null while the upload is still pending. */
+    messageId: uuid('message_id').references(() => messages.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     /** Human-readable size, e.g. "2.4 MB" (plaintext). */
     size: text('size'),
@@ -188,6 +194,7 @@ export const attachments = pgTable(
   (t) => [
     index('attachments_user_id_idx').on(t.userId),
     index('attachments_message_id_idx').on(t.messageId),
+    index('attachments_user_message_idx').on(t.userId, t.messageId),
   ],
 )
 

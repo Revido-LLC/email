@@ -1,15 +1,23 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { FileText, Paperclip, UploadCloud, X } from 'lucide-react'
+import { AlertCircle, FileText, Loader2, Paperclip, UploadCloud, X } from 'lucide-react'
 import * as React from 'react'
 import { cn } from '@revido/ui'
 
-export interface MockAttachment {
-  id: string
+/** Upload lifecycle of a composer attachment. */
+export type AttachmentStatus = 'uploading' | 'ready' | 'error'
+
+/** A file the composer is attaching: local identity + its upload state. */
+export interface ComposerAttachment {
+  /** Stable client id (the row exists before the server responds). */
+  localId: string
   name: string
   size: string
+  status: AttachmentStatus
+  /** The persisted attachment id, once uploaded — this is what send references. */
+  serverId?: string
 }
 
-function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number): string {
   if (!bytes) return '0 KB'
   const kb = bytes / 1024
   if (kb < 1024) return `${Math.max(1, Math.round(kb))} KB`
@@ -17,17 +25,18 @@ function formatBytes(bytes: number): string {
 }
 
 /**
- * Visual-only drag-and-drop attachments zone. Dropped files are read for their
- * name and size only — nothing is uploaded. Chips list the "attached" files.
+ * Drag-and-drop attachments zone. Dropped/selected files are handed up as real
+ * `File` objects (the composer uploads them); chips reflect each file's upload
+ * state — spinner while uploading, a document glyph when ready, an alert on error.
  */
 export function AttachmentsZone({
   attachments,
-  onAdd,
+  onAddFiles,
   onRemove,
 }: {
-  attachments: MockAttachment[]
-  onAdd: (files: MockAttachment[]) => void
-  onRemove: (id: string) => void
+  attachments: ComposerAttachment[]
+  onAddFiles: (files: File[]) => void
+  onRemove: (localId: string) => void
 }) {
   const [dragging, setDragging] = React.useState(false)
 
@@ -35,14 +44,7 @@ export function AttachmentsZone({
     e.preventDefault()
     setDragging(false)
     const dropped = Array.from(e.dataTransfer.files)
-    if (!dropped.length) return
-    onAdd(
-      dropped.map((f) => ({
-        id: `${f.name}-${f.size}-${Math.random().toString(36).slice(2, 7)}`,
-        name: f.name,
-        size: formatBytes(f.size),
-      })),
-    )
+    if (dropped.length) onAddFiles(dropped)
   }
 
   return (
@@ -72,16 +74,21 @@ export function AttachmentsZone({
         <div className="mt-2 flex flex-wrap gap-2">
           {attachments.map((a) => (
             <span
-              key={a.id}
-              className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card py-1.5 pl-2.5 pr-1.5 text-xs shadow-soft"
+              key={a.localId}
+              className={cn(
+                'inline-flex max-w-full items-center gap-2 rounded-xl border bg-card py-1.5 pl-2.5 pr-1.5 text-xs shadow-soft',
+                a.status === 'error' ? 'border-destructive/40' : 'border-border',
+              )}
             >
-              <FileText className="size-3.5 shrink-0 text-primary" />
+              <AttachmentGlyph status={a.status} />
               <span className="min-w-0 truncate font-medium text-foreground">{a.name}</span>
-              <span className="shrink-0 text-muted-foreground">{a.size}</span>
+              <span className="shrink-0 text-muted-foreground">
+                {a.status === 'error' ? 'Upload failed' : a.status === 'uploading' ? 'Uploading…' : a.size}
+              </span>
               <button
                 type="button"
                 aria-label={`Remove ${a.name}`}
-                onClick={() => onRemove(a.id)}
+                onClick={() => onRemove(a.localId)}
                 className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3" />
@@ -94,31 +101,43 @@ export function AttachmentsZone({
   )
 }
 
-/** The compact attach button that lives in the bottom bar. */
-export function AttachButton({ onAttach }: { onAttach: (file: MockAttachment) => void }) {
-  const samples = [
-    { name: 'Brightfoundry-overview.pdf', size: '2.3 MB' },
-    { name: 'Q3-proposal-v3.pdf', size: '840 KB' },
-    { name: 'scope-and-timeline.pdf', size: '312 KB' },
-  ]
-  const nextRef = React.useRef(0)
+/** The leading glyph on an attachment chip, reflecting its upload state. */
+function AttachmentGlyph({ status }: { status: AttachmentStatus }) {
+  if (status === 'uploading') {
+    return <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+  }
+  if (status === 'error') {
+    return <AlertCircle className="size-3.5 shrink-0 text-destructive" />
+  }
+  return <FileText className="size-3.5 shrink-0 text-primary" />
+}
+
+/** The compact attach button that lives in the bottom bar — opens a file picker. */
+export function AttachButton({ onFiles }: { onFiles: (files: File[]) => void }) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        const s = samples[nextRef.current % samples.length]!
-        nextRef.current += 1
-        onAttach({
-          id: `${s.name}-${Math.random().toString(36).slice(2, 7)}`,
-          name: s.name,
-          size: s.size,
-        })
-      }}
-      className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      aria-label="Attach a file"
-    >
-      <Paperclip className="size-4" />
-    </button>
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? [])
+          if (files.length) onFiles(files)
+          // Reset so selecting the same file again re-triggers change.
+          e.target.value = ''
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label="Attach a file"
+      >
+        <Paperclip className="size-4" />
+      </button>
+    </>
   )
 }

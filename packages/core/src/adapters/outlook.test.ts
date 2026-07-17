@@ -98,6 +98,65 @@ describe('OutlookAdapter.send', () => {
     const body = JSON.parse(call!.body!) as { message: { subject: string } }
     expect(body.message.subject).toBe('Hello')
   })
+
+  it('attaches a Graph fileAttachment to a fresh sendMail message', async () => {
+    const { fetchImpl, calls } = makeFakeFetch([
+      { when: (u) => u.includes('/me/sendMail'), status: 202 },
+    ])
+    const adapter = new OutlookAdapter({ fetchImpl })
+    const content = Buffer.from('hello attachment')
+    await adapter.send(creds, {
+      to: [{ name: 'Priya Shah', email: 'priya@studio.com' }],
+      subject: 'Here is the file',
+      html: '<p>See attached.</p>',
+      text: 'See attached.',
+      attachments: [{ name: 'notes.txt', mime: 'text/plain', content }],
+    })
+    const call = calls.find((c) => c.url.includes('/me/sendMail'))
+    const body = JSON.parse(call!.body!) as {
+      message: {
+        attachments?: { '@odata.type': string; name: string; contentType: string; contentBytes: string }[]
+      }
+    }
+    const att = body.message.attachments?.[0]
+    expect(att).toBeDefined()
+    expect(att!['@odata.type']).toBe('#microsoft.graph.fileAttachment')
+    expect(att!.name).toBe('notes.txt')
+    expect(att!.contentType).toBe('text/plain')
+    expect(Buffer.from(att!.contentBytes, 'base64').toString()).toBe('hello attachment')
+  })
+
+  it('POSTs attachments onto a reply draft before sending', async () => {
+    const { fetchImpl, calls } = makeFakeFetch([
+      { when: (u) => u.includes('/createReply'), json: { id: 'draft-1' } },
+      { when: (u) => u.endsWith('/draft-1/attachments'), status: 201, json: { id: 'att-1' } },
+      { when: (u) => u.includes('/messages/draft-1/send'), status: 202 },
+      { when: (u) => u.includes('/messages/draft-1'), status: 200 },
+    ])
+    const adapter = new OutlookAdapter({ fetchImpl, userEmail: 'jane@example.com' })
+    const content = Buffer.from('reply attachment')
+    await adapter.send(creds, {
+      to: [{ name: 'Priya Shah', email: 'priya@studio.com' }],
+      subject: 'RE: Design review Thursday',
+      html: '<p>Thursday works.</p>',
+      text: 'Thursday works.',
+      inReplyToProviderMessageId: 'AAMk-graph-1',
+      attachments: [{ name: 'reply.txt', mime: 'text/plain', content }],
+    })
+
+    const attachCall = calls.find(
+      (c) => c.method === 'POST' && c.url.endsWith('/draft-1/attachments'),
+    )
+    expect(attachCall).toBeDefined()
+    const att = JSON.parse(attachCall!.body!) as { '@odata.type': string; contentBytes: string }
+    expect(att['@odata.type']).toBe('#microsoft.graph.fileAttachment')
+    expect(Buffer.from(att.contentBytes, 'base64').toString()).toBe('reply attachment')
+    // The attachment is added before the draft is sent.
+    const attachIdx = calls.findIndex((c) => c.url.endsWith('/draft-1/attachments'))
+    const sendIdx = calls.findIndex((c) => c.url.endsWith('/draft-1/send'))
+    expect(attachIdx).toBeGreaterThanOrEqual(0)
+    expect(attachIdx).toBeLessThan(sendIdx)
+  })
 })
 
 describe('OutlookAdapter.watch', () => {

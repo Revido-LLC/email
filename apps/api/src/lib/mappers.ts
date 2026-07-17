@@ -229,7 +229,9 @@ export async function assembleMessages(
     : []
 
   const recipientsByMessage = groupBy(recipientRows, (r) => r.messageId)
-  const attachmentsByMessage = groupBy(attachmentRows, (r) => r.messageId)
+  // `messageId` is nullable on the row (pending uploads), but this query only
+  // selects attachments already linked to `ids`, so a null never actually keys here.
+  const attachmentsByMessage = groupBy(attachmentRows, (r) => r.messageId ?? '')
   const contactById = new Map(fromRows.map((r) => [r.id, r]))
 
   return rows.map((row) => {

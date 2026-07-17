@@ -15,6 +15,7 @@ import { makeBackfillConsumer } from './backfill'
 import { makeIncrementalConsumer } from './incremental'
 import { makeSendConsumer } from './send'
 import { makeTriageConsumer } from './triage'
+import { makeTriageBatchConsumer } from './triage-batch'
 import { makeSummaryConsumer } from './enrich'
 import { makeReconcileConsumer, makeRenewWatchConsumer } from './watch'
 import { makeDigestConsumer } from './digest'
@@ -36,7 +37,11 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
   }
 
   return {
-    [QUEUE.backfill]: makeBackfillConsumer(syncDeps),
+    [QUEUE.backfill]: makeBackfillConsumer({
+      ...syncDeps,
+      llm: ctx.llm,
+      batchTriage: ctx.batchTriage,
+    }),
     [QUEUE.incremental]: makeIncrementalConsumer({ ...syncDeps, logger: ctx.logger }),
     [QUEUE.send]: makeSendConsumer({
       loadAccount: ctx.loadAccount,
@@ -48,6 +53,13 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       loadAccount: ctx.loadAccount,
       mail: ctx.mail,
       llm: ctx.llm,
+    }),
+    [QUEUE.triageBatch]: makeTriageBatchConsumer({
+      loadAccount: ctx.loadAccount,
+      mail: ctx.mail,
+      llm: ctx.llm,
+      jobs: ctx.jobs,
+      logger: ctx.logger,
     }),
     [QUEUE.summary]: makeSummaryConsumer({
       loadAccount: ctx.loadAccount,

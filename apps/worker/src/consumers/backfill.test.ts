@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type {
   BackfillPage,
+  LlmBatchRequest,
   ProviderAdapter,
   ProviderCredentials,
   RawFetchedMessage,
@@ -71,13 +72,18 @@ interface Harness {
   enqueued: { queue: string; payload: unknown }[]
   progress: SaveBackfillProgressInput[]
   syncLabels: { progress: number; label?: string }[]
+  submittedBatches: LlmBatchRequest[][]
 }
 
-function harness(page: BackfillPage, opts: { newIds?: Set<string> } = {}): Harness {
+function harness(
+  page: BackfillPage,
+  opts: { newIds?: Set<string>; batchTriage?: boolean } = {},
+): Harness {
   const persisted: RawFetchedMessage[] = []
   const enqueued: { queue: string; payload: unknown }[] = []
   const progress: SaveBackfillProgressInput[] = []
   const syncLabels: { progress: number; label?: string }[] = []
+  const submittedBatches: LlmBatchRequest[][] = []
   const newIds = opts.newIds ?? new Set(page.messages.map((m) => m.providerMessageId))
 
   const deps: BackfillDeps = {
@@ -105,9 +111,17 @@ function harness(page: BackfillPage, opts: { newIds?: Set<string> } = {}): Harne
         enqueued.push({ queue, payload })
       },
     },
+    llm: {
+      submitBatch: async (requests) => {
+        submittedBatches.push(requests)
+        return { batchId: `batch-${submittedBatches.length}` }
+      },
+    },
+    // Default OFF so the base tests exercise the real-time fallback fan-out.
+    batchTriage: opts.batchTriage ?? false,
     saveCredentials: () => Promise.resolve(),
   }
-  return { deps, persisted, enqueued, progress, syncLabels }
+  return { deps, persisted, enqueued, progress, syncLabels, submittedBatches }
 }
 
 const PAYLOAD = { accountId: ACCOUNT_ID }
@@ -154,6 +168,10 @@ describe('makeBackfillConsumer', () => {
     })
     expect(h.enqueued.some((e) => e.queue === QUEUE.backfill)).toBe(true)
     expect(h.enqueued.some((e) => e.queue === QUEUE.renewWatch)).toBe(false)
+
+    // Fallback (batchTriage off) never touches the Batches API.
+    expect(h.submittedBatches).toHaveLength(0)
+    expect(h.enqueued.some((e) => e.queue === QUEUE.triageBatch)).toBe(false)
   })
 
   it('marks complete and registers the watch when the last page arrives', async () => {
@@ -176,6 +194,73 @@ describe('makeBackfillConsumer', () => {
     expect(h.syncLabels[0]).toEqual({ progress: 1, label: 'Synced' })
     expect(h.enqueued.some((e) => e.queue === QUEUE.renewWatch)).toBe(true)
     expect(h.enqueued.some((e) => e.queue === QUEUE.backfill)).toBe(false)
+  })
+
+  it('routes inbound triage through ONE batch keyed by messageId and records the batchId', async () => {
+    const page: BackfillPage = {
+      messages: [
+        fakeMessage({ providerMessageId: 'in1', providerThreadId: 'ta', outbound: false }),
+        fakeMessage({ providerMessageId: 'in2', providerThreadId: 'ta', outbound: false }),
+        fakeMessage({ providerMessageId: 'out', providerThreadId: 'tb', outbound: true }),
+      ],
+      nextCursor: null,
+    }
+    const h = harness(page, { batchTriage: true })
+
+    await makeBackfillConsumer(h.deps)(PAYLOAD, {
+      id: 'j',
+      queue: 'backfill',
+      payload: PAYLOAD,
+      attempts: 0,
+      maxAttempts: 5,
+    })
+
+    // Exactly one batch, carrying only the two inbound messages, keyed by messageId.
+    expect(h.submittedBatches).toHaveLength(1)
+    expect(h.submittedBatches[0]?.map((r) => r.customId)).toEqual(['db-in1', 'db-in2'])
+    // Each request is a real triage request (strict JSON, cheap tier).
+    expect(h.submittedBatches[0]?.[0]?.request.model).toBe('triage')
+    expect(h.submittedBatches[0]?.[0]?.request.responseFormat).toEqual({ type: 'json' })
+
+    // No real-time triage/summary jobs in batch mode — those are deferred to the poller.
+    expect(h.enqueued.some((e) => e.queue === QUEUE.triage)).toBe(false)
+    expect(h.enqueued.some((e) => e.queue === QUEUE.summary)).toBe(false)
+
+    // Embed still runs eagerly for every new message (inbound + outbound).
+    expect(h.enqueued.filter((e) => e.queue === QUEUE.embed)).toHaveLength(3)
+
+    // A triage_batch poll job carries the batchId + the id map for re-keying.
+    const pollJobs = h.enqueued.filter((e) => e.queue === QUEUE.triageBatch)
+    expect(pollJobs).toHaveLength(1)
+    expect(pollJobs[0]?.payload).toEqual({
+      accountId: ACCOUNT_ID,
+      batchId: 'batch-1',
+      items: [
+        { messageId: 'db-in1', threadId: 'db-ta' },
+        { messageId: 'db-in2', threadId: 'db-ta' },
+      ],
+    })
+  })
+
+  it('submits no batch when a page has no new inbound mail', async () => {
+    const page: BackfillPage = {
+      messages: [fakeMessage({ providerMessageId: 'out', providerThreadId: 'tb', outbound: true })],
+      nextCursor: null,
+    }
+    const h = harness(page, { batchTriage: true })
+
+    await makeBackfillConsumer(h.deps)(PAYLOAD, {
+      id: 'j',
+      queue: 'backfill',
+      payload: PAYLOAD,
+      attempts: 0,
+      maxAttempts: 5,
+    })
+
+    expect(h.submittedBatches).toHaveLength(0)
+    expect(h.enqueued.some((e) => e.queue === QUEUE.triageBatch)).toBe(false)
+    // Outbound is still embedded.
+    expect(h.enqueued.filter((e) => e.queue === QUEUE.embed)).toHaveLength(1)
   })
 
   it('does nothing once the account backfill is already complete', async () => {

@@ -20,6 +20,7 @@ import {
   QUEUE,
   backfillPayload,
   type BackfillPayload,
+  type EmbedPayload,
   type RenewWatchPayload,
   type TriagePayload,
 } from '../queue/jobs'
@@ -53,13 +54,18 @@ export function makeBackfillConsumer(deps: BackfillDeps): JobConsumer {
         { accountId, userId: account.userId, crypto: account.crypto },
         msg,
       )
-      if (persisted.isNew && !isOutbound(msg)) {
-        const triageJob: TriagePayload = {
-          accountId,
-          threadId: persisted.threadId,
-          messageId: persisted.messageId,
+      if (persisted.isNew) {
+        // Embed every new message (inbound + outbound) for chat RAG.
+        const embedJob: EmbedPayload = { accountId, messageId: persisted.messageId }
+        await deps.jobs.enqueue(QUEUE.embed, embedJob)
+        if (!isOutbound(msg)) {
+          const triageJob: TriagePayload = {
+            accountId,
+            threadId: persisted.threadId,
+            messageId: persisted.messageId,
+          }
+          await deps.jobs.enqueue(QUEUE.triage, triageJob)
         }
-        await deps.jobs.enqueue(QUEUE.triage, triageJob)
       }
     }
 

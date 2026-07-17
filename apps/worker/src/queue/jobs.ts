@@ -7,23 +7,33 @@
  * mailbox content — only ids the worker resolves against the (encrypted) db.
  *
  * PRODUCERS:
- *  - api-service enqueues `backfill`, `incremental`, and `send`.
- *  - the worker's node-cron scheduler enqueues `renew_watch`, `reconcile`, and
- *    `digest`; sync consumers enqueue `triage` (and `summary` for new threads).
+ *  - api-service enqueues `backfill`, `incremental`, and `send`; it also enqueues
+ *    `agent_run` (new-mail trigger) and `chaser` (user confirms a follow-up).
+ *  - the worker's node-cron scheduler enqueues `renew_watch`, `reconcile`,
+ *    `digest`, `voice_profile` (per user), and `agent_run` (scheduled sweep);
+ *    sync consumers enqueue `triage` + `embed` (and `summary` for new threads).
  *
  * PAYLOAD SCHEMAS (the minimal, agreed shapes — keep in sync with api-service):
- *  - backfill    : { accountId }                 progressive newest-first import
- *  - incremental : { accountId, cursor? }         push-notified delta apply
- *  - send        : { accountId, messageId }        deferred send (runAt = +10s)
- *  - triage      : { accountId, threadId, messageId }
- *  - summary     : { accountId, threadId }         summary + extraction (+escalation)
- *  - renew_watch : { accountId }                   Gmail watch / Graph subscription
- *  - reconcile   : { accountId }                   missed-push safety-net sweep
- *  - digest      : { userId }                       daily digest generation
+ *  - backfill      : { accountId }                 progressive newest-first import
+ *  - incremental   : { accountId, cursor? }         push-notified delta apply
+ *  - send          : { accountId, messageId }        deferred send (runAt = +10s)
+ *  - triage        : { accountId, threadId, messageId }
+ *  - summary       : { accountId, threadId }         summary + extraction (+escalation)
+ *  - embed         : { accountId, messageId }        embed body → pgvector (RAG)
+ *  - voice_profile : { userId }                      learn the user's writing voice
+ *  - agent_run     : { userId, agentId, threadIds? } run an inbox agent's plan
+ *  - chaser        : { userId, reminderId }          send a pre-drafted follow-up
+ *  - renew_watch   : { accountId }                   Gmail watch / Graph subscription
+ *  - reconcile     : { accountId }                   missed-push safety-net sweep
+ *  - digest        : { userId }                       daily digest generation
  *
+ * Payloads carry NO mailbox content — only ids (and, for `agent_run`, the
+ * plaintext-config agent id) the worker resolves against the encrypted db.
  * `cursor` on `incremental` is an override; when omitted the worker reads the
- * persisted cursor from `sync_state`. Cancellation of a deferred `send` is
- * api-service DELETEing the still-`pending` row before `run_at`.
+ * persisted cursor from `sync_state`. `threadIds` on `agent_run` scopes the run
+ * to just-arrived threads (new-mail trigger); omit it for a full sweep.
+ * Cancellation of a deferred `send` is api-service DELETEing the still-`pending`
+ * row before `run_at`.
  */
 
 import { z } from 'zod'
@@ -34,6 +44,10 @@ export const QUEUE = {
   send: 'send',
   triage: 'triage',
   summary: 'summary',
+  embed: 'embed',
+  voiceProfile: 'voice_profile',
+  agentRun: 'agent_run',
+  chaser: 'chaser',
   renewWatch: 'renew_watch',
   reconcile: 'reconcile',
   digest: 'digest',
@@ -59,6 +73,21 @@ export const summaryPayload = z.object({
   accountId: z.string().uuid(),
   threadId: z.string().uuid(),
 })
+export const embedPayload = z.object({
+  accountId: z.string().uuid(),
+  messageId: z.string().uuid(),
+})
+export const voiceProfilePayload = z.object({ userId: z.string().uuid() })
+export const agentRunPayload = z.object({
+  userId: z.string().uuid(),
+  agentId: z.string().uuid(),
+  /** Scope to just-arrived threads (new-mail trigger); omit for a full sweep. */
+  threadIds: z.array(z.string().uuid()).optional(),
+})
+export const chaserPayload = z.object({
+  userId: z.string().uuid(),
+  reminderId: z.string().uuid(),
+})
 export const renewWatchPayload = z.object({ accountId: z.string().uuid() })
 export const reconcilePayload = z.object({ accountId: z.string().uuid() })
 export const digestPayload = z.object({ userId: z.string().uuid() })
@@ -68,6 +97,10 @@ export type IncrementalPayload = z.infer<typeof incrementalPayload>
 export type SendPayload = z.infer<typeof sendPayload>
 export type TriagePayload = z.infer<typeof triagePayload>
 export type SummaryPayload = z.infer<typeof summaryPayload>
+export type EmbedPayload = z.infer<typeof embedPayload>
+export type VoiceProfilePayload = z.infer<typeof voiceProfilePayload>
+export type AgentRunPayload = z.infer<typeof agentRunPayload>
+export type ChaserPayload = z.infer<typeof chaserPayload>
 export type RenewWatchPayload = z.infer<typeof renewWatchPayload>
 export type ReconcilePayload = z.infer<typeof reconcilePayload>
 export type DigestPayload = z.infer<typeof digestPayload>

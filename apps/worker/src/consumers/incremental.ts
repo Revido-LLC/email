@@ -14,7 +14,7 @@ import type { ProviderCredentials } from '@revido/core'
 import type { SyncStore } from '../mail/store'
 import type { JobStore } from '../queue/store'
 import type { JobConsumer } from '../queue/runner'
-import { QUEUE, incrementalPayload, type TriagePayload } from '../queue/jobs'
+import { QUEUE, incrementalPayload, type EmbedPayload, type TriagePayload } from '../queue/jobs'
 
 export interface IncrementalDeps {
   loadAccount(accountId: string): Promise<AccountContext>
@@ -44,13 +44,17 @@ export function makeIncrementalConsumer(deps: IncrementalDeps): JobConsumer {
         { accountId, userId: account.userId, crypto: account.crypto },
         msg,
       )
-      if (persisted.isNew && !msg.outbound) {
-        const triageJob: TriagePayload = {
-          accountId,
-          threadId: persisted.threadId,
-          messageId: persisted.messageId,
+      if (persisted.isNew) {
+        const embedJob: EmbedPayload = { accountId, messageId: persisted.messageId }
+        await deps.jobs.enqueue(QUEUE.embed, embedJob)
+        if (!msg.outbound) {
+          const triageJob: TriagePayload = {
+            accountId,
+            threadId: persisted.threadId,
+            messageId: persisted.messageId,
+          }
+          await deps.jobs.enqueue(QUEUE.triage, triageJob)
         }
-        await deps.jobs.enqueue(QUEUE.triage, triageJob)
       }
     }
 

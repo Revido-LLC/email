@@ -95,6 +95,36 @@ export async function loadAccountContext(
   }
 }
 
+/** Identity + crypto for a user, resolved from `user_keys` (no account needed). */
+export interface UserContext {
+  userId: string
+  dek: Uint8Array
+  crypto: AccountCrypto
+}
+
+/**
+ * Load + unwrap a user's DEK by user id, for the per-user jobs that are not
+ * scoped to one connected account (`voice_profile`, `agent_run`, `chaser`).
+ * The DEK is per-user (one `user_keys` row), so content across all the user's
+ * accounts encrypts/decrypts under the same key. Throws if the user has no key.
+ */
+export async function loadUserContext(
+  db: WorkerDb,
+  userId: string,
+  kms: KmsProvider,
+  crypto: EnvelopeCrypto = envelopeCrypto,
+): Promise<UserContext> {
+  const rows = await db.asService(
+    (sql) => sql<{ wrapped_dek: string }[]>`
+      select wrapped_dek from user_keys where user_id = ${userId} limit 1
+    `,
+  )
+  const row = rows[0]
+  if (!row) throw new Error(`no user_keys row for user: ${userId}`)
+  const dek = await crypto.loadUserDek(row.wrapped_dek, kms)
+  return { userId, dek, crypto: accountCrypto(dek, crypto) }
+}
+
 /** Persist refreshed OAuth tokens (re-encrypted under the account's DEK). */
 export async function saveCredentials(
   db: WorkerDb,

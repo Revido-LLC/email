@@ -11,25 +11,44 @@
  * `(account_id, provider_message_id)` — so replaying a fetched page is a no-op.
  */
 
-import type { CategoryId, OutputLanguage, Priority } from '@revido/db'
+import type { CategoryId, DigestBundle, OutputLanguage, Priority, Thread } from '@revido/db'
 import type { Ciphertext } from '@revido/db/crypto'
-import type { RawFetchedMessage } from '@revido/core'
+import {
+  AGENT_ACTION_TYPES,
+  agentConditionSchema,
+  type AgentActionType,
+  type AgentCondition,
+  type AgentPlan,
+  type RawFetchedMessage,
+} from '@revido/core'
 import type { Tx, WorkerDb } from '../db/client'
 import { jsonCiphertext, type AccountCrypto } from '../db/accounts'
 import { htmlToText, sanitizeHtml } from '../sync/html'
 import type {
   ApplySummaryInput,
+  ApplyThreadActionInput,
   ApplyTriageInput,
+  ChaserSendData,
   Contact,
+  CreateCommitmentInput,
+  CreateReminderInput,
+  DigestData,
+  EnqueueApprovalInput,
+  ListAgentThreadsOptions,
   MailStore,
+  MessageTextInput,
   OutboundMessageData,
   PersistTarget,
   PersistedMessage,
+  RecordAgentRunInput,
   SaveBackfillProgressInput,
   SaveCursorInput,
+  SaveVoiceProfileInput,
+  StoredAgentPlan,
   SyncStateRow,
   ThreadForSummary,
   TriageInput,
+  UpsertEmbeddingInput,
 } from './store'
 
 /** Newly-ingested threads land here until triage recategorizes them. */
@@ -475,5 +494,458 @@ export class PgMailStore implements MailStore {
         where id = ${messageId}
       `
     })
+  }
+
+  // -- embeddings (RAG) ------------------------------------------------------
+
+  async getMessageText(
+    userId: string,
+    messageId: string,
+    crypto: AccountCrypto,
+  ): Promise<MessageTextInput | null> {
+    return this.db.withUser(userId, async (sql) => {
+      const rows = await sql<
+        { subject_ct: Ciphertext | null; text_ct: Ciphertext | null; html_ct: Ciphertext | null }[]
+      >`
+        select t.subject_ct, m.text_ct, m.html_ct
+        from messages m join threads t on t.id = m.thread_id
+        where m.id = ${messageId}
+        limit 1
+      `
+      const row = rows[0]
+      if (!row) return null
+      return {
+        subject: row.subject_ct ? crypto.decrypt(row.subject_ct) : '',
+        text: decryptBody(crypto, row.text_ct, row.html_ct),
+      }
+    })
+  }
+
+  async upsertMessageEmbedding(input: UpsertEmbeddingInput): Promise<void> {
+    const literal = `[${input.embedding.join(',')}]`
+    await this.db.withUser(input.userId, async (sql) => {
+      await sql`
+        insert into message_embeddings (message_id, user_id, embedding, model)
+        values (${input.messageId}, ${input.userId}, ${literal}::vector, ${input.model})
+        on conflict (message_id) do update
+          set embedding = excluded.embedding, model = excluded.model
+      `
+    })
+  }
+
+  // -- voice profile ---------------------------------------------------------
+
+  async getSentBodies(userId: string, crypto: AccountCrypto, limit: number): Promise<string[]> {
+    return this.db.withUser(userId, async (sql) => {
+      const rows = await sql<{ text_ct: Ciphertext | null; html_ct: Ciphertext | null }[]>`
+        select m.text_ct, m.html_ct
+        from messages m
+        where m.outbound = true
+        order by m.date desc
+        limit ${limit}
+      `
+      return rows.map((r) => decryptBody(crypto, r.text_ct, r.html_ct)).filter((b) => b.length > 0)
+    })
+  }
+
+  async saveVoiceProfile(input: SaveVoiceProfileInput): Promise<void> {
+    // users is Better-Auth-owned; write voice_profile as the service role.
+    const ct = jsonCiphertext(input.crypto.encrypt(input.profile))
+    await this.db.asService(
+      (sql) => sql`
+        update users set voice_profile_ct = ${sql.json(ct)}, updated_at = now()
+        where id = ${input.userId}
+      `,
+    )
+  }
+
+  // -- agents ----------------------------------------------------------------
+
+  async getAgentPlan(userId: string, agentId: string): Promise<StoredAgentPlan | null> {
+    return this.db.withUser(userId, async (sql) => {
+      const heads = await sql<
+        { name: string; icon: string | null; trigger: string | null; conditions: string[] }[]
+      >`
+        select name, icon, trigger, conditions from agents where id = ${agentId} limit 1
+      `
+      const head = heads[0]
+      if (!head) return null
+      const actionRows = await sql<{ type: string; label: string }[]>`
+        select type, label from agent_actions where agent_id = ${agentId} order by position asc
+      `
+      return {
+        name: head.name,
+        icon: head.icon,
+        plan: reconstructPlan(head.trigger, head.conditions, actionRows),
+      }
+    })
+  }
+
+  async listAgentThreads(
+    userId: string,
+    crypto: AccountCrypto,
+    opts: ListAgentThreadsOptions = {},
+  ): Promise<Thread[]> {
+    const limit = opts.limit ?? 200
+    const ids = opts.threadIds
+    return this.db.withUser(userId, async (sql) => {
+      const rows = await sql<ThreadMetaRow[]>`
+        select t.id, t.account_id, t.subject_ct, t.category, t.priority, t.priority_score,
+               t.unread, t.starred, t.snoozed_until, t.has_attachments, t.awaiting_reply,
+               t.labels, t.language, t.last_message_at
+        from threads t
+        where ${ids && ids.length > 0 ? sql`t.id in ${sql(ids)}` : sql`true`}
+        order by t.last_message_at desc
+        limit ${limit}
+      `
+      if (rows.length === 0) return []
+      const threadIds = rows.map((r) => r.id)
+      const parts = await sql<{ thread_id: string; name: string | null; email: string | null }[]>`
+        select tp.thread_id, c.name, c.email
+        from thread_participants tp join contacts c on c.id = tp.contact_id
+        where tp.thread_id in ${sql(threadIds)}
+      `
+      const byThread = new Map<string, Contact[]>()
+      for (const p of parts) {
+        const list = byThread.get(p.thread_id) ?? []
+        list.push({ name: p.name ?? '', email: p.email ?? '' })
+        byThread.set(p.thread_id, list)
+      }
+      return rows.map((r) => toDomainThreadMeta(r, crypto, byThread.get(r.id) ?? []))
+    })
+  }
+
+  async applyThreadAction(input: ApplyThreadActionInput): Promise<void> {
+    const { userId, threadId, type } = input
+    await this.db.withUser(userId, async (sql) => {
+      switch (type) {
+        case 'star':
+          await sql`update threads set starred = true, updated_at = now() where id = ${threadId}`
+          return
+        case 'mark-read':
+          await sql`update threads set unread = false, updated_at = now() where id = ${threadId}`
+          return
+        case 'label':
+        case 'archive': {
+          // No `archived` column exists — archive is modeled as an 'archived' label.
+          const label = type === 'archive' ? 'archived' : (input.label ?? '').trim()
+          if (!label) return
+          await sql`
+            update threads
+            set labels = (
+              select array(select distinct unnest(array_append(labels, ${label})))
+            ), updated_at = now()
+            where id = ${threadId}
+          `
+          return
+        }
+      }
+    })
+  }
+
+  async enqueueApproval(input: EnqueueApprovalInput): Promise<void> {
+    const { userId, crypto } = input
+    await this.db.withUser(userId, async (sql) => {
+      await sql`
+        insert into approvals
+          (user_id, agent_id, agent_name, agent_icon, action, thread_id,
+           subject_ct, sender, preview_ct)
+        values
+          (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.action},
+           ${input.threadId}, ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))},
+           ${input.sender}, ${sql.json(jsonCiphertext(crypto.encrypt(input.preview)))})
+      `
+    })
+  }
+
+  async recordAgentRun(input: RecordAgentRunInput): Promise<void> {
+    const { userId, crypto } = input
+    const affectedJson = JSON.stringify(input.affected)
+    await this.db.withUser(userId, async (sql) => {
+      await sql`
+        insert into agent_runs
+          (user_id, agent_id, agent_name, agent_icon, at, summary_ct, reasoning_ct,
+           affected_ct, status, reversible)
+        values
+          (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.at},
+           ${sql.json(jsonCiphertext(crypto.encrypt(input.summary)))},
+           ${sql.json(jsonCiphertext(crypto.encrypt(input.reasoning)))},
+           ${sql.json(jsonCiphertext(crypto.encrypt(affectedJson)))},
+           ${input.status}, ${input.reversible})
+      `
+    })
+  }
+
+  // -- reminders / commitments -----------------------------------------------
+
+  async createReminder(input: CreateReminderInput): Promise<void> {
+    const { userId, crypto } = input
+    await this.db.withUser(userId, async (sql) => {
+      await sql`
+        insert into reminders
+          (user_id, kind, thread_id, subject_ct, context_ct, sender, due_at, draft_reply_ct)
+        values
+          (${userId}, ${input.kind}, ${input.threadId},
+           ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))},
+           ${sql.json(jsonCiphertext(crypto.encrypt(input.context)))},
+           ${input.sender}, ${input.dueAt},
+           ${input.draftReply ? sql.json(jsonCiphertext(crypto.encrypt(input.draftReply))) : null})
+      `
+    })
+  }
+
+  async createCommitment(input: CreateCommitmentInput): Promise<void> {
+    const { userId, crypto } = input
+    await this.db.withUser(userId, async (sql) => {
+      await sql`
+        insert into commitments (user_id, text_ct, thread_id, subject_ct, counterpart, due_at)
+        values
+          (${userId}, ${sql.json(jsonCiphertext(crypto.encrypt(input.text)))}, ${input.threadId},
+           ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))}, ${input.counterpart},
+           ${input.dueAt})
+      `
+    })
+  }
+
+  // -- chaser ----------------------------------------------------------------
+
+  async getChaserSendData(
+    userId: string,
+    reminderId: string,
+    crypto: AccountCrypto,
+  ): Promise<ChaserSendData | null> {
+    return this.db.withUser(userId, async (sql) => {
+      const rows = await sql<
+        {
+          thread_id: string | null
+          subject_ct: Ciphertext | null
+          draft_reply_ct: Ciphertext | null
+        }[]
+      >`
+        select thread_id, subject_ct, draft_reply_ct from reminders where id = ${reminderId} limit 1
+      `
+      const row = rows[0]
+      if (!row || !row.thread_id) return null
+      const draft = row.draft_reply_ct ? crypto.decrypt(row.draft_reply_ct) : ''
+      if (!draft) return null
+
+      const threadRows = await sql<{ account_id: string }[]>`
+        select account_id from threads where id = ${row.thread_id} limit 1
+      `
+      const accountId = threadRows[0]?.account_id
+      if (!accountId) return null
+
+      // The follow-up goes to whoever we last emailed in this thread (and are
+      // now chasing) — the recipients of the most recent outbound message.
+      const lastOut = await sql<{ id: string; provider_message_id: string | null }[]>`
+        select id, provider_message_id from messages
+        where thread_id = ${row.thread_id} and outbound = true
+        order by date desc limit 1
+      `
+      const to: Contact[] = []
+      let inReplyTo: string | undefined
+      const out = lastOut[0]
+      if (out) {
+        inReplyTo = out.provider_message_id ?? undefined
+        const recips = await sql<{ name: string | null; email: string | null }[]>`
+          select c.name, c.email from message_recipients r
+          join contacts c on c.id = r.contact_id
+          where r.message_id = ${out.id} and r.kind = 'to'
+        `
+        for (const rc of recips) to.push({ name: rc.name ?? '', email: rc.email ?? '' })
+      }
+      if (to.length === 0) return null
+
+      const subject = row.subject_ct ? crypto.decrypt(row.subject_ct) : ''
+      return {
+        accountId,
+        to,
+        subject,
+        html: draft,
+        text: htmlToText(draft),
+        inReplyToProviderMessageId: inReplyTo,
+      }
+    })
+  }
+
+  async deleteReminder(userId: string, reminderId: string): Promise<void> {
+    await this.db.withUser(userId, async (sql) => {
+      await sql`delete from reminders where id = ${reminderId}`
+    })
+  }
+
+  // -- digest ----------------------------------------------------------------
+
+  async getDigestData(userId: string, crypto: AccountCrypto): Promise<DigestData> {
+    return this.db.withUser(userId, async (sql) => {
+      const userRows = await sql<
+        { email: string; name: string | null; output_language: OutputLanguage }[]
+      >`select email, name, output_language from users where id = ${userId} limit 1`
+      const user = userRows[0]
+
+      const counts = await sql<{ category: CategoryId; count: number }[]>`
+        select category, count(*)::int as count
+        from threads where unread = true group by category
+      `
+      const samples = await sql<
+        {
+          id: string
+          category: CategoryId
+          subject_ct: Ciphertext | null
+          sender_name: string | null
+          sender_email: string | null
+        }[]
+      >`
+        select t.id, t.category, t.subject_ct,
+          (select c.name from messages m join contacts c on c.id = m.from_contact_id
+             where m.thread_id = t.id order by m.date desc limit 1) as sender_name,
+          (select c.email from messages m join contacts c on c.id = m.from_contact_id
+             where m.thread_id = t.id order by m.date desc limit 1) as sender_email
+        from threads t
+        where t.unread = true
+        order by t.last_message_at desc
+        limit 60
+      `
+      const itemsByCategory = new Map<CategoryId, { subject: string; sender: string }[]>()
+      for (const s of samples) {
+        const list = itemsByCategory.get(s.category) ?? []
+        if (list.length < 3) {
+          list.push({
+            subject: s.subject_ct ? crypto.decrypt(s.subject_ct) : '(no subject)',
+            sender: s.sender_name || s.sender_email || 'Unknown',
+          })
+        }
+        itemsByCategory.set(s.category, list)
+      }
+      const bundles: DigestBundle[] = counts
+        .filter((c) => c.count > 0)
+        .map((c) => ({
+          category: c.category,
+          count: c.count,
+          items: itemsByCategory.get(c.category) ?? [],
+        }))
+
+      const reminderRows = await sql<
+        { subject_ct: Ciphertext | null; sender: string | null; due_at: Date }[]
+      >`select subject_ct, sender, due_at from reminders order by due_at asc limit 10`
+      const reminders = reminderRows.map((r) => ({
+        subject: r.subject_ct ? crypto.decrypt(r.subject_ct) : '(no subject)',
+        sender: r.sender ?? '',
+        dueAt: r.due_at.toISOString(),
+      }))
+
+      const commitmentRows = await sql<
+        { text_ct: Ciphertext | null; counterpart: string | null; due_at: Date }[]
+      >`select text_ct, counterpart, due_at from commitments order by due_at asc limit 10`
+      const commitments = commitmentRows.map((r) => ({
+        text: r.text_ct ? crypto.decrypt(r.text_ct) : '',
+        counterpart: r.counterpart ?? '',
+        dueAt: r.due_at.toISOString(),
+      }))
+
+      const handled = await sql<{ count: number }[]>`
+        select count(*)::int as count from agent_runs
+        where at >= now() - interval '1 day' and status = 'done'
+      `
+
+      return {
+        email: user?.email ?? '',
+        name: user?.name ?? null,
+        outputLanguage: user?.output_language ?? 'match',
+        bundles,
+        reminders,
+        commitments,
+        agentsHandled: handled[0]?.count ?? 0,
+      }
+    })
+  }
+}
+
+/** Row shape for {@link PgMailStore.listAgentThreads}. */
+interface ThreadMetaRow {
+  id: string
+  account_id: string
+  subject_ct: Ciphertext | null
+  category: CategoryId
+  priority: Priority
+  priority_score: number
+  unread: boolean
+  starred: boolean
+  snoozed_until: Date | null
+  has_attachments: boolean
+  awaiting_reply: boolean
+  labels: string[]
+  language: string | null
+  last_message_at: Date
+}
+
+/** Decrypt the text body, falling back to the sanitized HTML if there's no text part. */
+function decryptBody(
+  crypto: AccountCrypto,
+  textCt: Ciphertext | null,
+  htmlCt: Ciphertext | null,
+): string {
+  if (textCt) return crypto.decrypt(textCt)
+  if (htmlCt) return htmlToText(crypto.decrypt(htmlCt))
+  return ''
+}
+
+/** Map a thread metadata row into the domain {@link Thread} the predicate reads. */
+function toDomainThreadMeta(row: ThreadMetaRow, crypto: AccountCrypto, participants: Contact[]): Thread {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    subject: row.subject_ct ? crypto.decrypt(row.subject_ct) : '',
+    participants,
+    category: row.category,
+    priority: row.priority,
+    priorityScore: row.priority_score,
+    tldr: '',
+    summary: '',
+    unread: row.unread,
+    starred: row.starred,
+    snoozedUntil: row.snoozed_until ? row.snoozed_until.toISOString() : null,
+    hasAttachments: row.has_attachments,
+    badges: [],
+    extracted: [],
+    messageIds: [],
+    lastMessageAt: row.last_message_at.toISOString(),
+    awaitingReply: row.awaiting_reply,
+    labels: row.labels,
+    language: row.language ?? undefined,
+  }
+}
+
+/**
+ * Rebuild an {@link AgentPlan} from an agent's stored (plaintext) config.
+ *
+ * `agents.conditions` is a free-form `text[]` of human-readable clauses; when the
+ * compiler (api-service) persisted them as JSON-encoded {@link AgentCondition}s
+ * they round-trip here, otherwise a non-JSON clause is dropped (the agent then
+ * matches every candidate thread, and consequential actions still gate). Actions
+ * come from `agent_actions` (ordered), keeping only recognized action types.
+ */
+function reconstructPlan(
+  trigger: string | null,
+  conditions: string[],
+  actions: { type: string; label: string }[],
+): AgentPlan {
+  const parsedConditions: AgentCondition[] = []
+  for (const clause of conditions) {
+    try {
+      const parsed = agentConditionSchema.safeParse(JSON.parse(clause))
+      if (parsed.success) parsedConditions.push(parsed.data)
+    } catch {
+      // non-JSON free-form clause — not machine-evaluable, skip.
+    }
+  }
+  const known = new Set<string>(AGENT_ACTION_TYPES)
+  const planActions = actions
+    .filter((a) => known.has(a.type))
+    .map((a) => ({ type: a.type as AgentActionType, label: a.label }))
+  return {
+    trigger: trigger === 'scheduled' ? 'scheduled' : 'new-mail',
+    conditions: parsedConditions,
+    actions: planActions,
   }
 }

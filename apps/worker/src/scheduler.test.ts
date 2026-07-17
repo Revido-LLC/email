@@ -3,6 +3,8 @@ import { consoleLogger } from './queue/runner'
 import {
   enqueueDailyDigests,
   enqueueReconcileSweep,
+  enqueueScheduledAgentRuns,
+  enqueueVoiceProfiles,
   enqueueWatchRenewals,
   type SchedulerDeps,
 } from './scheduler'
@@ -27,6 +29,11 @@ function harness(): {
           { id: 'a3', provider: 'gmail' },
         ]),
       listUserIds: () => Promise.resolve(['u1', 'u2']),
+      listScheduledAgents: () =>
+        Promise.resolve([
+          { id: 'ag1', userId: 'u1' },
+          { id: 'ag2', userId: 'u2' },
+        ]),
     },
     logger: consoleLogger,
   }
@@ -59,5 +66,24 @@ describe('scheduler enqueue functions', () => {
     const count = await enqueueDailyDigests(h.deps)
     expect(count).toBe(2)
     expect(h.enqueued.map((e) => e.payload)).toEqual([{ userId: 'u1' }, { userId: 'u2' }])
+  })
+
+  it('enqueues a voice-profile refresh per user', async () => {
+    const h = harness()
+    const count = await enqueueVoiceProfiles(h.deps)
+    expect(count).toBe(2)
+    expect(h.enqueued.every((e) => e.queue === QUEUE.voiceProfile)).toBe(true)
+    expect(h.enqueued.map((e) => e.payload)).toEqual([{ userId: 'u1' }, { userId: 'u2' }])
+  })
+
+  it('enqueues an agent_run per enabled scheduled agent', async () => {
+    const h = harness()
+    const count = await enqueueScheduledAgentRuns(h.deps)
+    expect(count).toBe(2)
+    expect(h.enqueued.every((e) => e.queue === QUEUE.agentRun)).toBe(true)
+    expect(h.enqueued.map((e) => e.payload)).toEqual([
+      { userId: 'u1', agentId: 'ag1' },
+      { userId: 'u2', agentId: 'ag2' },
+    ])
   })
 })

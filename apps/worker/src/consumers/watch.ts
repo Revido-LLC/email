@@ -44,6 +44,8 @@ export function makeRenewWatchConsumer(deps: RenewWatchDeps): JobConsumer {
       userId: account.userId,
       historyId: account.provider === 'gmail' ? watch.cursor : undefined,
       deltaLink: account.provider === 'outlook' ? watch.cursor : undefined,
+      // Persist the subscription id so a webhook push (no account id) resolves back here.
+      subscriptionId: watch.id,
     })
   }
 }

@@ -19,7 +19,7 @@ import {
   threads,
 } from '@revido/db/schema'
 import type { Message } from '@revido/db'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { upsertContact } from './contacts'
 import type { UserCrypto } from './crypto'
 import { HttpError } from './http'
@@ -233,10 +233,23 @@ export async function sendReply(
   return result.message
 }
 
-/** Cancel a pending deferred send (the 10s undo). */
+/**
+ * Cancel a pending deferred send (the 10s undo).
+ *
+ * Returns `true` only if the send was actually withdrawn. The delete is guarded on
+ * `locked_at IS NULL`: once the worker has CLAIMED the row (it sets `locked_at`
+ * while the status is still `pending`) the send is in flight, so cancelling must
+ * lose the race — otherwise we'd delete the local copy of an email that still goes
+ * out and tell the user it was cancelled. Under READ COMMITTED the claim's
+ * `SELECT … FOR UPDATE SKIP LOCKED` and this `DELETE … WHERE locked_at IS NULL` are
+ * mutually exclusive on the row, so exactly one of {claim, cancel} wins. We only
+ * drop the outbound message row when we won (a lost race leaves it for the worker
+ * to mark sent).
+ */
 export async function cancelSend(userId: string, messageId: string): Promise<boolean> {
-  // Delete only the pending send job for THIS message + user (JSONB-scoped), then
-  // drop the never-sent outbound message under the caller's RLS scope.
+  // Delete only the still-unclaimed pending send job for THIS message + user
+  // (JSONB-scoped). If the worker already claimed it, `locked_at` is set and this
+  // matches nothing → we lost the race.
   const removed = await asService(async (tx) => {
     return tx
       .delete(jobs)
@@ -244,6 +257,7 @@ export async function cancelSend(userId: string, messageId: string): Promise<boo
         and(
           eq(jobs.queue, JobQueue.send),
           eq(jobs.status, 'pending'),
+          isNull(jobs.lockedAt),
           sql`${jobs.payload} ->> 'messageId' = ${messageId}`,
           sql`${jobs.payload} ->> 'userId' = ${userId}`,
         ),
@@ -251,8 +265,10 @@ export async function cancelSend(userId: string, messageId: string): Promise<boo
       .returning({ id: jobs.id })
   })
 
+  // Only drop the never-sent outbound message when we actually withdrew the job.
+  if (removed.length === 0) return false
   await withUser(userId, async (tx) => {
     await tx.delete(messages).where(and(eq(messages.id, messageId), eq(messages.outbound, true)))
   })
-  return removed.length > 0
+  return true
 }

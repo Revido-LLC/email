@@ -10,6 +10,11 @@
  * the row from the next claim while it runs. The lock is released (row marked
  * done/failed) in a separate statement so a slow job never holds a DB lock. A
  * `locked_at` older than `lockTtlMs` is reclaimable — the crash safety net.
+ *
+ * `attempts` is incremented AT CLAIM TIME (not only on a graceful `fail`), so a job
+ * that crashes the process mid-run still burns an attempt: after the lock TTL it is
+ * reclaimed with a higher count and eventually dead-letters instead of retrying
+ * forever. The runner treats `attempts > max_attempts` on a claim as exhausted.
  */
 
 import type { JsonValue, WorkerDb } from '../db/client'
@@ -74,7 +79,7 @@ export class PgJobStore implements JobStore {
     const rows = await this.db.asService(
       (sql) => sql<JobRow[]>`
         update jobs
-        set locked_at = now(), locked_by = ${workerId}
+        set locked_at = now(), locked_by = ${workerId}, attempts = attempts + 1
         where id = (
           select id from jobs
           where status = 'pending'

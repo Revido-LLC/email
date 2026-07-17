@@ -37,7 +37,7 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
 
   return {
     [QUEUE.backfill]: makeBackfillConsumer(syncDeps),
-    [QUEUE.incremental]: makeIncrementalConsumer(syncDeps),
+    [QUEUE.incremental]: makeIncrementalConsumer({ ...syncDeps, logger: ctx.logger }),
     [QUEUE.send]: makeSendConsumer({
       loadAccount: ctx.loadAccount,
       adapterFor: ctx.adapterFor,

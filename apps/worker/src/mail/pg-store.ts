@@ -11,7 +11,7 @@
  * `(account_id, provider_message_id)` — so replaying a fetched page is a no-op.
  */
 
-import type { CategoryId, DigestBundle, OutputLanguage, Priority, Thread } from '@revido/db'
+import type { CategoryId, DigestBundle, OutputLanguage, Priority, Provider, Thread } from '@revido/db'
 import type { Ciphertext } from '@revido/db/crypto'
 import {
   AGENT_ACTION_TYPES,
@@ -41,6 +41,7 @@ import type {
   PersistTarget,
   PersistedMessage,
   RecordAgentRunInput,
+  ResolvedAccountRef,
   SaveBackfillProgressInput,
   SaveCursorInput,
   SaveVoiceProfileInput,
@@ -244,17 +245,53 @@ export class PgMailStore implements MailStore {
       const provider = await this.resolveProvider(sql, input.accountId)
       await sql`
         insert into sync_state
-          (user_id, account_id, provider, history_id, delta_link, last_synced_at)
+          (user_id, account_id, provider, history_id, delta_link, subscription_id, last_synced_at)
         values
           (${input.userId}, ${input.accountId}, ${provider}, ${input.historyId ?? null},
-           ${input.deltaLink ?? null}, now())
+           ${input.deltaLink ?? null}, ${input.subscriptionId ?? null}, now())
         on conflict (account_id) do update set
           history_id = coalesce(excluded.history_id, sync_state.history_id),
           delta_link = coalesce(excluded.delta_link, sync_state.delta_link),
+          subscription_id = coalesce(excluded.subscription_id, sync_state.subscription_id),
           last_synced_at = now(),
           updated_at = now()
       `
     })
+  }
+
+  /**
+   * Resolve a connected account by provider + mailbox address. Gmail push
+   * envelopes identify the mailbox by `emailAddress` (no account id), so a webhook
+   * maps it back here. Case-insensitive on the address; the oldest match wins if a
+   * single mailbox is (unusually) linked by more than one user.
+   */
+  async resolveAccountByEmail(
+    provider: Provider,
+    email: string,
+  ): Promise<ResolvedAccountRef | null> {
+    const rows = await this.db.asService(
+      (sql) => sql<{ account_id: string; user_id: string }[]>`
+        select id as account_id, user_id from accounts
+        where provider = ${provider} and lower(email) = lower(${email})
+        order by created_at asc
+        limit 1
+      `,
+    )
+    const row = rows[0]
+    return row ? { accountId: row.account_id, userId: row.user_id } : null
+  }
+
+  /** Resolve a connected account by the Graph subscription id persisted on its watch. */
+  async resolveAccountBySubscription(subscriptionId: string): Promise<ResolvedAccountRef | null> {
+    const rows = await this.db.asService(
+      (sql) => sql<{ account_id: string; user_id: string }[]>`
+        select account_id, user_id from sync_state
+        where subscription_id = ${subscriptionId}
+        limit 1
+      `,
+    )
+    const row = rows[0]
+    return row ? { accountId: row.account_id, userId: row.user_id } : null
   }
 
   async setSyncProgress(accountId: string, progress: number, label?: string): Promise<void> {

@@ -11,6 +11,15 @@
 --   * For system tables (user_keys, audit_log, Better Auth, jobs) it runs
 --     `asService(fn)` as the owner role, which bypasses RLS.
 --
+-- ⚠️ DEPLOY REQUIREMENT: the content tables below are ENABLE + FORCE ROW LEVEL
+-- SECURITY. `FORCE` applies RLS to the TABLE OWNER as well, so the connection
+-- (`DATABASE_URL`) role bypasses RLS on them ONLY if it is a SUPERUSER or a
+-- BYPASSRLS role. Railway's default `postgres` role is a superuser, so this holds
+-- today — but a least-privilege connection role would silently see ZERO rows via
+-- `asService` (sync_state, cross-user account resolution, …). Keep the role
+-- BYPASSRLS/superuser, or drop FORCE. See packages/db/src/client.ts
+-- (`assertServiceRoleBypassesRls`), which warns at startup if this is violated.
+--
 -- Better Auth's tables (session/account/verification) and the jobs queue are
 -- created and locked down in 0002; only the shared `users` table is handled here
 -- (it is both Better Auth's `user` model and a user-scoped content table).

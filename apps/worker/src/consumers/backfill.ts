@@ -22,6 +22,7 @@ import {
   type BackfillPayload,
   type EmbedPayload,
   type RenewWatchPayload,
+  type SummaryPayload,
   type TriagePayload,
 } from '../queue/jobs'
 
@@ -49,6 +50,8 @@ export function makeBackfillConsumer(deps: BackfillDeps): JobConsumer {
     const cursor = state?.backfillCursor ?? undefined
     const page = await adapter.backfill(creds, cursor)
 
+    // Enqueue at most one summary per thread that gained a new message this page.
+    const summarizedThreads = new Set<string>()
     for (const msg of page.messages) {
       const persisted = await deps.mail.persistMessage(
         { accountId, userId: account.userId, crypto: account.crypto },
@@ -65,6 +68,11 @@ export function makeBackfillConsumer(deps: BackfillDeps): JobConsumer {
             messageId: persisted.messageId,
           }
           await deps.jobs.enqueue(QUEUE.triage, triageJob)
+          if (!summarizedThreads.has(persisted.threadId)) {
+            summarizedThreads.add(persisted.threadId)
+            const summaryJob: SummaryPayload = { accountId, threadId: persisted.threadId }
+            await deps.jobs.enqueue(QUEUE.summary, summaryJob)
+          }
         }
       }
     }

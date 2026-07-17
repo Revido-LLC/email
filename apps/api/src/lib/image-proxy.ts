@@ -173,22 +173,36 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
 // Fetch + re-serve
 // ---------------------------------------------------------------------------
 
-/** Read a response body, aborting past `max` bytes (guards against a lying content-length). */
-async function readCapped(res: Response, max: number): Promise<Uint8Array> {
+/**
+ * Read a response body, aborting past `max` bytes (guards against a lying
+ * content-length) AND when `signal` fires (the overall wall-clock deadline). The
+ * signal bound is what stops a slowloris upstream from dribbling the body forever
+ * after the headers arrive.
+ */
+async function readCapped(res: Response, max: number, signal: AbortSignal): Promise<Uint8Array> {
   const reader = res.body?.getReader()
   if (!reader) return new Uint8Array()
   const chunks: Uint8Array[] = []
   let total = 0
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    if (!value) continue
-    total += value.length
-    if (total > max) {
-      await reader.cancel()
-      throw new HttpError(413, 'image_too_large', 'The image exceeds the proxy size limit.')
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.length
+      if (total > max) {
+        await reader.cancel()
+        throw new HttpError(413, 'image_too_large', 'The image exceeds the proxy size limit.')
+      }
+      chunks.push(value)
     }
-    chunks.push(value)
+  } catch (err) {
+    if (err instanceof HttpError) throw err
+    // An abort (deadline) surfaces here as the reader rejects; map it to a timeout.
+    if (signal.aborted) {
+      throw new HttpError(504, 'image_timeout', 'The image took too long to download.')
+    }
+    throw new HttpError(502, 'image_fetch_failed', 'The image stream failed.')
   }
   const out = new Uint8Array(total)
   let offset = 0
@@ -204,61 +218,84 @@ function mediaType(header: string | null): string {
   return (header ?? '').split(';')[0]!.trim().toLowerCase()
 }
 
+/** Overrides for {@link fetchProxiedImage} (tests inject a clock/fetch). */
+export interface FetchProxiedImageOptions {
+  /** Overall wall-clock budget covering ALL hops AND the body read. */
+  timeoutMs?: number
+  /** Injectable fetch for tests. */
+  fetchImpl?: typeof fetch
+}
+
 /**
  * Fetch a remote image through the SSRF guards, following (and re-validating)
- * redirects, enforcing the size + content-type caps and a timeout. Never forwards
+ * redirects, enforcing the size + content-type caps and a single OVERALL deadline.
+ * The one deadline spans every redirect hop AND the streaming body read — clearing
+ * it only after the body is read (not once headers arrive), so a slowloris upstream
+ * that stalls mid-body is aborted rather than held open indefinitely. Never forwards
  * cookies, referrer, or auth. Throws an {@link HttpError} on any refusal.
  */
-export async function fetchProxiedImage(rawUrl: string): Promise<ProxiedImage> {
+export async function fetchProxiedImage(
+  rawUrl: string,
+  opts: FetchProxiedImageOptions = {},
+): Promise<ProxiedImage> {
+  const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS
+  const fetchImpl = opts.fetchImpl ?? fetch
   let target = await assertPublicUrl(rawUrl)
 
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-    let res: Response
-    try {
-      res = await fetch(target, {
-        method: 'GET',
-        redirect: 'manual', // follow by hand so each hop is re-validated
-        signal: controller.signal,
-        headers: {
-          accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,*/*;q=0.5',
-          'user-agent': 'RevidoMail-ImageProxy/1.0',
-        },
-      })
-    } catch {
-      clearTimeout(timer)
-      throw new HttpError(502, 'image_fetch_failed', 'The image could not be fetched.')
-    }
-    clearTimeout(timer)
-
-    // Manual redirect handling: re-validate the next hop before following it.
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location')
-      if (!location || hop === MAX_REDIRECTS) {
-        throw new HttpError(502, 'too_many_redirects', 'The image redirected too many times.')
+  // One controller + deadline for the whole operation (connect, redirects, body).
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      let res: Response
+      try {
+        res = await fetchImpl(target, {
+          method: 'GET',
+          redirect: 'manual', // follow by hand so each hop is re-validated
+          signal: controller.signal,
+          headers: {
+            accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,*/*;q=0.5',
+            'user-agent': 'RevidoMail-ImageProxy/1.0',
+          },
+        })
+      } catch {
+        if (controller.signal.aborted) {
+          throw new HttpError(504, 'image_timeout', 'The image took too long to download.')
+        }
+        throw new HttpError(502, 'image_fetch_failed', 'The image could not be fetched.')
       }
-      target = await assertPublicUrl(new URL(location, target).toString())
-      continue
-    }
 
-    if (!res.ok) {
-      throw new HttpError(502, 'image_upstream_error', `The image host returned ${res.status}.`)
-    }
+      // Manual redirect handling: re-validate the next hop before following it.
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get('location')
+        if (!location || hop === MAX_REDIRECTS) {
+          throw new HttpError(502, 'too_many_redirects', 'The image redirected too many times.')
+        }
+        target = await assertPublicUrl(new URL(location, target).toString())
+        continue
+      }
 
-    const type = mediaType(res.headers.get('content-type'))
-    if (!ALLOWED_CONTENT_TYPES.has(type)) {
-      throw new HttpError(415, 'unsupported_image_type', 'The URL did not return a supported image.')
+      if (!res.ok) {
+        throw new HttpError(502, 'image_upstream_error', `The image host returned ${res.status}.`)
+      }
+
+      const type = mediaType(res.headers.get('content-type'))
+      if (!ALLOWED_CONTENT_TYPES.has(type)) {
+        throw new HttpError(415, 'unsupported_image_type', 'The URL did not return a supported image.')
+      }
+      const declaredLength = Number(res.headers.get('content-length') ?? '')
+      if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
+        throw new HttpError(413, 'image_too_large', 'The image exceeds the proxy size limit.')
+      }
+      // Body read is still bound by the same controller/deadline (slowloris guard).
+      const body = await readCapped(res, MAX_IMAGE_BYTES, controller.signal)
+      return { contentType: type, body }
     }
-    const declaredLength = Number(res.headers.get('content-length') ?? '')
-    if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
-      throw new HttpError(413, 'image_too_large', 'The image exceeds the proxy size limit.')
-    }
-    const body = await readCapped(res, MAX_IMAGE_BYTES)
-    return { contentType: type, body }
+    // Unreachable: the loop either returns or throws.
+    throw new HttpError(502, 'too_many_redirects', 'The image redirected too many times.')
+  } finally {
+    clearTimeout(timer)
   }
-  // Unreachable: the loop either returns or throws.
-  throw new HttpError(502, 'too_many_redirects', 'The image redirected too many times.')
 }
 
 // ---------------------------------------------------------------------------

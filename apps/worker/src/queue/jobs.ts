@@ -15,7 +15,13 @@
  *
  * PAYLOAD SCHEMAS (the minimal, agreed shapes — keep in sync with api-service):
  *  - backfill      : { accountId }                 progressive newest-first import
- *  - incremental   : { accountId, cursor? }         push-notified delta apply
+ *  - incremental   : one of three shapes (see `incrementalPayload`):
+ *      • { accountId, cursor? }                     reconcile sweep / internal re-enqueue
+ *      • { provider:'gmail', emailAddress, historyId }              Gmail Pub/Sub push
+ *      • { provider:'outlook', subscriptionId, resource, changeType, tenantId? }  Graph push
+ *    The provider-push shapes carry NO account id (the webhook has no session), so
+ *    the worker resolves the account service-side — Gmail by address, Outlook by the
+ *    persisted watch subscription id — before applying the delta.
  *  - send          : { accountId, messageId }        deferred send (runAt = +10s)
  *  - triage        : { accountId, threadId, messageId }
  *  - summary       : { accountId, threadId }         summary + extraction (+escalation)
@@ -56,10 +62,36 @@ export const QUEUE = {
 export type QueueName = (typeof QUEUE)[keyof typeof QUEUE]
 
 export const backfillPayload = z.object({ accountId: z.string().uuid() })
-export const incrementalPayload = z.object({
+
+/** Reconcile sweep / internal re-enqueue: the account is already known. */
+export const incrementalByAccountPayload = z.object({
   accountId: z.string().uuid(),
   cursor: z.string().optional(),
 })
+/** Gmail Pub/Sub push envelope (no account id — resolved by mailbox address). */
+export const incrementalGmailPushPayload = z.object({
+  provider: z.literal('gmail'),
+  emailAddress: z.string().min(1),
+  historyId: z.string().min(1),
+})
+/** Microsoft Graph change notification (resolved by persisted subscription id). */
+export const incrementalOutlookPushPayload = z.object({
+  provider: z.literal('outlook'),
+  subscriptionId: z.string().min(1),
+  resource: z.string().min(1),
+  changeType: z.string().min(1),
+  tenantId: z.string().optional(),
+})
+/**
+ * The `incremental` queue accepts BOTH the internal `{ accountId }` shape (reconcile
+ * sweep) AND the raw provider-push shapes the api-service webhooks enqueue. The
+ * consumer resolves an account id from whichever arrives before running the sync.
+ */
+export const incrementalPayload = z.union([
+  incrementalByAccountPayload,
+  incrementalGmailPushPayload,
+  incrementalOutlookPushPayload,
+])
 export const sendPayload = z.object({
   accountId: z.string().uuid(),
   messageId: z.string().uuid(),

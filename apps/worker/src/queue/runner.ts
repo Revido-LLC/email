@@ -7,6 +7,11 @@
  * `pollIntervalMs` between empty polls. A job whose queue has no registered
  * consumer is failed straight to the dead-letter state (attempts forced to the
  * cap) rather than retried forever.
+ *
+ * `attempts` on a `ClaimedJob` is the count AFTER this claim (the store increments
+ * it at claim time), so it is the number of the attempt about to run. A claim that
+ * comes back already past `max_attempts` — a job that has been reclaimed after
+ * repeatedly crashing the process — is dead-lettered without running the consumer.
  */
 
 import type { ClaimedJob, JobStore } from './store'
@@ -59,7 +64,27 @@ export async function processNextJob(
   const job = await store.claim(opts.workerId)
   if (!job) return false
 
-  const attempts = job.attempts + 1
+  // `attempts` is already incremented at claim time — it's the current attempt no.
+  const attempts = job.attempts
+
+  // A job reclaimed after exhausting its attempts (e.g. it crashed the process
+  // every run before it could settle) is dead-lettered rather than run again.
+  if (attempts > job.maxAttempts) {
+    logger.error('job exceeded max attempts; dead-lettering', {
+      queue: job.queue,
+      jobId: job.id,
+      attempts,
+      maxAttempts: job.maxAttempts,
+    })
+    await store.fail(job.id, {
+      attempts,
+      maxAttempts: job.maxAttempts,
+      error: `exceeded max attempts (${job.maxAttempts})`,
+      runAt: now(),
+    })
+    return true
+  }
+
   const consumer = consumers[job.queue]
   if (!consumer) {
     logger.error('no consumer for queue; dead-lettering', { queue: job.queue, jobId: job.id })

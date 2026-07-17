@@ -45,6 +45,8 @@ describe('PgJobStore.claim', () => {
     expect(calls[0]?.values[0]).toBe('worker-a')
     expect(calls[0]?.values[1]).toEqual(new Date(NOW.getTime() - 60_000))
     expect(calls[0]?.text).toContain('for update skip locked')
+    // Attempts is burned at claim time so a crashed job can't retry forever.
+    expect(calls[0]?.text).toContain('attempts = attempts + 1')
   })
 
   it('returns null when no row is available', async () => {

@@ -1,10 +1,11 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { type AgentRunEntry, getAgentRuns } from '@revido/mock-data'
+import type { AgentRunEntry } from '@revido/db'
 import { AiTag, Badge, Button, cn } from '@revido/ui'
 import { Link } from '@tanstack/react-router'
-import { Check, ChevronDown, Clock, CornerUpLeft, Mail, RotateCcw } from 'lucide-react'
+import { Check, ChevronDown, Clock, CornerUpLeft, Loader2, Mail, RotateCcw } from 'lucide-react'
 import * as React from 'react'
 import { Icon } from '@/lib/icons'
+import { useAgentRuns, useUndoAgentRun } from '@/lib/hooks'
 
 const TODAY = '2026-07-15'
 const YESTERDAY = '2026-07-14'
@@ -33,7 +34,9 @@ function clock(iso: string): string {
 }
 
 export function ActivityFeed() {
-  const runs = getAgentRuns()
+  const { data, isPending } = useAgentRuns()
+  const undoRun = useUndoAgentRun()
+  const runs = React.useMemo(() => data ?? [], [data])
   const [reversed, setReversed] = React.useState<Set<string>>(new Set())
 
   const groups = React.useMemo(() => {
@@ -49,6 +52,14 @@ export function ActivityFeed() {
   const handled = runs
     .filter((r) => r.status !== 'pending-approval')
     .reduce((n, r) => n + r.affected.length, 0)
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -79,7 +90,10 @@ export function ActivityFeed() {
                 key={run.id}
                 run={run}
                 reversed={reversed.has(run.id)}
-                onUndo={() => setReversed((prev) => new Set(prev).add(run.id))}
+                onUndo={() => {
+                  setReversed((prev) => new Set(prev).add(run.id))
+                  undoRun.mutate(run.id)
+                }}
               />
             ))}
           </div>

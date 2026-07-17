@@ -1,23 +1,24 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { getNeedsYou } from '@revido/mock-data'
 import { Button, EmptyState } from '@revido/ui'
 import { Inbox, Sparkles } from 'lucide-react'
 import { ThreadList } from '@/components/inbox'
+import { useNeedsYou } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/inbox')({
   component: InboxScreen,
 })
 
 function InboxScreen() {
-  const threads = getNeedsYou()
+  const { data: threads, isPending } = useNeedsYou()
 
   return (
     <ThreadList
       title="Needs You"
       icon={<Inbox />}
       iconClassName="bg-primary/12 text-primary"
-      threads={threads}
+      threads={threads ?? []}
+      loading={isPending}
       defaultSort="priority"
       emptyState={
         <EmptyState

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ACCOUNTS, SIGNATURES, USER, type Account } from '@revido/mock-data'
+import type { Account } from '@revido/db'
 import {
   AiTag,
   Badge,
@@ -32,19 +32,36 @@ import {
   AtSign,
   Check,
   Gauge,
+  Loader2,
   Lock,
   Mail,
+  Monitor,
+  Moon,
   Plus,
   Settings as SettingsIcon,
   ShieldCheck,
   Signature as SignatureIcon,
   Sparkles,
+  Sun,
   Trash2,
   X,
 } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/i18n/format'
+import { useAppState, type ThemePreference } from '@/lib/app-state'
+import {
+  useAccounts,
+  useAiPreferences,
+  useDeleteEverything,
+  useDisconnectAccount,
+  useMe,
+  useSaveSignature,
+  useSignatures,
+  useStartOAuth,
+  useUpdateAiPreferences,
+  useUsage,
+} from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/settings')({
   component: SettingsScreen,
@@ -70,6 +87,7 @@ function SettingsScreen() {
         <Tabs defaultValue="accounts">
           <TabsList className="mb-6 flex w-full overflow-x-auto">
             <TabsTrigger value="accounts">{t('settings.tabs.accounts')}</TabsTrigger>
+            <TabsTrigger value="appearance">{t('settings.tabs.appearance')}</TabsTrigger>
             <TabsTrigger value="ai">{t('settings.tabs.ai')}</TabsTrigger>
             <TabsTrigger value="signatures">{t('settings.tabs.signatures')}</TabsTrigger>
             <TabsTrigger value="privacy">{t('settings.tabs.privacy')}</TabsTrigger>
@@ -78,6 +96,9 @@ function SettingsScreen() {
 
           <TabsContent value="accounts">
             <AccountsTab />
+          </TabsContent>
+          <TabsContent value="appearance">
+            <AppearanceTab />
           </TabsContent>
           <TabsContent value="ai">
             <AiTab />
@@ -101,20 +122,95 @@ function SettingsScreen() {
 
 function AccountsTab() {
   const { t } = useTranslation()
+  const { data: accounts, isPending } = useAccounts()
+  const startOAuth = useStartOAuth()
+
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        {ACCOUNTS.map((account) => (
-          <AccountCard key={account.id} account={account} />
-        ))}
-      </div>
-      <Button variant="outline" className="w-full">
+      {isPending ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {(accounts ?? []).map((account) => (
+            <AccountCard key={account.id} account={account} />
+          ))}
+        </div>
+      )}
+      <Button
+        variant="outline"
+        className="w-full"
+        disabled={startOAuth.isPending}
+        onClick={() =>
+          startOAuth.mutate('gmail', {
+            onSuccess: ({ redirectUrl }) => {
+              window.location.href = redirectUrl
+            },
+          })
+        }
+      >
         <Plus className="size-4" /> {t('settings.accounts.connectAnother')}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
         {t('settings.accounts.supportNote')}
       </p>
     </div>
+  )
+}
+
+/* ---------------- Appearance ---------------- */
+
+function AppearanceTab() {
+  const { t } = useTranslation()
+  const { themePreference, setThemePreference } = useAppState()
+
+  const options: { id: ThemePreference; icon: React.ReactNode }[] = [
+    { id: 'light', icon: <Sun className="size-5" /> },
+    { id: 'dark', icon: <Moon className="size-5" /> },
+    { id: 'system', icon: <Monitor className="size-5" /> },
+  ]
+
+  return (
+    <Card className="shadow-soft">
+      <CardHeader>
+        <CardTitle>{t('settings.appearance.title')}</CardTitle>
+        <CardDescription>{t('settings.appearance.description')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-3">
+          {options.map((opt) => {
+            const active = themePreference === opt.id
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setThemePreference(opt.id)}
+                aria-pressed={active}
+                className={cn(
+                  'flex flex-col items-center gap-2 rounded-2xl border p-4 text-sm font-medium transition-colors',
+                  active
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-border text-muted-foreground hover:border-ring hover:text-foreground',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex size-10 items-center justify-center rounded-xl',
+                    active ? 'bg-primary/12 text-primary' : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {opt.icon}
+                </span>
+                {t(`settings.appearance.options.${opt.id}`)}
+                {active && <Check className="size-4" />}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">{t('settings.appearance.note')}</p>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -168,6 +264,7 @@ function AccountCard({ account }: { account: Account }) {
 
 function DisconnectDialog({ account }: { account: Account }) {
   const { t } = useTranslation()
+  const disconnect = useDisconnectAccount()
   const [done, setDone] = React.useState(false)
 
   return (
@@ -210,7 +307,12 @@ function DisconnectDialog({ account }: { account: Account }) {
                 {t('settings.accounts.keepAccount')}
               </Button>
             </DialogClose>
-            <Button variant="destructive" size="sm" onClick={() => setDone(true)}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={disconnect.isPending}
+              onClick={() => disconnect.mutate(account.id, { onSuccess: () => setDone(true) })}
+            >
               <Trash2 className="size-3.5" /> {t('settings.accounts.disconnectConfirm')}
             </Button>
           </DialogFooter>
@@ -222,18 +324,17 @@ function DisconnectDialog({ account }: { account: Account }) {
 
 /* ---------------- AI preferences ---------------- */
 
-const AI_PREFS: { id: 'drafts' | 'agents' | 'chat' | 'digest'; hasNote?: boolean; on: boolean }[] = [
-  { id: 'drafts', on: true },
-  { id: 'agents', on: true },
-  { id: 'chat', on: true },
-  { id: 'digest', hasNote: true, on: false },
+const AI_PREFS: { id: 'drafts' | 'agents' | 'chat' | 'digest'; hasNote?: boolean }[] = [
+  { id: 'drafts' },
+  { id: 'agents' },
+  { id: 'chat' },
+  { id: 'digest', hasNote: true },
 ]
 
 function AiTab() {
   const { t } = useTranslation()
-  const [prefs, setPrefs] = React.useState(() =>
-    Object.fromEntries(AI_PREFS.map((p) => [p.id, p.on])),
-  )
+  const { data: prefs } = useAiPreferences()
+  const updatePrefs = useUpdateAiPreferences()
 
   return (
     <div className="space-y-4">
@@ -266,8 +367,8 @@ function AiTab() {
                 </div>
                 <Switch
                   id={`pref-${pref.id}`}
-                  checked={prefs[pref.id]}
-                  onCheckedChange={(v) => setPrefs((p) => ({ ...p, [pref.id]: v }))}
+                  checked={prefs?.[pref.id] ?? false}
+                  onCheckedChange={(v) => updatePrefs.mutate({ [pref.id]: v })}
                 />
               </div>
             </div>
@@ -294,9 +395,38 @@ function AiTab() {
 
 function SignaturesTab() {
   const { t } = useTranslation()
-  const signature = SIGNATURES[0]!
-  const [value, setValue] = React.useState(signature.html)
+  const { data: signatures, isPending } = useSignatures()
+  const signature = signatures?.[0]
+  const saveSignature = useSaveSignature()
+  const [value, setValue] = React.useState('')
   const [saved, setSaved] = React.useState(false)
+  const loadedId = React.useRef<string | null>(null)
+
+  // Seed the editor once the signature loads (without clobbering user edits).
+  React.useEffect(() => {
+    if (signature && loadedId.current !== signature.id) {
+      loadedId.current = signature.id
+      setValue(signature.html)
+    }
+  }, [signature])
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!signature) {
+    return (
+      <Card className="shadow-soft">
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          {t('settings.signatures.empty')}
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="shadow-soft">
@@ -325,7 +455,16 @@ function SignaturesTab() {
           />
         </div>
         <div className="flex items-center gap-3">
-          <Button size="sm" onClick={() => setSaved(true)}>
+          <Button
+            size="sm"
+            disabled={saveSignature.isPending}
+            onClick={() =>
+              saveSignature.mutate(
+                { id: signature.id, html: value },
+                { onSuccess: () => setSaved(true) },
+              )
+            }
+          >
             <Check className="size-3.5" /> {t('settings.signatures.save')}
           </Button>
           {saved && <span className="text-sm text-muted-foreground">{t('settings.signatures.saved')}</span>}
@@ -392,6 +531,7 @@ function PrivacyTab() {
 
 function DeleteEverythingDialog() {
   const { t } = useTranslation()
+  const deleteEverything = useDeleteEverything()
   const [done, setDone] = React.useState(false)
 
   return (
@@ -437,7 +577,12 @@ function DeleteEverythingDialog() {
                   {t('settings.privacy.deleteEverything.cancel')}
                 </Button>
               </DialogClose>
-              <Button variant="destructive" size="sm" onClick={() => setDone(true)}>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleteEverything.isPending}
+                onClick={() => deleteEverything.mutate(undefined, { onSuccess: () => setDone(true) })}
+              >
                 <Trash2 className="size-3.5" /> {t('settings.privacy.deleteEverything.confirm')}
               </Button>
             </DialogFooter>
@@ -450,14 +595,20 @@ function DeleteEverythingDialog() {
 
 /* ---------------- Usage ---------------- */
 
-const COUNTERS: { id: 'drafts' | 'agentRuns' | 'chatQueries'; value: number; token: string }[] = [
-  { id: 'drafts', value: 48, token: 'to-reply' },
-  { id: 'agentRuns', value: 312, token: 'awaiting-reply' },
-  { id: 'chatQueries', value: 27, token: 'newsletters' },
+const COUNTERS: {
+  id: 'drafts' | 'agentRuns' | 'chatQueries'
+  usageKey: 'aiDrafts' | 'agentRuns' | 'chatQueries'
+  token: string
+}[] = [
+  { id: 'drafts', usageKey: 'aiDrafts', token: 'to-reply' },
+  { id: 'agentRuns', usageKey: 'agentRuns', token: 'awaiting-reply' },
+  { id: 'chatQueries', usageKey: 'chatQueries', token: 'newsletters' },
 ]
 
 function UsageTab() {
   const { t } = useTranslation()
+  const { data: usage } = useUsage()
+  const { data: me } = useMe()
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -465,7 +616,7 @@ function UsageTab() {
           <Card key={c.id} className="shadow-soft">
             <CardContent className="p-5">
               <div className={cn('text-2xl font-semibold tabular-nums', counterText(c.token))}>
-                {formatNumber(c.value)}
+                {formatNumber(usage?.[c.usageKey] ?? 0)}
               </div>
               <div className="mt-1 text-sm font-medium">
                 {t(`settings.usage.counters.${c.id}.label`)}
@@ -485,7 +636,7 @@ function UsageTab() {
         <div>
           <p className="text-sm font-medium">{t('settings.usage.freePlan')}</p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {t('settings.usage.freePlanDetail', { name: USER.name })}
+            {t('settings.usage.freePlanDetail', { name: me?.name ?? '' })}
           </p>
         </div>
       </div>

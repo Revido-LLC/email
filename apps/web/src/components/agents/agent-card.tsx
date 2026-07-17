@@ -1,5 +1,5 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { type AgentDef } from '@revido/mock-data'
+import type { AgentDef } from '@revido/db'
 import { Badge, Button, CATEGORY_CLASSES, Switch, type CategoryToken, cn } from '@revido/ui'
 import { Check, Clock, Plus, Zap } from 'lucide-react'
 import { Icon } from '@/lib/icons'

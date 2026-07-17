@@ -1,9 +1,9 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { USER } from '@revido/mock-data'
 import { Button, Card, CardContent, Input, Label, Sparkle, Textarea } from '@revido/ui'
 import { ArrowLeft, ArrowRight, CalendarCheck, Check, Sparkles } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useMe, useSubmitLead } from '@/lib/hooks'
 
 export const Route = createFileRoute('/talk')({
   component: TalkScreen,
@@ -19,13 +19,27 @@ function companyFromEmail(email: string) {
 
 function TalkScreen() {
   const { t } = useTranslation()
+  const { data: me } = useMe()
+  const submitLead = useSubmitLead()
   const [sent, setSent] = React.useState(false)
   const [form, setForm] = React.useState({
-    name: USER.name,
-    email: USER.email,
-    company: companyFromEmail(USER.email),
+    name: '',
+    email: '',
+    company: '',
     automate: '',
   })
+
+  // Prefill name/email from the session, company from the email domain — without
+  // clobbering anything the visitor already typed.
+  React.useEffect(() => {
+    if (!me) return
+    setForm((f) => ({
+      ...f,
+      name: f.name || me.name,
+      email: f.email || me.email,
+      company: f.company || companyFromEmail(me.email),
+    }))
+  }, [me])
 
   const set =
     (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -64,7 +78,7 @@ function TalkScreen() {
                 className="space-y-5"
                 onSubmit={(e) => {
                   e.preventDefault()
-                  setSent(true)
+                  submitLead.mutate(form, { onSuccess: () => setSent(true) })
                 }}
               >
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

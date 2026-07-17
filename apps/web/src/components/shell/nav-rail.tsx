@@ -1,12 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import {
-  CATEGORY_LIST,
-  ACCOUNTS,
-  getCategoryCounts,
-  getNeedsYou,
-  getPendingApprovalCount,
-  USER,
-} from '@revido/mock-data'
+import type { CategoryId, CategoryMeta } from '@revido/db'
 import {
   Button,
   ContactAvatar,
@@ -23,19 +16,22 @@ import {
   ChevronsLeft,
   Home,
   Inbox,
+  Monitor,
+  Moon,
   PanelLeft,
   Pencil,
   Settings,
   Sparkles,
+  Sun,
   X,
 } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppState } from '@/lib/app-state'
+import { useAppState, type ThemePreference } from '@/lib/app-state'
+import { CATEGORY_LIST } from '@/lib/categories'
+import { useAccounts, useCategoryCounts, useMe, useNeedsYou, usePendingApprovalCount } from '@/lib/hooks'
 
-const counts = getCategoryCounts()
-const needsYouCount = getNeedsYou().length
-const approvals = getPendingApprovalCount()
+type CategoryCounts = Partial<Record<CategoryId, number>>
 
 function NavLink({
   to,
@@ -93,9 +89,11 @@ function NavLink({
 
 function CategoryNavItem({
   cat,
+  count,
   collapsed,
 }: {
-  cat: (typeof CATEGORY_LIST)[number]
+  cat: CategoryMeta
+  count: number
   collapsed: boolean
 }) {
   const link = (
@@ -116,13 +114,13 @@ function CategoryNavItem({
       {!collapsed && (
         <>
           <span className="min-w-0 flex-1 truncate">{cat.label}</span>
-          <span className="text-xs tabular-nums text-muted-foreground">{counts[cat.id] ?? 0}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
         </>
       )}
     </Link>
   )
   return collapsed ? (
-    <SimpleTooltip label={`${cat.label} · ${counts[cat.id] ?? 0}`} side="right">
+    <SimpleTooltip label={`${cat.label} · ${count}`} side="right">
       {link}
     </SimpleTooltip>
   ) : (
@@ -130,11 +128,56 @@ function CategoryNavItem({
   )
 }
 
+/** Compact light → dark → system cycle for the nav footer. */
+function ThemeToggle({ collapsed }: { collapsed: boolean }) {
+  const { t } = useTranslation()
+  const { themePreference, setThemePreference } = useAppState()
+  const NEXT: Record<ThemePreference, ThemePreference> = {
+    light: 'dark',
+    dark: 'system',
+    system: 'light',
+  }
+  const icon =
+    themePreference === 'light' ? (
+      <Sun className="size-4" />
+    ) : themePreference === 'dark' ? (
+      <Moon className="size-4" />
+    ) : (
+      <Monitor className="size-4" />
+    )
+  const label = t(`shell.nav.theme.${themePreference}`)
+  return (
+    <SimpleTooltip label={label} side={collapsed ? 'right' : 'bottom'}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => setThemePreference(NEXT[themePreference])}
+        aria-label={t('shell.nav.themeAria', { theme: label })}
+      >
+        {icon}
+      </Button>
+    </SimpleTooltip>
+  )
+}
+
 export function NavRail() {
   const { t } = useTranslation()
   const { navCollapsed, toggleNav } = useAppState()
   const [revidoDismissed, setRevidoDismissed] = React.useState(false)
-  const account = ACCOUNTS[0]!
+
+  // Reactive reads — these must re-render as caches invalidate (archive updates
+  // counts, an approval resolves the badge, etc.), so they're hooks, not module
+  // constants evaluated once at import.
+  const { data: me } = useMe()
+  const { data: accounts } = useAccounts()
+  const { data: counts } = useCategoryCounts()
+  const { data: needsYou } = useNeedsYou()
+  const { data: approvalCount } = usePendingApprovalCount()
+
+  const categoryCounts = (counts ?? {}) as CategoryCounts
+  const needsYouCount = needsYou?.length ?? 0
+  const approvals = approvalCount ?? 0
+  const account = accounts?.[0]
 
   return (
     <nav
@@ -152,11 +195,13 @@ export function NavRail() {
             navCollapsed && 'flex-none',
           )}
         >
-          <ContactAvatar name={USER.name} className="size-8" />
+          <ContactAvatar name={me?.name ?? '—'} className="size-8" />
           {!navCollapsed && (
             <div className="min-w-0 flex-1 text-left">
-              <div className="truncate text-sm font-semibold">{USER.name}</div>
-              <div className="truncate text-xs text-muted-foreground">{account.email}</div>
+              <div className="truncate text-sm font-semibold">{me?.name ?? '…'}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {account?.email ?? me?.email ?? ''}
+              </div>
             </div>
           )}
         </Link>
@@ -220,7 +265,12 @@ export function NavRail() {
         )}
         <div className="mt-1.5 flex flex-col gap-0.5 px-3">
           {CATEGORY_LIST.map((cat) => (
-            <CategoryNavItem key={cat.id} cat={cat} collapsed={navCollapsed} />
+            <CategoryNavItem
+              key={cat.id}
+              cat={cat}
+              count={categoryCounts[cat.id] ?? 0}
+              collapsed={navCollapsed}
+            />
           ))}
         </div>
 
@@ -240,9 +290,9 @@ export function NavRail() {
         </div>
       </ScrollArea>
 
-      {/* Footer: sync, settings, Revido card. */}
+      {/* Footer: sync, settings, theme, Revido card. */}
       <div className="border-t border-border p-3">
-        {!navCollapsed && (
+        {!navCollapsed && account && (
           <div className="mb-3 rounded-xl bg-muted/60 p-2.5">
             <div className="flex items-center justify-between text-2xs text-muted-foreground">
               <span>{account.syncLabel}</span>
@@ -258,6 +308,9 @@ export function NavRail() {
             label={t('shell.nav.settings')}
             collapsed={navCollapsed}
           />
+          <div className={cn('ml-auto', navCollapsed && 'ml-0')}>
+            <ThemeToggle collapsed={navCollapsed} />
+          </div>
           {navCollapsed && (
             <SimpleTooltip label={t('shell.nav.expandAria')} side="right">
               <Button

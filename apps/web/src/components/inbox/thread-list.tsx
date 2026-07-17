@@ -1,11 +1,29 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
 import { useNavigate } from '@tanstack/react-router'
-import { type CategoryMeta, type Thread } from '@revido/mock-data'
-import { Button, CategoryChip, Separator, cn } from '@revido/ui'
+import type { CategoryMeta, Thread } from '@revido/db'
+import {
+  Button,
+  CategoryChip,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Separator,
+  cn,
+} from '@revido/ui'
 import { Archive, Clock, MailOpen, Tag, Zap, X } from 'lucide-react'
 import * as React from 'react'
 
 import { ThreadRow } from './thread-row'
+import { CATEGORY_LIST } from '@/lib/categories'
+import {
+  useArchiveThread,
+  useArchiveThreads,
+  useLabelThreads,
+  useMarkThreadsRead,
+  useSnoozeThread,
+} from '@/lib/hooks'
 
 type SortMode = 'priority' | 'recent'
 
@@ -15,9 +33,19 @@ interface ThreadListProps {
   /** Tint classes for the header icon tile, e.g. "bg-primary/12 text-primary". */
   iconClassName?: string
   threads: Thread[]
+  /** True while the backing query is loading; renders a skeleton list. */
+  loading?: boolean
   category?: CategoryMeta
   emptyState?: React.ReactNode
   defaultSort?: SortMode
+}
+
+/** Default snooze target: tomorrow morning. */
+function tomorrow9am(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(9, 0, 0, 0)
+  return d.toISOString()
 }
 
 /** True when focus is in a text field — suppresses single-key shortcuts. */
@@ -32,31 +60,40 @@ export function ThreadList({
   icon,
   iconClassName,
   threads: initial,
+  loading = false,
   category,
   emptyState,
   defaultSort = 'priority',
 }: ThreadListProps) {
   const navigate = useNavigate()
-  const [threads, setThreads] = React.useState<Thread[]>(initial)
+  // Real writes go to the API; `removed` optimistically hides a thread until the
+  // invalidated query drops it, avoiding a flash where an archived row reappears.
+  const [removed, setRemoved] = React.useState<Set<string>>(() => new Set())
   const [sort, setSort] = React.useState<SortMode>(defaultSort)
   const [selectMode, setSelectMode] = React.useState(false)
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set())
   const [cursor, setCursor] = React.useState(0)
 
+  const archiveThread = useArchiveThread()
+  const snoozeThread = useSnoozeThread()
+  const archiveThreads = useArchiveThreads()
+  const labelThreads = useLabelThreads()
+  const markThreadsRead = useMarkThreadsRead()
+
   const sorted = React.useMemo(() => {
-    const copy = [...threads]
+    const copy = initial.filter((t) => !removed.has(t.id))
     copy.sort((a, b) =>
       sort === 'priority'
         ? b.priorityScore - a.priorityScore
         : b.lastMessageAt.localeCompare(a.lastMessageAt),
     )
     return copy
-  }, [threads, sort])
+  }, [initial, removed, sort])
 
   const rowRefs = React.useRef<Array<HTMLDivElement | null>>([])
 
-  const remove = React.useCallback((id: string) => {
-    setThreads((ts) => ts.filter((t) => t.id !== id))
+  const hide = React.useCallback((id: string) => {
+    setRemoved((prev) => new Set(prev).add(id))
     setSelected((prev) => {
       if (!prev.has(id)) return prev
       const next = new Set(prev)
@@ -64,6 +101,22 @@ export function ThreadList({
       return next
     })
   }, [])
+
+  const archive = React.useCallback(
+    (id: string) => {
+      hide(id)
+      archiveThread.mutate(id)
+    },
+    [hide, archiveThread],
+  )
+
+  const snooze = React.useCallback(
+    (id: string) => {
+      hide(id)
+      snoozeThread.mutate({ id, snoozedUntil: tomorrow9am() })
+    },
+    [hide, snoozeThread],
+  )
 
   const toggleSelect = React.useCallback((id: string) => {
     setSelected((prev) => {
@@ -89,8 +142,10 @@ export function ThreadList({
   sortedRef.current = sorted
   const cursorRef = React.useRef(cursor)
   cursorRef.current = cursor
-  const removeRef = React.useRef(remove)
-  removeRef.current = remove
+  const archiveRef = React.useRef(archive)
+  archiveRef.current = archive
+  const snoozeRef = React.useRef(snooze)
+  snoozeRef.current = snooze
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -115,12 +170,19 @@ export function ThreadList({
           }
           break
         }
-        case 'e':
+        case 'e': {
+          const t = list[cursorRef.current]
+          if (t) {
+            e.preventDefault()
+            archiveRef.current(t.id)
+          }
+          break
+        }
         case 'h': {
           const t = list[cursorRef.current]
           if (t) {
             e.preventDefault()
-            removeRef.current(t.id)
+            snoozeRef.current(t.id)
           }
           break
         }
@@ -131,10 +193,35 @@ export function ThreadList({
   }, [navigate])
 
   const clearSelection = React.useCallback(() => setSelected(new Set()), [])
+
   const archiveSelected = React.useCallback(() => {
-    setThreads((ts) => ts.filter((t) => !selected.has(t.id)))
+    const ids = [...selected]
+    if (ids.length === 0) return
+    setRemoved((prev) => {
+      const next = new Set(prev)
+      for (const id of ids) next.add(id)
+      return next
+    })
     setSelected(new Set())
-  }, [selected])
+    archiveThreads.mutate(ids)
+  }, [selected, archiveThreads])
+
+  const markSelectedRead = React.useCallback(() => {
+    const ids = [...selected]
+    if (ids.length === 0) return
+    setSelected(new Set())
+    markThreadsRead.mutate(ids)
+  }, [selected, markThreadsRead])
+
+  const labelSelected = React.useCallback(
+    (label: string) => {
+      const ids = [...selected]
+      if (ids.length === 0) return
+      setSelected(new Set())
+      labelThreads.mutate({ threadIds: ids, label })
+    },
+    [selected, labelThreads],
+  )
 
   const count = sorted.length
 
@@ -187,7 +274,9 @@ export function ThreadList({
 
         {/* List */}
         <div className="mx-auto w-full max-w-3xl px-2 pb-24 pt-2 sm:px-3">
-          {count === 0 ? (
+          {loading && count === 0 ? (
+            <ThreadListSkeleton />
+          ) : count === 0 ? (
             <div className="pt-6">
               {emptyState ?? (
                 <p className="py-16 text-center text-sm text-muted-foreground">
@@ -205,8 +294,8 @@ export function ThreadList({
                   selected={selected.has(t.id)}
                   selectMode={selectMode}
                   onToggleSelect={toggleSelect}
-                  onArchive={remove}
-                  onSnooze={remove}
+                  onArchive={archive}
+                  onSnooze={snooze}
                   onHover={() => setCursor(i)}
                   innerRef={(el) => {
                     rowRefs.current[i] = el
@@ -230,11 +319,23 @@ export function ThreadList({
               <Archive className="size-4" />
               <span className="hidden sm:inline">Archive</span>
             </Button>
-            <Button variant="ghost" size="sm" aria-label="Label">
-              <Tag className="size-4" />
-              <span className="hidden sm:inline">Label</span>
-            </Button>
-            <Button variant="ghost" size="sm" aria-label="Mark read" onClick={clearSelection}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" aria-label="Label">
+                  <Tag className="size-4" />
+                  <span className="hidden sm:inline">Label</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                <DropdownMenuLabel>Move to…</DropdownMenuLabel>
+                {CATEGORY_LIST.map((cat) => (
+                  <DropdownMenuItem key={cat.id} onSelect={() => labelSelected(cat.label)}>
+                    {cat.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="ghost" size="sm" aria-label="Mark read" onClick={markSelectedRead}>
               <MailOpen className="size-4" />
               <span className="hidden sm:inline">Mark read</span>
             </Button>
@@ -250,6 +351,24 @@ export function ThreadList({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ThreadListSkeleton() {
+  return (
+    <div className="flex flex-col gap-0.5 pt-2">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-2 py-2.5 sm:px-3">
+          <div className="size-5 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="size-8 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="h-3.5 w-1/3 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="hidden h-3 w-12 animate-pulse rounded bg-muted sm:block" />
+        </div>
+      ))}
     </div>
   )
 }

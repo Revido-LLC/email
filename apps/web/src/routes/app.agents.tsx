@@ -1,41 +1,51 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
-import { AGENTS, type AgentDef } from '@revido/mock-data'
 import { Button, Input, Tabs, TabsContent, TabsList, TabsTrigger } from '@revido/ui'
 import { createFileRoute } from '@tanstack/react-router'
-import { Activity, LayoutGrid, Sparkles } from 'lucide-react'
+import { Activity, LayoutGrid, Loader2, Sparkles } from 'lucide-react'
 import * as React from 'react'
 import { ActivityFeed } from '@/components/agents/activity-feed'
 import { AgentCard } from '@/components/agents/agent-card'
-import { CreateAgentDialog, type WizardSeed } from '@/components/agents/create-agent-dialog'
+import {
+  CreateAgentDialog,
+  type CreateAgentInput,
+  type WizardSeed,
+} from '@/components/agents/create-agent-dialog'
+import { useAgents, useCreateAgent, useToggleAgent } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/agents')({
   component: AgentsScreen,
 })
 
 function AgentsScreen() {
-  const [agents, setAgents] = React.useState<AgentDef[]>(() => AGENTS)
+  const { data: agents, isPending } = useAgents()
+  const toggleAgent = useToggleAgent()
+  const createAgent = useCreateAgent()
   const [newIds, setNewIds] = React.useState<Set<string>>(new Set())
   const [nl, setNl] = React.useState('')
   const [seed, setSeed] = React.useState<WizardSeed | null>(null)
 
-  const activeCount = agents.filter((a) => a.enabled).length
+  const list = agents ?? []
+  const activeCount = list.filter((a) => a.enabled).length
 
   function toggle(id: string) {
-    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)))
+    const agent = list.find((a) => a.id === id)
+    if (!agent) return
+    toggleAgent.mutate({ id, enabled: !agent.enabled })
   }
 
   function openCreate() {
     setSeed({ kind: 'nl', text: nl })
   }
 
-  function handleCreate(agent: AgentDef) {
-    setAgents((prev) => [agent, ...prev])
-    setNewIds((prev) => new Set(prev).add(agent.id))
+  function handleCreate(input: CreateAgentInput) {
+    createAgent.mutate(input, {
+      onSuccess: (agent) => setNewIds((prev) => new Set(prev).add(agent.id)),
+    })
     setNl('')
   }
 
   function enableExisting(id: string) {
-    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, enabled: true } : a)))
+    toggleAgent.mutate({ id, enabled: true })
   }
 
   return (
@@ -87,17 +97,23 @@ function AgentsScreen() {
             </div>
 
             {/* Gallery grid */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {agents.map((agent) => (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
-                  onToggle={toggle}
-                  onOpen={(a) => setSeed({ kind: 'agent', agent: a })}
-                  isNew={newIds.has(agent.id)}
-                />
-              ))}
-            </div>
+            {isPending ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="size-5 animate-spin" />
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {list.map((agent) => (
+                  <AgentCard
+                    key={agent.id}
+                    agent={agent}
+                    onToggle={toggle}
+                    onOpen={(a) => setSeed({ kind: 'agent', agent: a })}
+                    isNew={newIds.has(agent.id)}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="activity" className="mt-0">

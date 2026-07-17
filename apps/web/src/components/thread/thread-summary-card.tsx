@@ -1,8 +1,9 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { type ExtractedFact, type Thread } from '@revido/mock-data'
+import type { ExtractedFact, Thread } from '@revido/db'
 import { AiTag, Button, Checkbox, Sparkle } from '@revido/ui'
 import { Calendar, ChevronDown, CircleDollarSign, Link2, Truck, User } from 'lucide-react'
 import * as React from 'react'
+import { useToggleExtractedFact } from '@/lib/hooks'
 
 const factIcon: Record<ExtractedFact['type'], React.ReactNode> = {
   date: <Calendar className="size-3.5" />,
@@ -15,7 +16,10 @@ const factIcon: Record<ExtractedFact['type'], React.ReactNode> = {
 
 export function ThreadSummaryCard({ thread }: { thread: Thread }) {
   const [open, setOpen] = React.useState(true)
-  const actions = thread.extracted.filter((f) => f.type === 'action')
+  const toggleFact = useToggleExtractedFact()
+  const actions = thread.extracted
+    .map((fact, index) => ({ fact, index }))
+    .filter((f) => f.fact.type === 'action')
   const facts = thread.extracted.filter((f) => f.type !== 'action')
   const hasDetails = actions.length > 0 || facts.length > 0
 
@@ -52,10 +56,16 @@ export function ThreadSummaryCard({ thread }: { thread: Thread }) {
                 Action items
               </div>
               <div className="space-y-2">
-                {actions.map((a, i) => (
-                  <label key={i} className="flex items-start gap-2.5 text-sm">
-                    <Checkbox defaultChecked={a.done} className="mt-0.5" />
-                    <span className="text-foreground/90">{a.label}</span>
+                {actions.map(({ fact, index }) => (
+                  <label key={index} className="flex items-start gap-2.5 text-sm">
+                    <Checkbox
+                      defaultChecked={fact.done}
+                      className="mt-0.5"
+                      onCheckedChange={(v) =>
+                        toggleFact.mutate({ id: thread.id, index, done: v === true })
+                      }
+                    />
+                    <span className="text-foreground/90">{fact.label}</span>
                   </label>
                 ))}
               </div>

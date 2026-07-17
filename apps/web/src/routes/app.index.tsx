@@ -1,14 +1,6 @@
 // i18n-todo: extract hardcoded copy in this screen to the en/nl catalogs (see apps/web/src/i18n)
 import { Link, createFileRoute } from '@tanstack/react-router'
-import {
-  APPROVALS,
-  CATEGORIES,
-  COMMITMENTS,
-  TODAY_BRIEF,
-  getAgentRuns,
-  getThread,
-  type Thread,
-} from '@revido/mock-data'
+import type { Approval, Thread } from '@revido/db'
 import {
   AiTag,
   Badge,
@@ -19,18 +11,52 @@ import {
   Sparkle,
   cn,
 } from '@revido/ui'
-import { ArrowRight, Check, ChevronRight, Clock, Inbox, Sparkles, Sun, X } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  ChevronRight,
+  Clock,
+  Inbox,
+  Loader2,
+  Sparkles,
+  Sun,
+  X,
+} from 'lucide-react'
 import * as React from 'react'
 import { Icon } from '@/lib/icons'
+import { CATEGORIES } from '@/lib/categories'
+import {
+  useAgentRuns,
+  useApproveApproval,
+  useApprovals,
+  useCommitments,
+  useMe,
+  useNeedsYou,
+  useRejectApproval,
+  useToday,
+} from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/')({
   component: TodayScreen,
 })
 
 function TodayScreen() {
-  const brief = TODAY_BRIEF
-  const needsYou = brief.needsYou.map(getThread).filter((t): t is Thread => Boolean(t))
-  const runs = getAgentRuns()
+  const { data: brief, isPending } = useToday()
+  const { data: needsYouData } = useNeedsYou()
+  const { data: runsData } = useAgentRuns()
+  const { data: commitments } = useCommitments()
+  const { data: approvals } = useApprovals()
+
+  const needsYou = needsYouData ?? []
+  const runs = runsData ?? []
+
+  if (isPending || !brief) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -82,7 +108,7 @@ function TodayScreen() {
         {/* Commitments */}
         <Section title="Your Commitments" icon={<Clock className="size-4" />} marked>
           <div className="space-y-2.5">
-            {COMMITMENTS.map((com) => (
+            {(commitments ?? []).map((com) => (
               <div key={com.id} className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
                 <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-cat-awaiting-reply/15 text-cat-awaiting-reply">
                   <Clock className="size-3.5" />
@@ -106,10 +132,12 @@ function TodayScreen() {
         {/* Agent Report */}
         <Section title="Agent Report" icon={<Sparkles className="size-4 text-ai" />} marked>
           <div className="space-y-2.5">
-            {runs.map((run) =>
-              run.status === 'pending-approval' ? (
-                <InlineApproval key={run.id} runId={run.id} />
-              ) : (
+            {runs.map((run) => {
+              if (run.status === 'pending-approval') {
+                const approval = (approvals ?? []).find((a) => a.agentId === run.agentId)
+                return approval ? <InlineApproval key={run.id} approval={approval} /> : null
+              }
+              return (
                 <div
                   key={run.id}
                   className="flex items-start gap-3 rounded-xl border border-border p-3"
@@ -127,8 +155,8 @@ function TodayScreen() {
                     <p className="mt-0.5 text-sm text-muted-foreground">{run.summary}</p>
                   </div>
                 </div>
-              ),
-            )}
+              )
+            })}
           </div>
         </Section>
 
@@ -210,9 +238,9 @@ function Section({
 }
 
 function NeedsYouRow({ thread }: { thread: Thread }) {
+  const { data: me } = useMe()
   const meta = CATEGORIES[thread.category]
-  const sender =
-    thread.participants.find((p) => p.email !== 'sam@brightfoundry.co') ?? thread.participants[0]!
+  const sender = thread.participants.find((p) => p.email !== me?.email) ?? thread.participants[0]!
   return (
     <Link
       to="/app/thread/$threadId"
@@ -240,9 +268,9 @@ function NeedsYouRow({ thread }: { thread: Thread }) {
   )
 }
 
-function InlineApproval({ runId }: { runId: string }) {
-  const run = getAgentRuns().find((r) => r.id === runId)
-  const approval = APPROVALS.find((a) => a.agentId === run?.agentId) ?? APPROVALS[0]!
+function InlineApproval({ approval }: { approval: Approval }) {
+  const approve = useApproveApproval()
+  const reject = useRejectApproval()
   const [resolved, setResolved] = React.useState<null | 'approved' | 'rejected'>(null)
 
   return (
@@ -279,10 +307,23 @@ function InlineApproval({ runId }: { runId: string }) {
           </span>
         ) : (
           <>
-            <Button size="sm" onClick={() => setResolved('approved')}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setResolved('approved')
+                approve.mutate(approval.id)
+              }}
+            >
               <Check className="size-3.5" /> Approve
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setResolved('rejected')}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setResolved('rejected')
+                reject.mutate(approval.id)
+              }}
+            >
               <X className="size-3.5" /> Reject
             </Button>
           </>

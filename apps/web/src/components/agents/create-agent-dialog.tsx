@@ -1,5 +1,6 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import { type AgentDef, dryRunMatch } from '@revido/mock-data'
+import type { AgentDef, Thread } from '@revido/db'
+import type { AgentPlan } from '@revido/core'
 import {
   AiTag,
   Badge,
@@ -28,14 +29,16 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { Icon } from '@/lib/icons'
+import { useThreadsByCategory } from '@/lib/hooks'
 import {
-  buildAgentDef,
   compilePlan,
   planFromAgent,
   planNeedsApproval,
+  toAgentPlan,
   type CompiledPlan,
 } from './compile'
 
+export type CreateAgentInput = { name: string; description: string; plan: AgentPlan }
 export type WizardSeed = { kind: 'nl'; text: string } | { kind: 'agent'; agent: AgentDef }
 
 type Step = 'describe' | 'plan' | 'dryrun' | 'name'
@@ -65,7 +68,7 @@ export function CreateAgentDialog({
 }: {
   seed: WizardSeed | null
   onOpenChange: (open: boolean) => void
-  onCreate: (agent: AgentDef) => void
+  onCreate: (input: CreateAgentInput) => void
   onEnableExisting: (id: string) => void
 }) {
   const seedKey =
@@ -99,7 +102,7 @@ function WizardBody({
   onClose,
 }: {
   seed: WizardSeed
-  onCreate: (agent: AgentDef) => void
+  onCreate: (input: CreateAgentInput) => void
   onEnableExisting: (id: string) => void
   onClose: () => void
 }) {
@@ -113,7 +116,12 @@ function WizardBody({
   )
   const [name, setName] = React.useState(fromAgent ? seed.agent.name : '')
 
-  const matches = React.useMemo(() => dryRunMatch(plan.predicate), [plan])
+  // Dry-run preview over the user's real mail in the plan's category.
+  const { data: candidates } = useThreadsByCategory(plan.category)
+  const matches = React.useMemo(
+    () => (candidates ?? []).filter(plan.predicate),
+    [candidates, plan],
+  )
   const stepIndex = STEPS.findIndex((s) => s.id === step)
   const alreadyActive = fromAgent && seed.agent.enabled
 
@@ -126,7 +134,11 @@ function WizardBody({
     if (fromAgent) {
       if (!seed.agent.enabled) onEnableExisting(seed.agent.id)
     } else {
-      onCreate(buildAgentDef(plan, name || plan.suggestedName, description, matches.length))
+      onCreate({
+        name: name.trim() || plan.suggestedName,
+        description: description.trim() || `Automatically handles mail ${plan.matchLabel}.`,
+        plan: toAgentPlan(plan),
+      })
     }
     onClose()
   }
@@ -372,13 +384,7 @@ function PlanRow({
   )
 }
 
-function DryRun({
-  plan,
-  matches,
-}: {
-  plan: CompiledPlan
-  matches: ReturnType<typeof dryRunMatch>
-}) {
+function DryRun({ plan, matches }: { plan: CompiledPlan; matches: Thread[] }) {
   return (
     <div className="space-y-3">
       <AiTag label="Dry-run · last 30 days" />

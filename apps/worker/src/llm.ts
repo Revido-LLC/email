@@ -1,55 +1,41 @@
 /**
- * The worker's Anthropic wiring — the one place that touches `@anthropic-ai/sdk`.
+ * The worker's LLM wiring — the one place that constructs the model backend.
  *
- * `@revido/core`'s {@link AnthropicLlmClient} is written against a structural
- * `AnthropicMessagesClient` surface (core cannot depend on the SDK). This module
- * constructs the real SDK client (reading `ANTHROPIC_API_KEY`) and adapts its
- * `beta.messages` create/stream/batches methods onto that surface. `thinking` /
- * `output_config` are newer request-body fields carried through unchanged.
+ * The backend is **OpenRouter** (OpenAI chat-completions format), selected by
+ * `OPENROUTER_API_KEY`. It fronts any model per tier via `LLM_MODEL_TRIAGE` /
+ * `LLM_MODEL_SUMMARY` / `LLM_MODEL_ESCALATION`, and ZDR / no-training is enforced
+ * per request through the `provider` field (`OPENROUTER_ENFORCE_ZDR`, default on).
+ * OpenRouter has **no Batches endpoint**, so `ANTHROPIC_BATCHES_DISABLED=true` must
+ * be set — `apps/worker/src/context.ts:isBatchTriageEnabled` then routes backfill
+ * through the real-time triage path (the throwing batch methods on
+ * {@link OpenRouterLlmClient} are the safety net).
  */
 
-import Anthropic from '@anthropic-ai/sdk'
 import {
-  AnthropicLlmClient,
-  type AnthropicCreateParams,
-  type AnthropicMessagesClient,
+  OpenRouterLlmClient,
   type LlmBatchClient,
   type LlmClient,
+  type LlmModelTier,
 } from '@revido/core'
 
 export type WorkerLlmClient = LlmClient & LlmBatchClient
 
-/** Adapt an Anthropic SDK client onto the structural surface core depends on. */
-export function createAnthropicSdkAdapter(sdk: Anthropic): AnthropicMessagesClient {
-  const messages = sdk.beta.messages
-  return {
-    async create(params) {
-      return messages.create(params)
-    },
-    async createStream(params) {
-      const streamParams: AnthropicCreateParams & { stream: true } = { ...params, stream: true }
-      return messages.create(streamParams)
-    },
-    batches: {
-      async create(requests) {
-        return messages.batches.create({
-          requests: requests.map((r) => ({ custom_id: r.custom_id, params: r.params })),
-        })
-      },
-      async retrieve(batchId) {
-        return messages.batches.retrieve(batchId)
-      },
-      async results(batchId) {
-        return messages.batches.results(batchId)
-      },
-    },
-  }
+/** Read per-tier model overrides from env (LLM_MODEL_TRIAGE/SUMMARY/ESCALATION). */
+function modelMapFromEnv(env: NodeJS.ProcessEnv): Partial<Record<LlmModelTier, string>> {
+  const map: Partial<Record<LlmModelTier, string>> = {}
+  if (env.LLM_MODEL_TRIAGE) map.triage = env.LLM_MODEL_TRIAGE
+  if (env.LLM_MODEL_SUMMARY) map.summary = env.LLM_MODEL_SUMMARY
+  if (env.LLM_MODEL_ESCALATION) map.escalation = env.LLM_MODEL_ESCALATION
+  return map
 }
 
-/** Build the caching-first LLM client. Throws if `ANTHROPIC_API_KEY` is unset. */
+/** Build the caching-first LLM client. OpenRouter is the sole backend. */
 export function createLlmClient(env: NodeJS.ProcessEnv = process.env): WorkerLlmClient {
-  const apiKey = env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set')
-  const sdk = new Anthropic({ apiKey })
-  return new AnthropicLlmClient(createAnthropicSdkAdapter(sdk))
+  const apiKey = env.OPENROUTER_API_KEY
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set (the LLM backend)')
+  return new OpenRouterLlmClient({
+    apiKey,
+    models: modelMapFromEnv(env),
+    enforceZdr: env.OPENROUTER_ENFORCE_ZDR !== 'false',
+  })
 }

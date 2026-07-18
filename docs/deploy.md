@@ -12,12 +12,12 @@ workspace `Revido`, environment `production`) so the services reach the database
 networking. (See the `/railway-email-revido` skill for the authoritative topology + a migration
 runner.)
 
-| Service          | Source                        | Railway config             | Role |
-| ---------------- | ----------------------------- | -------------------------- | ---- |
-| `@revido/web`    | GitHub `Revido-LLC/email`     | `apps/web/railway.json`    | React SPA via `vite preview`. Already deployed. |
-| `@revido/api`    | `apps/api`                    | `apps/api/railway.json`    | Hono API — CRUD, OAuth, AI SSE, webhooks. **Add at deploy.** |
-| `@revido/worker` | `apps/worker`                 | `apps/worker/railway.json` | Background consumers: sync, enrichment, agents, digests. **Add at deploy.** |
-| `Postgres`       | `ghcr.io/railwayapp-templates/postgres-ssl:18` | — | Railway Postgres 18 (pgvector 0.8.5 + pgcrypto). **Already provisioned + migrated (0000–0005) + RLS-proven.** |
+| Service          | Source                                         | Railway config             | Role                                                                                                          |
+| ---------------- | ---------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `@revido/web`    | GitHub `Revido-LLC/email`                      | `apps/web/railway.json`    | React SPA via `vite preview`. Already deployed.                                                               |
+| `@revido/api`    | `apps/api`                                     | `apps/api/railway.json`    | Hono API — CRUD, OAuth, AI SSE, webhooks. **Add at deploy.**                                                  |
+| `@revido/worker` | `apps/worker`                                  | `apps/worker/railway.json` | Background consumers: sync, enrichment, agents, digests. **Add at deploy.**                                   |
+| `Postgres`       | `ghcr.io/railwayapp-templates/postgres-ssl:18` | —                          | Railway Postgres 18 (pgvector 0.8.5 + pgcrypto). **Already provisioned + migrated (0000–0005) + RLS-proven.** |
 
 Each app service points its "Config File Path" at its `railway.json` and keeps the Root Directory at
 the repo root (pnpm workspace filtering resolves from anywhere; the lockfile + hoisted `node_modules`
@@ -63,15 +63,29 @@ infisical run -- pnpm --filter @revido/web exec vite preview
 
 ### The secret inventory (what to populate in Infisical `staging`)
 
+> For step-by-step console instructions on the external accounts (Google, Microsoft, embeddings,
+> storage), see [`provider-setup.md`](./provider-setup.md).
+
 **Generatable now (no external account):**
+
 - `BETTER_AUTH_SECRET`, `DEV_KMS_MASTER_KEY` — `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` each.
 - `BETTER_AUTH_URL`, `WEB_ORIGIN`, `VITE_API_URL` — the deployed URLs.
 - `DATABASE_URL` — Railway variable-ref to `Postgres.DATABASE_URL`.
 
 **Need an external account/console:**
+
 - Google: `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (OAuth app, Gmail API + Pub/Sub), `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUSH_AUDIENCE`, `GMAIL_PUSH_SA_EMAIL`.
 - Microsoft: `MS_CLIENT_ID`/`MS_CLIENT_SECRET`/`MS_TENANT_ID` (Entra app, Graph), `GRAPH_CLIENT_STATE`, `GRAPH_NOTIFICATION_URL`.
-- AI: `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY` (or `OPENAI_API_KEY`).
+- AI — **OpenRouter (OpenAI chat-completions format)** via `OPENROUTER_API_KEY`. Privacy is **per-request
+  no-training / ZDR**: `OPENROUTER_ENFORCE_ZDR` is on by default, so every request sends `provider.zdr` +
+  `data_collection: 'deny'` (set it to the literal `false` only to disable). Model choice is per-tier via
+  `LLM_MODEL_TRIAGE` / `LLM_MODEL_SUMMARY` / `LLM_MODEL_ESCALATION` (default to the `anthropic/claude-*` slugs
+  — haiku/sonnet/opus — and editable to any OpenRouter model, no code change). It is the **sole** LLM
+  backend (dev and prod), so `OPENROUTER_API_KEY` is required for any AI path. `ANTHROPIC_BATCHES_DISABLED=true`
+  is required because OpenRouter has no Batches API, so backfill triage uses the real-time path. Note the
+  requirement is retention/no-training, not hard EU residency — which OpenRouter's self-serve tier covers.
+- Embeddings: `VOYAGE_API_KEY` (or `OPENAI_API_KEY`) — pick a provider under a **no-retention / no-train**
+  agreement (the same privacy posture as the OpenRouter LLM path; the requirement is retention, not EU residency).
 - Email: `RESEND_API_KEY`, `DIGEST_FROM`.
 - Optional: `LEAD_NOTIFY_WEBHOOK_URL`, `VITE_POSTHOG_KEY`/`VITE_POSTHOG_HOST`, `STORAGE_S3_*` (large-file attachments; the ≤10 MB inline path works without it).
 
@@ -87,7 +101,7 @@ invokes `vite preview` directly (bypassing the `preview` script's hardcoded `--p
 ## CI gate
 
 `.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile` then `pnpm build && typecheck &&
-lint && test` on every push/PR. Current status: **green — 391 tests**.
+lint && test` on every push/PR. Current status: **green — 406 tests**.
 
 ## Go-live checklist (the human-gated steps)
 
@@ -95,18 +109,19 @@ The codebase is complete and gate-green; going live needs actions only a human w
 perform. In order:
 
 1. **Provision provider apps.** Create the Google Cloud project (Gmail API + Pub/Sub topic + OAuth
-   consent) and the Microsoft Entra app (Graph + change-notification subscription). Use *test* mode
+   consent) and the Microsoft Entra app (Graph + change-notification subscription). Use _test_ mode
    for staging. Capture the client ids/secrets + Pub/Sub/Graph identifiers.
-2. **Get AI + email keys.** Anthropic (enable ZDR on the org), Voyage (or OpenAI) with a
-   no-retention agreement, Resend.
+2. **Get AI + email keys.** OpenRouter (create an account + API key, then — a required manual dashboard
+   action — enable ZDR / set data-collection to `deny` and sign the OpenRouter DPA before real mail flows),
+   Voyage (or OpenAI) with a no-retention agreement, Resend.
 3. **Populate Infisical `staging`** with every secret above.
 4. **Add the services.** In the `Revido Email` project: `railway add --service @revido/api --repo
-   Revido-LLC/email` and the same for `@revido/worker`; set each Config File Path to its
+Revido-LLC/email` and the same for `@revido/worker`; set each Config File Path to its
    `railway.json`; wrap the start command in `infisical run --`; add a variable-ref to
    `Postgres.DATABASE_URL`.
 5. **Smoke-test.** `GET /health` on the api; confirm `/api/auth/get-session` responds and a protected
    route 401s without a session.
-6. **Real-mailbox e2e** (Part I §Verification): connect a real Gmail *and* a real Outlook account →
+6. **Real-mailbox e2e** (Part I §Verification): connect a real Gmail _and_ a real Outlook account →
    onboarding counts animate from real data → read an EN and an NL thread → send a Dutch reply +
    undo → chat cites a cross-lingual email → create/dry-run/approve an agent → digest arrives → run
    the provable-purge check.

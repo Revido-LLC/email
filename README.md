@@ -2,21 +2,39 @@
 
 **Your inbox, handled.** A free, web-based AI email client — built by [Revido](https://revido.co).
 
-> This repository is the open-source UI shell. It renders every screen as a real React view over a
-> mock-data module. No backend, no OAuth, no AI calls yet — those are a later planning pass.
+> A privacy-first AI email client, shipped as a full-stack monorepo: a React SPA, a Hono API, a
+> background worker, and Postgres. It's open source so you can read the code and verify the privacy
+> claims for yourself.
 
 ## Stack
 
-- **Vite + React + TypeScript** SPA (`apps/web`), routed with **TanStack Router** (file-based).
-- **Tailwind v4** with CSS-variable design tokens — a warm, consumer theme (`packages/ui`).
-- **Mock data** shaped like the future API (`packages/mock-data`).
-- Component library built on Radix primitives (shadcn-registry lineage), `cmdk`, `motion`, Tiptap.
+A pnpm + Turbo monorepo of 7 workspaces:
+
+- **`apps/web`** (`@revido/web`) — Vite + React + TypeScript SPA, TanStack Router (file-based routing). The UI; in dev it renders over `@revido/mock-data`.
+- **`apps/api`** (`@revido/api`) — Hono API on Node: CRUD over threads/messages/accounts/agents/etc., Better Auth (sessions + Google & Microsoft OAuth), AI SSE endpoints, provider webhooks, image proxy.
+- **`apps/worker`** (`@revido/worker`) — background consumers off a Postgres-backed job queue: mailbox sync (Gmail + Outlook), triage, enrichment + embeddings, inbox agents, digests, reminders/chasers, outbound send.
+- **`packages/core`** (`@revido/core`) — provider-neutral domain logic: the LLM seam (`LlmClient`, over OpenRouter), embeddings seam, prompt builders, Gmail/Outlook adapters, agent planning, storage seam, language detection. No provider SDKs (REST over injected `fetch`).
+- **`packages/db`** (`@revido/db`) — Drizzle schema + raw-SQL migrations (`0000`–`0005`), GUC Row-Level-Security, pgvector, per-user envelope-encryption crypto, domain types + Zod.
+- **`packages/mock-data`** (`@revido/mock-data`) — the typed fake mailbox the UI renders against in dev; mirrors `@revido/db` domain types field-for-field (the shared data contract).
+- **`packages/ui`** (`@revido/ui`) — design tokens (Tailwind v4 CSS variables) + the component library.
+
+Stack at a glance: React / Vite / TanStack Router / Tailwind v4 (web) · Hono + Better Auth (api) · Railway Postgres 18 (pgvector + pgcrypto) via Drizzle (db) · OpenRouter (OpenAI chat-completions format) for the LLM · Voyage/OpenAI embeddings · Resend (email) · deployed on Railway (single project, private networking). Privacy: per-user envelope encryption + per-request no-training/ZDR on the LLM.
 
 ## Getting started
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173
+```
+
+Two dev modes:
+
+```bash
+# UI-only: just the web app, over mock data — no backend, no secrets.
+pnpm --filter @revido/web dev   # http://localhost:5173
+
+# Whole stack: web + api + worker. The api/worker need env
+# (a local .env or `infisical run` — see docs/deploy.md).
+pnpm dev
 ```
 
 Key routes:
@@ -39,12 +57,18 @@ Key routes:
 
 ## Scripts
 
-- `pnpm dev` · `pnpm build` · `pnpm typecheck` · `pnpm lint` · `pnpm format`
+- `pnpm dev` · `pnpm build` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format`
+
+`build`, `typecheck`, `lint`, and `test` run through `turbo run` across the workspaces. Tests are
+vitest (api/worker/core/db); the web app has no component tests — verify web changes by driving the app.
 
 ## Docs
 
 - [Information architecture](./docs/information-architecture.md) — screen map, navigation model, IA rationale.
 - [Design system](./packages/ui/DESIGN.md) — tokens, categories, the AI marker, component inventory.
+- [API contract](./docs/api-contract.md) — the HTTP surface between web and api.
+- [Deploy runbook](./docs/deploy.md) — env vars, secrets, and the Railway deployment path.
+- [Provider setup](./docs/provider-setup.md) — the external accounts to configure (Google, Microsoft, embeddings, storage).
 - [Contributing](./CONTRIBUTING.md) — setup, commands, and conventions.
 
 ## License

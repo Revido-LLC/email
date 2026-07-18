@@ -2,7 +2,7 @@
   "name": "revido-mail",
   "version": "0.1.0",
   "private": true,
-  "description": "Revido AI Email Client — a free, web-based AI email client. UI shell over mock data.",
+  "description": "Revido Mail — a free, privacy-first, web-based AI email client. Full-stack monorepo: React SPA, Hono API, background worker, Postgres.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "packageManager": "pnpm@10.29.3",

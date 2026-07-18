@@ -5,16 +5,18 @@ description: Verify a change in the Revido Mail web app — run the gates, sweep
 
 # Verify
 
-There is no test suite (deliberate — quality gates are typecheck/lint/build plus your
-eyes). Verification is: gates green, then drive the affected surface in the running app.
+The quality gates are build + typecheck + lint + test (vitest — 406 tests across
+api/worker/core/db). The web app itself has no component tests, so verifying a web change is:
+gates green, then drive the affected surface in the running app.
 
 ## 1. Gates
 
-Run all three; they must be clean:
+Run all four; they must be clean:
 
 - `pnpm typecheck`
 - `pnpm lint` (includes the `tokens-only/no-arbitrary-values` rule)
 - `pnpm build`
+- `pnpm test`
 
 On a fresh clone, run `pnpm build` once before `typecheck` — turbo `typecheck` depends on
 `^build`.

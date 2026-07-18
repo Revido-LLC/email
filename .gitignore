@@ -18,6 +18,9 @@ build/
 *.pem
 *.key
 
+# Infisical local project link (holds the workspace id; not a secret, but repo is public)
+.infisical.json
+
 # Editor / OS
 .DS_Store
 .idea/

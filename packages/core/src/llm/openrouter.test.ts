@@ -77,7 +77,7 @@ describe('OpenRouterLlmClient.complete response + usage mapping', () => {
   it('maps content, finish_reason, model, and the cache-aware usage split', async () => {
     const fetchImpl = mockFetch(async () =>
       jsonResponse({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'openai/gpt-5-nano',
         choices: [{ message: { content: 'the answer' }, finish_reason: 'stop' }],
         usage: {
           prompt_tokens: 100,
@@ -91,7 +91,7 @@ describe('OpenRouterLlmClient.complete response + usage mapping', () => {
 
     expect(result.text).toBe('the answer')
     expect(result.stopReason).toBe('stop')
-    expect(result.model).toBe('anthropic/claude-haiku-4.5')
+    expect(result.model).toBe('openai/gpt-5-nano')
     expect(result.usage).toEqual({
       inputTokens: 70,
       outputTokens: 20,
@@ -106,7 +106,7 @@ describe('OpenRouterLlmClient.complete response + usage mapping', () => {
     const result = await client.complete(req())
     expect(result.text).toBe('')
     expect(result.stopReason).toBeNull()
-    expect(result.model).toBe('anthropic/claude-haiku-4.5')
+    expect(result.model).toBe('openai/gpt-5-nano')
   })
 })
 
@@ -190,7 +190,7 @@ describe('OpenRouterLlmClient model map', () => {
 
     const base = new OpenRouterLlmClient({ apiKey: 'k', fetchImpl })
     await base.complete(req({ model: 'triage' }))
-    expect(bodyOf(fetchImpl, 0).model).toBe('anthropic/claude-haiku-4.5')
+    expect(bodyOf(fetchImpl, 0).model).toBe('openai/gpt-5-nano')
 
     const overridden = new OpenRouterLlmClient({
       apiKey: 'k',
@@ -220,7 +220,7 @@ describe('OpenRouterLlmClient.stream', () => {
 
   it('yields ordered text deltas then a done event with usage, stopReason, and model', async () => {
     const finalChunk = JSON.stringify({
-      model: 'anthropic/claude-haiku-4.5',
+      model: 'openai/gpt-5-nano',
       choices: [{ delta: {}, finish_reason: 'stop' }],
       usage: {
         prompt_tokens: 12,
@@ -250,7 +250,7 @@ describe('OpenRouterLlmClient.stream', () => {
     expect(done.type).toBe('done')
     if (done.type === 'done') {
       expect(done.stopReason).toBe('stop')
-      expect(done.model).toBe('anthropic/claude-haiku-4.5')
+      expect(done.model).toBe('openai/gpt-5-nano')
       expect(done.usage).toEqual({
         inputTokens: 10,
         outputTokens: 5,

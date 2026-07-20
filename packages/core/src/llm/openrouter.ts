@@ -40,9 +40,9 @@ import type { FetchImpl } from '../adapters/http'
  * {@link MODELS}. Overridable per-tier via {@link OpenRouterLlmClientOptions.models}.
  */
 const DEFAULT_OPENROUTER_MODELS: Record<LlmModelTier, string> = {
-  triage: 'anthropic/claude-haiku-4.5',
-  summary: 'anthropic/claude-sonnet-5',
-  escalation: 'anthropic/claude-opus-4.8',
+  triage: 'openai/gpt-5-nano',
+  summary: 'openai/gpt-5-nano',
+  escalation: 'openai/gpt-5-mini',
 }
 
 // ---------------------------------------------------------------------------

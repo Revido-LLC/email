@@ -12,6 +12,7 @@
  */
 import { Hono } from 'hono'
 import { auth } from './auth'
+import { apiCors } from './middleware/cors'
 import { securityHeaders } from './middleware/security-headers'
 import { routers } from './routes'
 
@@ -20,6 +21,9 @@ export const app = new Hono()
 // Harden every response (including /health, the Better Auth handler, and SSE
 // streams) before anything else runs.
 app.use('*', securityHeaders())
+// The SPA lives on a sibling host. Permit only its configured origin and allow
+// the Better Auth session cookie to accompany browser API requests.
+app.use('*', apiCors())
 
 // Better Auth owns everything under /api/auth/* (GET + POST).
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw))

@@ -8,10 +8,11 @@ import { api } from '@/lib/api'
 import { invalidateAgentCaches, queryKeys } from '@/lib/query-keys'
 
 /** `GET /onboarding/scan` */
-export function useOnboardingScan() {
+export function useOnboardingScan(options: { refetchInterval?: number | false } = {}) {
   return useQuery({
     queryKey: queryKeys.onboarding.scan(),
     queryFn: () => api.get<OnboardingScanResult>('/onboarding/scan'),
+    refetchInterval: options.refetchInterval,
   })
 }
 

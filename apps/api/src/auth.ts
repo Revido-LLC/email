@@ -21,15 +21,11 @@
  */
 import { randomUUID } from 'node:crypto'
 import { getDb } from '@revido/db/client'
-import {
-  account,
-  session,
-  users,
-  verification,
-} from '@revido/db/schema'
+import { account, session, users, verification } from '@revido/db/schema'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { onMailboxLinked } from './lib/mailbox-link'
+import { webOrigins } from './lib/origins'
 
 /** Gmail scope that permits reading + modifying (send/label/trash) mail. */
 const GOOGLE_MAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
@@ -39,6 +35,7 @@ const MS_MAIL_SCOPES = ['Mail.ReadWrite', 'Mail.Send', 'offline_access']
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+  trustedOrigins: webOrigins(),
   database: drizzleAdapter(getDb(), {
     provider: 'pg',
     // Keys are the resolved model names: Better Auth's `user` model is mapped to
@@ -126,9 +123,6 @@ export interface ProviderAccount {
  * `accounts` table and enqueue an initial backfill job. Left unimplemented here
  * (auth-persistence owns only the skeleton).
  */
-export type OnMailboxLinked = (
-  userId: string,
-  providerAccount: ProviderAccount,
-) => Promise<void>
+export type OnMailboxLinked = (userId: string, providerAccount: ProviderAccount) => Promise<void>
 
 export type Auth = typeof auth

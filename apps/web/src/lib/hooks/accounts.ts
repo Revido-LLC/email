@@ -8,10 +8,11 @@ import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 
 /** `GET /accounts` */
-export function useAccounts() {
+export function useAccounts(options: { refetchInterval?: number | false } = {}) {
   return useQuery({
     queryKey: queryKeys.accounts.all(),
     queryFn: () => api.get<Account[]>('/accounts'),
+    refetchInterval: options.refetchInterval,
   })
 }
 

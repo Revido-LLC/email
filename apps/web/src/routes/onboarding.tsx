@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import type { AgentProposal } from '@revido/db'
 import {
   AiTag,
@@ -18,47 +18,54 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '@/lib/icons'
 import { capture } from '@/lib/analytics'
+import { authClient } from '@/lib/auth-client'
 import { formatNumber } from '@/i18n/format'
 import { useAppState, type ThemePreference } from '@/lib/app-state'
-import { useAgentProposals, useEnableProposedAgents, useMe, useOnboardingScan } from '@/lib/hooks'
+import {
+  useAccounts,
+  useAgentProposals,
+  useEnableProposedAgents,
+  useMe,
+  useOnboardingScan,
+} from '@/lib/hooks'
 
 export const Route = createFileRoute('/onboarding')({
+  beforeLoad: async () => {
+    try {
+      const { data } = await authClient.getSession()
+      if (data) return
+    } catch {
+      // The redirect below is the fail-closed path.
+    }
+    throw redirect({ to: '/' })
+  },
   component: OnboardingScreen,
 })
 
 const STAGES = ['appearance', 'connecting', 'reading', 'ready', 'proposals'] as const
 type Stage = (typeof STAGES)[number]
 
-/** How long each auto-advancing stage lingers before moving on. Snappy. */
-const STAGE_MS: Record<Stage, number> = {
-  appearance: 0,
-  connecting: 1500,
-  reading: 2000,
-  ready: 1300,
-  proposals: 0,
-}
-
 function OnboardingScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // The appearance picker leads (user-driven); the scan stages auto-advance.
+  // Appearance is user-driven; all mailbox stages follow actual account state.
   const [stage, setStage] = React.useState<Stage>('appearance')
-  const [connected, setConnected] = React.useState(false)
+  const polling = stage === 'connecting' || stage === 'reading'
+  const { data: accounts } = useAccounts({ refetchInterval: polling ? 1500 : false })
+  const account = accounts?.[0]
+  const connected = Boolean(account)
 
-  // Drive the stage machine forward on a timer (appearance + proposals are terminal).
+  // A connected account proves OAuth token capture completed. Do not pretend the
+  // mailbox is ready until the worker reports a completed backfill.
   React.useEffect(() => {
-    if (stage === 'proposals' || stage === 'appearance') return
-    const id = setTimeout(() => {
-      setStage((s) => STAGES[STAGES.indexOf(s) + 1] ?? s)
-    }, STAGE_MS[stage])
-    return () => clearTimeout(id)
-  }, [stage])
+    if (stage === 'connecting' && account) setStage('reading')
+    if (stage === 'reading' && (account?.syncProgress ?? 0) >= 1) setStage('ready')
+  }, [account, stage])
 
-  // A little "Connecting… → Connected ✓" beat inside the first stage.
+  // Keep the ready confirmation visible briefly before proposals.
   React.useEffect(() => {
-    if (stage !== 'connecting') return
-    setConnected(false)
-    const id = setTimeout(() => setConnected(true), 900)
+    if (stage !== 'ready') return
+    const id = setTimeout(() => setStage('proposals'), 1300)
     return () => clearTimeout(id)
   }, [stage])
 
@@ -96,7 +103,12 @@ function OnboardingScreen() {
           ) : stage === 'proposals' ? (
             <ProposalsView onContinue={goToInbox} />
           ) : (
-            <ScanView stage={stage} connected={connected} />
+            <ScanView
+              stage={stage}
+              connected={connected}
+              syncProgress={account?.syncProgress ?? 0}
+              syncLabel={account?.syncLabel ?? ''}
+            />
           )}
         </main>
 
@@ -113,9 +125,21 @@ function OnboardingScreen() {
 /* Scan phase (connecting → reading → ready)                          */
 /* ------------------------------------------------------------------ */
 
-function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
+function ScanView({
+  stage,
+  connected,
+  syncProgress,
+  syncLabel,
+}: {
+  stage: Stage
+  connected: boolean
+  syncProgress: number
+  syncLabel: string
+}) {
   const { t } = useTranslation()
-  const { data: scan } = useOnboardingScan()
+  const { data: scan } = useOnboardingScan({
+    refetchInterval: stage === 'reading' ? 1500 : false,
+  })
   const { data: me } = useMe()
   const email = me?.email ?? ''
   const started = stage !== 'connecting'
@@ -194,16 +218,14 @@ function ScanView({ stage, connected }: { stage: Stage; connected: boolean }) {
                   />
                 </div>
 
-                <Progress
-                  value={totalThreads ? total / totalThreads : 0}
-                  className="mt-5"
-                  barClassName="bg-ai"
-                />
+                <Progress value={syncProgress} className="mt-5" barClassName="bg-ai" />
                 <p className="mt-2 text-2xs tabular-nums text-muted-foreground">
-                  {t('onboarding.scan.reading.progress', {
-                    scanned: formatNumber(total),
-                    total: formatNumber(totalThreads),
-                  })}
+                  {syncLabel || 'Importing…'} · {Math.round(syncProgress * 100)}%
+                  {totalThreads > 0 &&
+                    ` · ${t('onboarding.scan.reading.progress', {
+                      scanned: formatNumber(total),
+                      total: formatNumber(totalThreads),
+                    })}`}
                 </p>
               </>
             )}
@@ -408,9 +430,7 @@ function ProposalCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className={cn('text-base font-semibold', cls.text)}>
-              {proposal.metric}
-            </span>
+            <span className={cn('text-base font-semibold', cls.text)}>{proposal.metric}</span>
             <AiTag />
           </div>
           <p className="mt-0.5 text-sm font-medium text-foreground">{proposal.title}</p>

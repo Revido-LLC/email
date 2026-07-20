@@ -32,6 +32,7 @@ import {
   AtSign,
   Check,
   Gauge,
+  Languages,
   Loader2,
   Lock,
   Mail,
@@ -49,7 +50,7 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/i18n/format'
-import { useAppState, type ThemePreference } from '@/lib/app-state'
+import { useAppState, useLocale, type ThemePreference } from '@/lib/app-state'
 import {
   useAccounts,
   useAiPreferences,
@@ -164,6 +165,7 @@ function AccountsTab() {
 function AppearanceTab() {
   const { t } = useTranslation()
   const { themePreference, setThemePreference } = useAppState()
+  const { locale, setLocale } = useLocale()
 
   const options: { id: ThemePreference; icon: React.ReactNode }[] = [
     { id: 'light', icon: <Sun className="size-5" /> },
@@ -209,6 +211,35 @@ function AppearanceTab() {
           })}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">{t('settings.appearance.note')}</p>
+
+        <Separator className="my-6" />
+
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <Languages className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <Label className="text-sm font-semibold">{t('settings.language.title')}</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t('settings.language.description')}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(['en', 'nl'] as const).map((option) => (
+                <Button
+                  key={option}
+                  type="button"
+                  variant={locale === option ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setLocale(option)}
+                  aria-pressed={locale === option}
+                >
+                  {t(`common.languages.${option}`)}
+                  {locale === option && <Check className="size-3.5" />}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
@@ -286,13 +317,12 @@ function DisconnectDialog({ account }: { account: Account }) {
               <Trash2 className="size-4" />{' '}
               {t('settings.accounts.disconnectTitle', { email: account.email })}
             </DialogTitle>
-            <DialogDescription>
-              {t('settings.accounts.disconnectDescription')}
-            </DialogDescription>
+            <DialogDescription>{t('settings.accounts.disconnectDescription')}</DialogDescription>
           </DialogHeader>
           <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-sm text-muted-foreground">
             <div className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
-              <ShieldCheck className="size-4 text-destructive" /> {t('settings.accounts.provablePurge')}
+              <ShieldCheck className="size-4 text-destructive" />{' '}
+              {t('settings.accounts.provablePurge')}
             </div>
             {t('settings.accounts.purgeDetail')}
           </div>
@@ -448,7 +478,9 @@ function SignaturesTab() {
           spellCheck={false}
         />
         <div>
-          <Label className="text-xs text-muted-foreground">{t('settings.signatures.preview')}</Label>
+          <Label className="text-xs text-muted-foreground">
+            {t('settings.signatures.preview')}
+          </Label>
           <div
             className="mt-1.5 rounded-xl border border-border bg-muted/40 p-3.5 text-sm"
             dangerouslySetInnerHTML={{ __html: value }}
@@ -467,7 +499,9 @@ function SignaturesTab() {
           >
             <Check className="size-3.5" /> {t('settings.signatures.save')}
           </Button>
-          {saved && <span className="text-sm text-muted-foreground">{t('settings.signatures.saved')}</span>}
+          {saved && (
+            <span className="text-sm text-muted-foreground">{t('settings.signatures.saved')}</span>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -562,7 +596,8 @@ function DeleteEverythingDialog() {
             </DialogHeader>
             <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-sm text-muted-foreground">
               <div className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
-                <ShieldCheck className="size-4 text-destructive" /> {t('settings.accounts.provablePurge')}
+                <ShieldCheck className="size-4 text-destructive" />{' '}
+                {t('settings.accounts.provablePurge')}
               </div>
               {t('settings.privacy.deleteEverything.purgeDetail')}
             </div>
@@ -581,7 +616,9 @@ function DeleteEverythingDialog() {
                 variant="destructive"
                 size="sm"
                 disabled={deleteEverything.isPending}
-                onClick={() => deleteEverything.mutate(undefined, { onSuccess: () => setDone(true) })}
+                onClick={() =>
+                  deleteEverything.mutate(undefined, { onSuccess: () => setDone(true) })
+                }
               >
                 <Trash2 className="size-3.5" /> {t('settings.privacy.deleteEverything.confirm')}
               </Button>

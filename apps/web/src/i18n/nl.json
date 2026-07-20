@@ -236,6 +236,10 @@
         "system": "Systeem"
       }
     },
+    "language": {
+      "title": "Taal",
+      "description": "Kies de taal die in heel Revido Mail wordt gebruikt."
+    },
     "accounts": {
       "connectAnother": "Nog een account koppelen",
       "supportNote": "Gmail en Outlook worden ondersteund. Je mail is end-to-end versleuteld met een sleutel die alleen jij hebt.",

@@ -1,14 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { CategoryId, CategoryMeta } from '@revido/db'
-import {
-  Button,
-  ContactAvatar,
-  Kbd,
-  Progress,
-  ScrollArea,
-  SimpleTooltip,
-  cn,
-} from '@revido/ui'
+import { Button, ContactAvatar, Kbd, Progress, ScrollArea, SimpleTooltip, cn } from '@revido/ui'
 import { Icon } from '@/lib/icons'
 import {
   Bell,
@@ -27,9 +19,16 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { LanguageToggle } from '@/components/language-toggle'
 import { useAppState, type ThemePreference } from '@/lib/app-state'
 import { CATEGORY_LIST } from '@/lib/categories'
-import { useAccounts, useCategoryCounts, useMe, useNeedsYou, usePendingApprovalCount } from '@/lib/hooks'
+import {
+  useAccounts,
+  useCategoryCounts,
+  useMe,
+  useNeedsYou,
+  usePendingApprovalCount,
+} from '@/lib/hooks'
 
 type CategoryCounts = Partial<Record<CategoryId, number>>
 
@@ -308,6 +307,7 @@ export function NavRail() {
             label={t('shell.nav.settings')}
             collapsed={navCollapsed}
           />
+          <LanguageToggle compact />
           <div className={cn('ml-auto', navCollapsed && 'ml-0')}>
             <ThemeToggle collapsed={navCollapsed} />
           </div>

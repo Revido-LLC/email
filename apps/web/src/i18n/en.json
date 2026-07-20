@@ -236,6 +236,10 @@
         "system": "System"
       }
     },
+    "language": {
+      "title": "Language",
+      "description": "Choose the language used throughout Revido Mail."
+    },
     "accounts": {
       "connectAnother": "Connect another account",
       "supportNote": "Gmail and Outlook supported. Your mail is end-to-end encrypted with a key only you hold.",

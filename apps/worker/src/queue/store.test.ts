@@ -40,7 +40,13 @@ describe('PgJobStore.claim', () => {
     const store = new PgJobStore(db, { now: () => NOW, lockTtlMs: 60_000 })
     const job = await store.claim('worker-a')
 
-    expect(job).toEqual({ id: 'j1', queue: 'triage', payload: { x: 1 }, attempts: 2, maxAttempts: 5 })
+    expect(job).toEqual({
+      id: 'j1',
+      queue: 'triage',
+      payload: { x: 1 },
+      attempts: 2,
+      maxAttempts: 5,
+    })
     // Binds the worker id and the stale-lock reclaim boundary (now - lockTtl).
     expect(calls[0]?.values[0]).toBe('worker-a')
     expect(calls[0]?.values[1]).toBe(new Date(NOW.getTime() - 60_000).toISOString())
@@ -57,7 +63,7 @@ describe('PgJobStore.claim', () => {
 })
 
 describe('PgJobStore.complete', () => {
-  it("marks the job done and clears the lock", async () => {
+  it('marks the job done and clears the lock', async () => {
     const { db, calls } = fakeDb([])
     await new PgJobStore(db).complete('j9')
     expect(calls[0]?.text).toContain("status = 'done'")
@@ -92,14 +98,15 @@ describe('PgJobStore.fail', () => {
 })
 
 describe('PgJobStore.enqueue', () => {
-  it('defaults run_at to now() and json-wraps the payload', async () => {
+  it('defaults run_at to now() and serializes the payload for jsonb', async () => {
     const { db, calls } = fakeDb([])
     const store = new PgJobStore(db, { now: () => NOW })
     await store.enqueue('triage', { messageId: 'm1' })
-    // values order: [queue, json(payload), runAt]
+    // values order: [queue, serialized payload, runAt]
     expect(calls[0]?.values[0]).toBe('triage')
-    expect(calls[0]?.values[1]).toEqual({ __json: { messageId: 'm1' } })
+    expect(calls[0]?.values[1]).toBe('{"messageId":"m1"}')
     expect(calls[0]?.values[2]).toBe(NOW.toISOString())
+    expect(calls[0]?.text).toContain('::jsonb')
   })
 
   it('honors an explicit runAt (deferred send)', async () => {

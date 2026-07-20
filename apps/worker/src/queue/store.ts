@@ -17,7 +17,7 @@
  * forever. The runner treats `attempts > max_attempts` on a claim as exhausted.
  */
 
-import type { JsonValue, WorkerDb } from '../db/client'
+import type { WorkerDb } from '../db/client'
 
 /** A row handed to a consumer. `payload` is validated by the consumer. */
 export interface ClaimedJob {
@@ -133,10 +133,11 @@ export class PgJobStore implements JobStore {
 
   async enqueue(queue: string, payload: unknown, opts: { runAt?: Date } = {}): Promise<void> {
     const runAt = (opts.runAt ?? this.now()).toISOString()
+    const payloadJson = JSON.stringify(payload ?? null)
     await this.db.asService(
       (sql) => sql`
         insert into jobs (queue, payload, run_at)
-        values (${queue}, ${sql.json(payload as JsonValue)}, ${runAt})
+        values (${queue}, ${payloadJson}::jsonb, ${runAt})
       `,
     )
   }

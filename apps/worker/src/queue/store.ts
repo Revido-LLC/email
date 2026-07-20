@@ -87,7 +87,19 @@ export class PgJobStore implements JobStore {
           where status = 'pending'
             and run_at <= now()
             and (locked_at is null or locked_at < ${staleBefore})
-          order by run_at asc
+          order by
+            case queue
+              when 'send' then 0
+              when 'incremental' then 1
+              when 'renew_watch' then 1
+              when 'backfill' then 2
+              when 'triage_batch' then 3
+              when 'triage' then 3
+              when 'summary' then 4
+              when 'embed' then 9
+              else 5
+            end,
+            run_at asc
           limit 1
           for update skip locked
         )

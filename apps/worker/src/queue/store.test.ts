@@ -51,6 +51,8 @@ describe('PgJobStore.claim', () => {
     expect(calls[0]?.values[0]).toBe('worker-a')
     expect(calls[0]?.values[1]).toBe(new Date(NOW.getTime() - 60_000).toISOString())
     expect(calls[0]?.text).toContain('for update skip locked')
+    expect(calls[0]?.text).toContain("when 'backfill' then 2")
+    expect(calls[0]?.text).toContain("when 'embed' then 9")
     // Attempts is burned at claim time so a crashed job can't retry forever.
     expect(calls[0]?.text).toContain('attempts = attempts + 1')
   })

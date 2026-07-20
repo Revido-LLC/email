@@ -26,7 +26,10 @@ export interface AccountCrypto {
   decrypt(ciphertext: Ciphertext): string
 }
 
-export function accountCrypto(dek: Uint8Array, crypto: EnvelopeCrypto = envelopeCrypto): AccountCrypto {
+export function accountCrypto(
+  dek: Uint8Array,
+  crypto: EnvelopeCrypto = envelopeCrypto,
+): AccountCrypto {
   return {
     encrypt: (plaintext) => crypto.encrypt(plaintext, dek),
     decrypt: (ciphertext) => crypto.decrypt(ciphertext, dek),
@@ -50,8 +53,16 @@ interface AccountRow {
   email: string
   access_token_ct: Ciphertext | null
   refresh_token_ct: Ciphertext | null
-  token_expires_at: Date | null
+  /** postgres-js may return timestamptz as a Date or an ISO string. */
+  token_expires_at: Date | string | null
   wrapped_dek: string
+}
+
+/** Normalize the runtime timestamp shape before handing credentials to adapters. */
+export function tokenExpiryIso(value: Date | string | null): string {
+  const date = value instanceof Date ? value : new Date(value ?? 0)
+  if (Number.isNaN(date.getTime())) throw new Error('account has an invalid OAuth token expiry')
+  return date.toISOString()
 }
 
 /** Load + decrypt an account's credentials and DEK. Throws if the account is unknown. */
@@ -81,7 +92,7 @@ export async function loadAccountContext(
   const creds: ProviderCredentials = {
     accessToken: crypto.decrypt(row.access_token_ct, dek),
     refreshToken: crypto.decrypt(row.refresh_token_ct, dek),
-    expiresAt: (row.token_expires_at ?? new Date(0)).toISOString(),
+    expiresAt: tokenExpiryIso(row.token_expires_at),
   }
 
   return {

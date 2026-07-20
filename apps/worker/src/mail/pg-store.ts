@@ -11,7 +11,14 @@
  * `(account_id, provider_message_id)` — so replaying a fetched page is a no-op.
  */
 
-import type { CategoryId, DigestBundle, OutputLanguage, Priority, Provider, Thread } from '@revido/db'
+import type {
+  CategoryId,
+  DigestBundle,
+  OutputLanguage,
+  Priority,
+  Provider,
+  Thread,
+} from '@revido/db'
 import type { Ciphertext } from '@revido/db/crypto'
 import {
   AGENT_ACTION_TYPES,
@@ -24,7 +31,7 @@ import {
   type StorageProvider,
 } from '@revido/core'
 import type { Tx, WorkerDb } from '../db/client'
-import { jsonCiphertext, type AccountCrypto } from '../db/accounts'
+import { serializeCiphertext, type AccountCrypto } from '../db/accounts'
 import { htmlToText, sanitizeHtml } from '../sync/html'
 import type {
   ApplySummaryInput,
@@ -67,7 +74,8 @@ function attachmentKind(mime: string): 'pdf' | 'image' | 'doc' | 'sheet' | 'zip'
   if (m === 'application/pdf') return 'pdf'
   if (m.startsWith('image/')) return 'image'
   if (m.includes('spreadsheet') || m.includes('excel') || m === 'text/csv') return 'sheet'
-  if (m.includes('word') || m.includes('opendocument.text') || m === 'application/msword') return 'doc'
+  if (m.includes('word') || m.includes('opendocument.text') || m === 'application/msword')
+    return 'doc'
   if (m.includes('zip') || m.includes('compressed') || m.includes('tar')) return 'zip'
   return 'other'
 }
@@ -130,7 +138,7 @@ export class PgMailStore implements MailStore {
              priority, priority_score, has_attachments, last_message_at)
           values
             (${userId}, ${accountId}, ${msg.providerThreadId},
-             ${sql.json(jsonCiphertext(crypto.encrypt(msg.subject)))}, ${DEFAULT_CATEGORY},
+             ${serializeCiphertext(crypto.encrypt(msg.subject))}::jsonb, ${DEFAULT_CATEGORY},
              'normal', 0, ${hasAttachments}, ${messageDate})
           returning id
         `
@@ -149,16 +157,16 @@ export class PgMailStore implements MailStore {
         return { messageId: priorMessageId, threadId, isNew: false }
       }
 
-      const rawHtmlCt = sql.json(jsonCiphertext(crypto.encrypt(msg.html)))
-      const htmlCt = sql.json(jsonCiphertext(crypto.encrypt(sanitizeHtml(msg.html))))
-      const textCt = sql.json(jsonCiphertext(crypto.encrypt(text)))
+      const rawHtmlCt = serializeCiphertext(crypto.encrypt(msg.html))
+      const htmlCt = serializeCiphertext(crypto.encrypt(sanitizeHtml(msg.html)))
+      const textCt = serializeCiphertext(crypto.encrypt(text))
       const insertedMsg = await sql<{ id: string }[]>`
         insert into messages
           (user_id, thread_id, account_id, provider_message_id, from_contact_id,
            date, raw_html_ct, html_ct, text_ct, outbound)
         values
           (${userId}, ${threadId}, ${accountId}, ${msg.providerMessageId}, ${fromContactId},
-           ${messageDate}, ${rawHtmlCt}, ${htmlCt}, ${textCt}, ${msg.outbound})
+           ${messageDate}, ${rawHtmlCt}::jsonb, ${htmlCt}::jsonb, ${textCt}::jsonb, ${msg.outbound})
         returning id
       `
       const messageId = insertedMsg[0]?.id
@@ -372,7 +380,7 @@ export class PgMailStore implements MailStore {
           category = ${result.category},
           priority = ${result.priority},
           priority_score = ${result.priorityScore},
-          tldr_ct = ${sql.json(jsonCiphertext(crypto.encrypt(result.tldr)))},
+          tldr_ct = ${serializeCiphertext(crypto.encrypt(result.tldr))}::jsonb,
           language = ${result.language},
           updated_at = now()
         where id = ${threadId}
@@ -461,7 +469,7 @@ export class PgMailStore implements MailStore {
     const { userId, threadId, crypto, summary, facts } = input
     await this.db.withUser(userId, async (sql) => {
       await sql`
-        update threads set summary_ct = ${sql.json(jsonCiphertext(crypto.encrypt(summary)))}, updated_at = now()
+        update threads set summary_ct = ${serializeCiphertext(crypto.encrypt(summary))}::jsonb, updated_at = now()
         where id = ${threadId}
       `
       await sql`delete from extracted_facts where thread_id = ${threadId}`
@@ -472,9 +480,9 @@ export class PgMailStore implements MailStore {
             (user_id, thread_id, type, label_ct, value_ct, href_ct, position)
           values
             (${userId}, ${threadId}, ${fact.type},
-             ${sql.json(jsonCiphertext(crypto.encrypt(fact.label)))},
-             ${sql.json(jsonCiphertext(crypto.encrypt(fact.value)))},
-             ${fact.href ? sql.json(jsonCiphertext(crypto.encrypt(fact.href))) : null},
+             ${serializeCiphertext(crypto.encrypt(fact.label))}::jsonb,
+             ${serializeCiphertext(crypto.encrypt(fact.value))}::jsonb,
+             ${fact.href ? serializeCiphertext(crypto.encrypt(fact.href)) : null}::jsonb,
              ${position})
         `
         position += 1
@@ -625,10 +633,10 @@ export class PgMailStore implements MailStore {
 
   async saveVoiceProfile(input: SaveVoiceProfileInput): Promise<void> {
     // users is Better-Auth-owned; write voice_profile as the service role.
-    const ct = jsonCiphertext(input.crypto.encrypt(input.profile))
+    const ct = serializeCiphertext(input.crypto.encrypt(input.profile))
     await this.db.asService(
       (sql) => sql`
-        update users set voice_profile_ct = ${sql.json(ct)}, updated_at = now()
+        update users set voice_profile_ct = ${ct}::jsonb, updated_at = now()
         where id = ${input.userId}
       `,
     )
@@ -737,8 +745,8 @@ export class PgMailStore implements MailStore {
            subject_ct, sender, preview_ct)
         values
           (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.action},
-           ${input.threadId}, ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))},
-           ${input.sender}, ${sql.json(jsonCiphertext(crypto.encrypt(input.preview)))})
+           ${input.threadId}, ${serializeCiphertext(crypto.encrypt(input.subject))}::jsonb,
+           ${input.sender}, ${serializeCiphertext(crypto.encrypt(input.preview))}::jsonb)
       `
     })
   }
@@ -753,9 +761,9 @@ export class PgMailStore implements MailStore {
            affected_ct, status, reversible)
         values
           (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.at.toISOString()},
-           ${sql.json(jsonCiphertext(crypto.encrypt(input.summary)))},
-           ${sql.json(jsonCiphertext(crypto.encrypt(input.reasoning)))},
-           ${sql.json(jsonCiphertext(crypto.encrypt(affectedJson)))},
+           ${serializeCiphertext(crypto.encrypt(input.summary))}::jsonb,
+           ${serializeCiphertext(crypto.encrypt(input.reasoning))}::jsonb,
+           ${serializeCiphertext(crypto.encrypt(affectedJson))}::jsonb,
            ${input.status}, ${input.reversible})
       `
     })
@@ -771,10 +779,10 @@ export class PgMailStore implements MailStore {
           (user_id, kind, thread_id, subject_ct, context_ct, sender, due_at, draft_reply_ct)
         values
           (${userId}, ${input.kind}, ${input.threadId},
-           ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))},
-           ${sql.json(jsonCiphertext(crypto.encrypt(input.context)))},
+           ${serializeCiphertext(crypto.encrypt(input.subject))}::jsonb,
+           ${serializeCiphertext(crypto.encrypt(input.context))}::jsonb,
            ${input.sender}, ${input.dueAt.toISOString()},
-           ${input.draftReply ? sql.json(jsonCiphertext(crypto.encrypt(input.draftReply))) : null})
+           ${input.draftReply ? serializeCiphertext(crypto.encrypt(input.draftReply)) : null}::jsonb)
       `
     })
   }
@@ -785,8 +793,8 @@ export class PgMailStore implements MailStore {
       await sql`
         insert into commitments (user_id, text_ct, thread_id, subject_ct, counterpart, due_at)
         values
-          (${userId}, ${sql.json(jsonCiphertext(crypto.encrypt(input.text)))}, ${input.threadId},
-           ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))}, ${input.counterpart},
+          (${userId}, ${serializeCiphertext(crypto.encrypt(input.text))}::jsonb, ${input.threadId},
+           ${serializeCiphertext(crypto.encrypt(input.subject))}::jsonb, ${input.counterpart},
            ${input.dueAt.toISOString()})
       `
     })
@@ -976,7 +984,11 @@ function decryptBody(
 }
 
 /** Map a thread metadata row into the domain {@link Thread} the predicate reads. */
-function toDomainThreadMeta(row: ThreadMetaRow, crypto: AccountCrypto, participants: Contact[]): Thread {
+function toDomainThreadMeta(
+  row: ThreadMetaRow,
+  crypto: AccountCrypto,
+  participants: Contact[],
+): Thread {
   return {
     id: row.id,
     accountId: row.account_id,

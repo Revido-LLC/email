@@ -50,6 +50,8 @@ export interface GmailAdapterOptions {
   labelIds?: string[]
   /** Messages requested per backfill page. */
   backfillPageSize?: number
+  /** Maximum simultaneous `messages.get` calls (defaults to 4). */
+  messageFetchConcurrency?: number
   /** Clock skew (ms) before an access token is treated as expired. */
   refreshSkewMs?: number
 }
@@ -140,7 +142,11 @@ export class GmailAdapter implements ProviderAdapter {
       `${GMAIL_BASE}/messages?${params.toString()}`,
     )
     const ids = list.messages ?? []
-    const messages = await Promise.all(ids.map((m) => this.getMessage(creds, m.id)))
+    const messages = await mapWithConcurrency(
+      ids,
+      this.opts.messageFetchConcurrency ?? 4,
+      (message) => this.getMessage(creds, message.id),
+    )
     return { messages, nextCursor: list.nextPageToken ?? null }
   }
 
@@ -169,7 +175,11 @@ export class GmailAdapter implements ProviderAdapter {
 
     // A message added then deleted within the window is a net delete.
     for (const id of deleted) upsertedIds.delete(id)
-    const upserted = await Promise.all([...upsertedIds].map((id) => this.getMessage(creds, id)))
+    const upserted = await mapWithConcurrency(
+      [...upsertedIds],
+      this.opts.messageFetchConcurrency ?? 4,
+      (id) => this.getMessage(creds, id),
+    )
     return {
       upserted,
       deletedProviderMessageIds: [...deleted],
@@ -263,6 +273,29 @@ export class GmailAdapter implements ProviderAdapter {
       method: 'POST',
     })
   }
+}
+
+/** Map without exceeding the provider's per-user concurrent-request allowance. */
+export async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  requestedLimit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return []
+  const limit = Math.max(1, Math.min(items.length, Math.floor(requestedLimit) || 1))
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+
+  const worker = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await mapper(items[index]!, index)
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()))
+  return results
 }
 
 // ---------- payload parsing ----------

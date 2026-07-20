@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tokenExpiryIso } from './accounts'
+import { serializeCiphertext, tokenExpiryIso } from './accounts'
 
 describe('tokenExpiryIso', () => {
   it('normalizes Date and database string timestamps', () => {
@@ -15,5 +15,13 @@ describe('tokenExpiryIso', () => {
 
   it('rejects an invalid database timestamp', () => {
     expect(() => tokenExpiryIso('not-a-timestamp')).toThrow('invalid OAuth token expiry')
+  })
+})
+
+describe('serializeCiphertext', () => {
+  it('produces JSON text suitable for an explicit jsonb cast', () => {
+    expect(
+      JSON.parse(serializeCiphertext({ ct: 'ciphertext', iv: 'iv', tag: 'tag', v: 1 })),
+    ).toEqual({ ct: 'ciphertext', iv: 'iv', tag: 'tag', v: 1 })
   })
 })

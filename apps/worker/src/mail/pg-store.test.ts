@@ -59,10 +59,20 @@ function scriptedDb(routes: Route[]): {
 
 /** All json-wrapped (encrypted) bind values across every recorded call. */
 function jsonBinds(calls: SqlCall[]): unknown[] {
-  return calls
-    .flatMap((c) => c.values)
-    .filter((v): v is { __json: unknown } => typeof v === 'object' && v != null && '__json' in v)
-    .map((v) => v.__json)
+  return calls.flatMap((c) =>
+    c.values.flatMap((value) => {
+      if (typeof value === 'object' && value != null && '__json' in value) {
+        return [(value as { __json: unknown }).__json]
+      }
+      if (typeof value !== 'string') return []
+      try {
+        const parsed = JSON.parse(value) as Record<string, unknown>
+        return parsed && typeof parsed === 'object' && 'ct' in parsed ? [parsed] : []
+      } catch {
+        return []
+      }
+    }),
+  )
 }
 
 /** Every plaintext scalar bind value (i.e. not a json/encrypted wrapper). */
@@ -85,7 +95,9 @@ function fakeMessage(overrides: Partial<RawFetchedMessage> = {}): RawFetchedMess
     text: 'Please review the Q3 numbers.',
     outbound: false,
     headers: {},
-    attachments: [{ providerAttachmentId: 'a1', name: 'q3.pdf', mime: 'application/pdf', size: 2048 }],
+    attachments: [
+      { providerAttachmentId: 'a1', name: 'q3.pdf', mime: 'application/pdf', size: 2048 },
+    ],
     ...overrides,
   }
 }
@@ -355,7 +367,12 @@ describe('PgMailStore.getOutboundMessage — attachments', () => {
       {
         when: (t) => t.includes('m.html_ct, m.text_ct from messages'),
         rows: [
-          { thread_id: 'thread-1', subject_ct: ct('Re: Q3'), html_ct: ct('<p>hi</p>'), text_ct: ct('hi') },
+          {
+            thread_id: 'thread-1',
+            subject_ct: ct('Re: Q3'),
+            html_ct: ct('<p>hi</p>'),
+            text_ct: ct('hi'),
+          },
         ],
       },
       {
@@ -369,8 +386,18 @@ describe('PgMailStore.getOutboundMessage — attachments', () => {
       {
         when: (t) => t.includes('content_ct, storage_ref_ct from attachments'),
         rows: [
-          { name: 'inline.txt', mime: 'text/plain', content_ct: ct(inlineB64), storage_ref_ct: null },
-          { name: 'big.pdf', mime: 'application/pdf', content_ct: null, storage_ref_ct: ct(STORED_REF) },
+          {
+            name: 'inline.txt',
+            mime: 'text/plain',
+            content_ct: ct(inlineB64),
+            storage_ref_ct: null,
+          },
+          {
+            name: 'big.pdf',
+            mime: 'application/pdf',
+            content_ct: null,
+            storage_ref_ct: ct(STORED_REF),
+          },
         ],
       },
     ]

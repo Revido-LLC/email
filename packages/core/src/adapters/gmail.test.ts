@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GmailAdapter } from './gmail'
+import { GmailAdapter, mapWithConcurrency } from './gmail'
 import { decodeBase64Url } from './mime'
 import { makeFakeFetch } from './__fixtures__/fake-fetch'
 import messagesList from './__fixtures__/gmail/messages-list.json'
@@ -14,6 +14,34 @@ const creds = {
   refreshToken: 'refresh',
   expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
 }
+
+describe('mapWithConcurrency', () => {
+  it('preserves order while respecting the provider concurrency limit', async () => {
+    let active = 0
+    let peak = 0
+    const results = await mapWithConcurrency([1, 2, 3, 4, 5, 6], 2, async (value) => {
+      active += 1
+      peak = Math.max(peak, active)
+      await new Promise((resolve) => setTimeout(resolve, 2))
+      active -= 1
+      return value * 10
+    })
+
+    expect(results).toEqual([10, 20, 30, 40, 50, 60])
+    expect(peak).toBe(2)
+  })
+
+  it('handles empty input without invoking the mapper', async () => {
+    let calls = 0
+    const results = await mapWithConcurrency([], 4, async () => {
+      calls += 1
+      return 'unexpected'
+    })
+
+    expect(results).toEqual([])
+    expect(calls).toBe(0)
+  })
+})
 
 describe('GmailAdapter.backfill', () => {
   it('lists messages, fetches each, and returns the page cursor', async () => {

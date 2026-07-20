@@ -147,8 +147,8 @@ export async function saveCredentials(
   await db.asService(
     (sql) => sql`
       update accounts
-      set access_token_ct = ${sql.json(jsonCiphertext(accessCt))},
-          refresh_token_ct = ${sql.json(jsonCiphertext(refreshCt))},
+      set access_token_ct = ${serializeCiphertext(accessCt)}::jsonb,
+          refresh_token_ct = ${serializeCiphertext(refreshCt)}::jsonb,
           token_expires_at = ${new Date(creds.expiresAt).toISOString()},
           updated_at = now()
       where id = ${account.accountId}
@@ -163,4 +163,13 @@ export async function saveCredentials(
  */
 export function jsonCiphertext(ciphertext: Ciphertext): JsonValue {
   return ciphertext as unknown as JsonValue
+}
+
+/**
+ * Bind encrypted envelopes as JSON text with an explicit `::jsonb` cast.
+ * postgres-js can otherwise receive a server-inferred text parameter for
+ * `sql.json(object)` and attempt to write the object directly to its byte buffer.
+ */
+export function serializeCiphertext(ciphertext: Ciphertext): string {
+  return JSON.stringify(jsonCiphertext(ciphertext))
 }

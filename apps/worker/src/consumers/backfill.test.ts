@@ -119,6 +119,7 @@ function harness(
     },
     // Default OFF so the base tests exercise the real-time fallback fan-out.
     batchTriage: opts.batchTriage ?? false,
+    now: () => new Date('2026-07-20T00:00:00Z'),
     saveCredentials: () => Promise.resolve(),
   }
   return { deps, persisted, enqueued, progress, syncLabels, submittedBatches }
@@ -194,6 +195,41 @@ describe('makeBackfillConsumer', () => {
     expect(h.syncLabels[0]).toEqual({ progress: 1, label: 'Synced' })
     expect(h.enqueued.some((e) => e.queue === QUEUE.renewWatch)).toBe(true)
     expect(h.enqueued.some((e) => e.queue === QUEUE.backfill)).toBe(false)
+  })
+
+  it('imports only the last 30 days, then registers the watch for new mail', async () => {
+    const page: BackfillPage = {
+      messages: [
+        fakeMessage({
+          providerMessageId: 'recent',
+          providerThreadId: 'recent-thread',
+          date: '2026-07-15T00:00:00Z',
+        }),
+        fakeMessage({
+          providerMessageId: 'old',
+          providerThreadId: 'old-thread',
+          date: '2026-06-01T00:00:00Z',
+        }),
+      ],
+      nextCursor: 'older-page',
+    }
+    const h = harness(page)
+
+    await makeBackfillConsumer(h.deps)(PAYLOAD, {
+      id: 'j',
+      queue: 'backfill',
+      payload: PAYLOAD,
+      attempts: 0,
+      maxAttempts: 5,
+    })
+
+    expect(h.persisted.map((message) => message.providerMessageId)).toEqual(['recent'])
+    expect(h.progress[0]).toMatchObject({
+      backfillCursor: null,
+      backfillComplete: true,
+    })
+    expect(h.enqueued.some((entry) => entry.queue === QUEUE.backfill)).toBe(false)
+    expect(h.enqueued.some((entry) => entry.queue === QUEUE.renewWatch)).toBe(true)
   })
 
   it('routes inbound triage through ONE batch keyed by messageId and records the batchId', async () => {

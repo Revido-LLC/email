@@ -108,7 +108,9 @@
     "footer": {
       "about": "Built by <strong>Revido</strong> — we build custom AI tools for companies. Revido Mail is a taste of what bespoke agents feel like.",
       "copyright": "© 2026 Revido · mail.revido.co",
-      "aiMarked": "Every AI action is marked, logged, and reversible."
+      "aiMarked": "Every AI action is marked, logged, and reversible.",
+      "privacy": "Privacy",
+      "terms": "Terms"
     },
     "oauth": {
       "google": "Continue with Google",

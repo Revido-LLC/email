@@ -335,10 +335,18 @@ function Footer() {
 
         <div className="mt-10 flex flex-col gap-3 border-t border-border/60 pt-6 text-2xs text-muted-foreground/70 sm:flex-row sm:items-center sm:justify-between">
           <span>{t('landing.footer.copyright')}</span>
-          <span className="flex items-center gap-1.5">
-            <Sparkle className="size-3" />
-            {t('landing.footer.aiMarked')}
-          </span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link to="/privacy" className="transition-colors hover:text-foreground">
+              {t('landing.footer.privacy')}
+            </Link>
+            <Link to="/terms" className="transition-colors hover:text-foreground">
+              {t('landing.footer.terms')}
+            </Link>
+            <span className="flex items-center gap-1.5">
+              <Sparkle className="size-3" />
+              {t('landing.footer.aiMarked')}
+            </span>
+          </div>
         </div>
       </div>
     </footer>

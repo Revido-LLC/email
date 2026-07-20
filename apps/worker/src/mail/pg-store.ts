@@ -69,6 +69,19 @@ function currentPeriod(now: Date = new Date()): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+type DbTimestamp = Date | string
+
+/**
+ * postgres-js can return timestamp columns as strings depending on connection
+ * and type settings. Keep the store boundary tolerant and expose ISO strings to
+ * the rest of the Worker consistently.
+ */
+function timestampIso(value: DbTimestamp): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) throw new Error(`invalid database timestamp: ${String(value)}`)
+  return date.toISOString()
+}
+
 function attachmentKind(mime: string): 'pdf' | 'image' | 'doc' | 'sheet' | 'zip' | 'other' {
   const m = mime.toLowerCase()
   if (m === 'application/pdf') return 'pdf'
@@ -336,7 +349,7 @@ export class PgMailStore implements MailStore {
           subject_ct: Ciphertext | null
           text_ct: Ciphertext | null
           html_ct: Ciphertext | null
-          date: Date
+          date: DbTimestamp
           from_name: string | null
           from_email: string | null
         }[]
@@ -367,7 +380,7 @@ export class PgMailStore implements MailStore {
         from: { name: row.from_name ?? '', email: row.from_email ?? '' },
         to: recipients.map((r) => ({ name: r.name ?? '', email: r.email ?? '' })),
         body,
-        date: row.date.toISOString(),
+        date: timestampIso(row.date),
       }
     })
   }
@@ -433,7 +446,7 @@ export class PgMailStore implements MailStore {
         {
           text_ct: Ciphertext | null
           html_ct: Ciphertext | null
-          date: Date
+          date: DbTimestamp
           outbound: boolean
           from_name: string | null
           from_email: string | null
@@ -453,7 +466,7 @@ export class PgMailStore implements MailStore {
         outputLanguage: row.output_language,
         messages: messages.map((m) => ({
           from: { name: m.from_name ?? '', email: m.from_email ?? '' },
-          date: m.date.toISOString(),
+          date: timestampIso(m.date),
           outbound: m.outbound,
           body: m.text_ct
             ? crypto.decrypt(m.text_ct)
@@ -919,21 +932,21 @@ export class PgMailStore implements MailStore {
         }))
 
       const reminderRows = await sql<
-        { subject_ct: Ciphertext | null; sender: string | null; due_at: Date }[]
+        { subject_ct: Ciphertext | null; sender: string | null; due_at: DbTimestamp }[]
       >`select subject_ct, sender, due_at from reminders order by due_at asc limit 10`
       const reminders = reminderRows.map((r) => ({
         subject: r.subject_ct ? crypto.decrypt(r.subject_ct) : '(no subject)',
         sender: r.sender ?? '',
-        dueAt: r.due_at.toISOString(),
+        dueAt: timestampIso(r.due_at),
       }))
 
       const commitmentRows = await sql<
-        { text_ct: Ciphertext | null; counterpart: string | null; due_at: Date }[]
+        { text_ct: Ciphertext | null; counterpart: string | null; due_at: DbTimestamp }[]
       >`select text_ct, counterpart, due_at from commitments order by due_at asc limit 10`
       const commitments = commitmentRows.map((r) => ({
         text: r.text_ct ? crypto.decrypt(r.text_ct) : '',
         counterpart: r.counterpart ?? '',
-        dueAt: r.due_at.toISOString(),
+        dueAt: timestampIso(r.due_at),
       }))
 
       const handled = await sql<{ count: number }[]>`
@@ -964,12 +977,12 @@ interface ThreadMetaRow {
   priority_score: number
   unread: boolean
   starred: boolean
-  snoozed_until: Date | null
+  snoozed_until: DbTimestamp | null
   has_attachments: boolean
   awaiting_reply: boolean
   labels: string[]
   language: string | null
-  last_message_at: Date
+  last_message_at: DbTimestamp
 }
 
 /** Decrypt the text body, falling back to the sanitized HTML if there's no text part. */
@@ -1001,12 +1014,12 @@ function toDomainThreadMeta(
     summary: '',
     unread: row.unread,
     starred: row.starred,
-    snoozedUntil: row.snoozed_until ? row.snoozed_until.toISOString() : null,
+    snoozedUntil: row.snoozed_until ? timestampIso(row.snoozed_until) : null,
     hasAttachments: row.has_attachments,
     badges: [],
     extracted: [],
     messageIds: [],
-    lastMessageAt: row.last_message_at.toISOString(),
+    lastMessageAt: timestampIso(row.last_message_at),
     awaitingReply: row.awaiting_reply,
     labels: row.labels,
     language: row.language ?? undefined,

@@ -263,6 +263,64 @@ describe('PgMailStore.applyTriage', () => {
   })
 })
 
+describe('PgMailStore timestamp normalization', () => {
+  it('accepts a string timestamp when loading a triage input', async () => {
+    const { db } = scriptedDb([
+      {
+        when: (t) => t.includes('select t.subject_ct, m.text_ct'),
+        rows: [
+          {
+            subject_ct: { ct: 'Subject', iv: '', tag: '', v: 1 },
+            text_ct: { ct: 'Body', iv: '', tag: '', v: 1 },
+            html_ct: null,
+            date: '2026-07-15 12:30:00+00',
+            from_name: 'Sam',
+            from_email: 'sam@example.com',
+          },
+        ],
+      },
+      { when: (t) => t.includes('from message_recipients'), rows: [] },
+    ])
+
+    const input = await new PgMailStore(db).getTriageInput(USER_ID, 'message-1', passthroughCrypto)
+
+    expect(input?.date).toBe('2026-07-15T12:30:00.000Z')
+  })
+
+  it('accepts string timestamps when loading a thread for summary', async () => {
+    const { db } = scriptedDb([
+      {
+        when: (t) => t.includes('from threads t join users'),
+        rows: [
+          {
+            subject_ct: { ct: 'Subject', iv: '', tag: '', v: 1 },
+            priority: 'normal',
+            language: 'en',
+            output_language: 'match',
+          },
+        ],
+      },
+      {
+        when: (t) => t.includes('from messages m'),
+        rows: [
+          {
+            text_ct: { ct: 'Body', iv: '', tag: '', v: 1 },
+            html_ct: null,
+            date: '2026-07-15 12:30:00+00',
+            outbound: false,
+            from_name: 'Sam',
+            from_email: 'sam@example.com',
+          },
+        ],
+      },
+    ])
+
+    const thread = await new PgMailStore(db).getThread(USER_ID, 'thread-1', passthroughCrypto)
+
+    expect(thread?.messages[0]?.date).toBe('2026-07-15T12:30:00.000Z')
+  })
+})
+
 describe('PgMailStore.applySummary', () => {
   it('encrypts the summary + each fact label/value/href, keeping type/position plaintext', async () => {
     const { db, calls } = scriptedDb([])

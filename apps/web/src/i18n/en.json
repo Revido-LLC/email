@@ -4,7 +4,12 @@
     "builtByRevido": "Built by Revido",
     "revidoTagline": "We build custom AI tools for companies.",
     "talkToUs": "Talk to us →",
-    "talkToRevido": "Talk to Revido"
+    "talkToRevido": "Talk to Revido",
+    "switchLanguage": "Switch to {{language}}",
+    "languages": {
+      "en": "English",
+      "nl": "Nederlands"
+    }
   },
   "notFound": {
     "title": "404",
@@ -107,7 +112,10 @@
     },
     "oauth": {
       "google": "Continue with Google",
-      "microsoft": "Continue with Microsoft"
+      "microsoft": "Continue with Microsoft",
+      "connecting": "Connecting…",
+      "startError": "Sign-in could not be started.",
+      "startErrorRetry": "Sign-in could not be started. Please try again."
     },
     "mock": {
       "greeting": "Good morning, {{name}}",
@@ -122,6 +130,7 @@
   },
   "onboarding": {
     "footer": "Built by Revido · we build custom AI tools",
+    "progress": "Setup progress",
     "appearance": {
       "title": "Make it yours",
       "subtitle": "Pick a look for Revido Mail — you can change it anytime.",

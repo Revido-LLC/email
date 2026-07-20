@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { ArrowRight, Check, Loader2, Monitor, Moon, Sparkles, Sun } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { LanguageToggle } from '@/components/language-toggle'
 import { Icon } from '@/lib/icons'
 import { capture } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
@@ -83,17 +84,20 @@ function OnboardingScreen() {
             </div>
             <span className="text-lg font-semibold tracking-tight">{t('common.brand')}</span>
           </div>
-          <div className="flex items-center gap-1.5" aria-label="Setup progress">
-            {STAGES.map((s, i) => (
-              <span
-                key={s}
-                className={cn(
-                  'h-1.5 rounded-full transition-all duration-500 ease-out',
-                  i === stageIndex ? 'w-6' : 'w-4',
-                  i <= stageIndex ? 'bg-primary' : 'bg-border',
-                )}
-              />
-            ))}
+          <div className="flex items-center gap-3">
+            <LanguageToggle compact />
+            <div className="flex items-center gap-1.5" aria-label={t('onboarding.progress')}>
+              {STAGES.map((s, i) => (
+                <span
+                  key={s}
+                  className={cn(
+                    'h-1.5 rounded-full transition-all duration-500 ease-out',
+                    i === stageIndex ? 'w-6' : 'w-4',
+                    i <= stageIndex ? 'bg-primary' : 'bg-border',
+                  )}
+                />
+              ))}
+            </div>
           </div>
         </header>
 

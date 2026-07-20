@@ -4,7 +4,12 @@
     "builtByRevido": "Gebouwd door Revido",
     "revidoTagline": "Wij bouwen op maat gemaakte AI-tools voor bedrijven.",
     "talkToUs": "Praat met ons →",
-    "talkToRevido": "Praat met Revido"
+    "talkToRevido": "Praat met Revido",
+    "switchLanguage": "Overschakelen naar {{language}}",
+    "languages": {
+      "en": "English",
+      "nl": "Nederlands"
+    }
   },
   "notFound": {
     "title": "404",
@@ -107,7 +112,10 @@
     },
     "oauth": {
       "google": "Doorgaan met Google",
-      "microsoft": "Doorgaan met Microsoft"
+      "microsoft": "Doorgaan met Microsoft",
+      "connecting": "Verbinden…",
+      "startError": "Inloggen kon niet worden gestart.",
+      "startErrorRetry": "Inloggen kon niet worden gestart. Probeer het opnieuw."
     },
     "mock": {
       "greeting": "Goedemorgen, {{name}}",
@@ -122,6 +130,7 @@
   },
   "onboarding": {
     "footer": "Gebouwd door Revido · wij bouwen op maat gemaakte AI-tools",
+    "progress": "Voortgang van de configuratie",
     "appearance": {
       "title": "Maak het van jou",
       "subtitle": "Kies een uiterlijk voor Revido Mail — je kunt dit altijd wijzigen.",

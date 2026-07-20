@@ -19,6 +19,7 @@ import {
 import { motion } from 'motion/react'
 import { Trans, useTranslation } from 'react-i18next'
 import { OAuthButtons } from '@/components/landing/oauth-buttons'
+import { LanguageToggle } from '@/components/language-toggle'
 import { ProductMock } from '@/components/landing/product-mock'
 import { capture } from '@/lib/analytics'
 
@@ -61,10 +62,13 @@ function TopBar() {
     <header className="sticky top-0 z-40 glass-thin border-x-0 border-t-0">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Wordmark />
-        <OAuthButtons size="sm" className="hidden sm:flex" />
-        <Button asChild variant="primary" size="sm" className="sm:hidden">
-          <Link to="/onboarding">{t('landing.topbar.getStarted')}</Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <LanguageToggle compact />
+          <OAuthButtons size="sm" className="hidden sm:flex" />
+          <Button asChild variant="primary" size="sm" className="sm:hidden">
+            <Link to="/onboarding">{t('landing.topbar.getStarted')}</Link>
+          </Button>
+        </div>
       </div>
     </header>
   )
@@ -101,7 +105,9 @@ function Hero() {
             <span className="text-accent">{t('landing.hero.titleAccent')}</span>
           </h1>
 
-          <p className="mt-5 max-w-xl text-lg text-muted-foreground">{t('landing.hero.subtitle')}</p>
+          <p className="mt-5 max-w-xl text-lg text-muted-foreground">
+            {t('landing.hero.subtitle')}
+          </p>
 
           <div className="mt-8 flex flex-col gap-3">
             <OAuthButtons size="lg" stacked />

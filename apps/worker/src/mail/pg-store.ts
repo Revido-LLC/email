@@ -101,7 +101,7 @@ export class PgMailStore implements MailStore {
 
   async persistMessage(target: PersistTarget, msg: RawFetchedMessage): Promise<PersistedMessage> {
     const { userId, accountId, crypto } = target
-    const messageDate = new Date(msg.date)
+    const messageDate = new Date(msg.date).toISOString()
     const text = msg.text?.trim() ? msg.text : htmlToText(msg.html)
 
     return this.db.withUser(userId, async (sql) => {
@@ -752,7 +752,7 @@ export class PgMailStore implements MailStore {
           (user_id, agent_id, agent_name, agent_icon, at, summary_ct, reasoning_ct,
            affected_ct, status, reversible)
         values
-          (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.at},
+          (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.at.toISOString()},
            ${sql.json(jsonCiphertext(crypto.encrypt(input.summary)))},
            ${sql.json(jsonCiphertext(crypto.encrypt(input.reasoning)))},
            ${sql.json(jsonCiphertext(crypto.encrypt(affectedJson)))},
@@ -773,7 +773,7 @@ export class PgMailStore implements MailStore {
           (${userId}, ${input.kind}, ${input.threadId},
            ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))},
            ${sql.json(jsonCiphertext(crypto.encrypt(input.context)))},
-           ${input.sender}, ${input.dueAt},
+           ${input.sender}, ${input.dueAt.toISOString()},
            ${input.draftReply ? sql.json(jsonCiphertext(crypto.encrypt(input.draftReply))) : null})
       `
     })
@@ -787,7 +787,7 @@ export class PgMailStore implements MailStore {
         values
           (${userId}, ${sql.json(jsonCiphertext(crypto.encrypt(input.text)))}, ${input.threadId},
            ${sql.json(jsonCiphertext(crypto.encrypt(input.subject)))}, ${input.counterpart},
-           ${input.dueAt})
+           ${input.dueAt.toISOString()})
       `
     })
   }

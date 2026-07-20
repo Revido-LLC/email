@@ -75,7 +75,9 @@ export class PgJobStore implements JobStore {
   }
 
   async claim(workerId: string): Promise<ClaimedJob | null> {
-    const staleBefore = new Date(this.now().getTime() - this.lockTtlMs)
+    // postgres-js does not serialize a Date when PostgreSQL infers the parameter
+    // type from a comparison/column assignment. Bind ISO strings instead.
+    const staleBefore = new Date(this.now().getTime() - this.lockTtlMs).toISOString()
     const rows = await this.db.asService(
       (sql) => sql<JobRow[]>`
         update jobs
@@ -123,14 +125,14 @@ export class PgJobStore implements JobStore {
             locked_at = null,
             locked_by = null,
             last_error = ${failure.error},
-            run_at = ${failure.runAt}
+            run_at = ${failure.runAt.toISOString()}
         where id = ${jobId}
       `,
     )
   }
 
   async enqueue(queue: string, payload: unknown, opts: { runAt?: Date } = {}): Promise<void> {
-    const runAt = opts.runAt ?? this.now()
+    const runAt = (opts.runAt ?? this.now()).toISOString()
     await this.db.asService(
       (sql) => sql`
         insert into jobs (queue, payload, run_at)

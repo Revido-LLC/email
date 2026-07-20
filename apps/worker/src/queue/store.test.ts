@@ -43,7 +43,7 @@ describe('PgJobStore.claim', () => {
     expect(job).toEqual({ id: 'j1', queue: 'triage', payload: { x: 1 }, attempts: 2, maxAttempts: 5 })
     // Binds the worker id and the stale-lock reclaim boundary (now - lockTtl).
     expect(calls[0]?.values[0]).toBe('worker-a')
-    expect(calls[0]?.values[1]).toEqual(new Date(NOW.getTime() - 60_000))
+    expect(calls[0]?.values[1]).toBe(new Date(NOW.getTime() - 60_000).toISOString())
     expect(calls[0]?.text).toContain('for update skip locked')
     // Attempts is burned at claim time so a crashed job can't retry forever.
     expect(calls[0]?.text).toContain('attempts = attempts + 1')
@@ -76,7 +76,7 @@ describe('PgJobStore.fail', () => {
       runAt,
     })
     // values order: [status, attempts, error, runAt, jobId]
-    expect(calls[0]?.values).toEqual(['pending', 2, 'boom', runAt, 'j1'])
+    expect(calls[0]?.values).toEqual(['pending', 2, 'boom', runAt.toISOString(), 'j1'])
   })
 
   it('dead-letters (status failed) once attempts reach maxAttempts', async () => {
@@ -99,13 +99,13 @@ describe('PgJobStore.enqueue', () => {
     // values order: [queue, json(payload), runAt]
     expect(calls[0]?.values[0]).toBe('triage')
     expect(calls[0]?.values[1]).toEqual({ __json: { messageId: 'm1' } })
-    expect(calls[0]?.values[2]).toBe(NOW)
+    expect(calls[0]?.values[2]).toBe(NOW.toISOString())
   })
 
   it('honors an explicit runAt (deferred send)', async () => {
     const { db, calls } = fakeDb([])
     const runAt = new Date(NOW.getTime() + 10_000)
     await new PgJobStore(db, { now: () => NOW }).enqueue('send', { id: 's' }, { runAt })
-    expect(calls[0]?.values[2]).toBe(runAt)
+    expect(calls[0]?.values[2]).toBe(runAt.toISOString())
   })
 })

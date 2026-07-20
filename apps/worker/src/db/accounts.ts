@@ -138,7 +138,7 @@ export async function saveCredentials(
       update accounts
       set access_token_ct = ${sql.json(jsonCiphertext(accessCt))},
           refresh_token_ct = ${sql.json(jsonCiphertext(refreshCt))},
-          token_expires_at = ${new Date(creds.expiresAt)},
+          token_expires_at = ${new Date(creds.expiresAt).toISOString()},
           updated_at = now()
       where id = ${account.accountId}
     `,

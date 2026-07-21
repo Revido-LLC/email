@@ -57,6 +57,7 @@ export const QUEUE = {
   backfill: 'backfill',
   incremental: 'incremental',
   send: 'send',
+  forward: 'forward',
   triage: 'triage',
   triageBatch: 'triage_batch',
   summary: 'summary',
@@ -106,6 +107,13 @@ export const sendPayload = z.object({
   accountId: z.string().uuid(),
   messageId: z.string().uuid(),
 })
+/** A forwarding-rule action: forward a source inbound message to an address. */
+export const forwardPayload = z.object({
+  userId: z.string().uuid(),
+  accountId: z.string().uuid(),
+  sourceMessageId: z.string().uuid(),
+  to: z.string().email(),
+})
 export const triagePayload = z.object({
   accountId: z.string().uuid(),
   threadId: z.string().uuid(),
@@ -149,6 +157,7 @@ export const digestPayload = z.object({ userId: z.string().uuid() })
 export type BackfillPayload = z.infer<typeof backfillPayload>
 export type IncrementalPayload = z.infer<typeof incrementalPayload>
 export type SendPayload = z.infer<typeof sendPayload>
+export type ForwardPayload = z.infer<typeof forwardPayload>
 export type TriagePayload = z.infer<typeof triagePayload>
 export type TriageBatchItem = z.infer<typeof triageBatchItem>
 export type TriageBatchPayload = z.infer<typeof triageBatchPayload>

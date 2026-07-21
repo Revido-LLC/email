@@ -45,6 +45,7 @@ import type {
   EnabledAgentRef,
   EnqueueApprovalInput,
   ListAgentThreadsOptions,
+  ForwardSourceData,
   MailStore,
   MessageTextInput,
   OutboundMessageData,
@@ -589,6 +590,55 @@ export class PgMailStore implements MailStore {
         update messages set provider_message_id = ${providerMessageId}, updated_at = now()
         where id = ${messageId}
       `
+    })
+  }
+
+  async getForwardSource(
+    userId: string,
+    messageId: string,
+    crypto: AccountCrypto,
+  ): Promise<ForwardSourceData | null> {
+    return this.db.withUser(userId, async (sql) => {
+      const rows = await sql<
+        { subject_ct: Ciphertext | null; html_ct: Ciphertext | null; text_ct: Ciphertext | null }[]
+      >`
+        select t.subject_ct, m.html_ct, m.text_ct
+        from messages m join threads t on t.id = m.thread_id
+        where m.id = ${messageId}
+        limit 1
+      `
+      const row = rows[0]
+      if (!row) return null
+
+      // Same inline/object-store attachment decryption as the outbound path.
+      const attachmentRows = await sql<
+        {
+          name: string
+          mime: string | null
+          content_ct: Ciphertext | null
+          storage_ref_ct: Ciphertext | null
+        }[]
+      >`
+        select name, mime, content_ct, storage_ref_ct from attachments
+        where message_id = ${messageId}
+          and (content_ct is not null or storage_ref_ct is not null)
+      `
+      const attachments = await Promise.all(
+        attachmentRows.map(async (a) => ({
+          name: a.name,
+          mime: a.mime ?? 'application/octet-stream',
+          content: a.content_ct
+            ? new Uint8Array(Buffer.from(crypto.decrypt(a.content_ct), 'base64'))
+            : await this.storage.get(crypto.decrypt(a.storage_ref_ct!)),
+        })),
+      )
+
+      return {
+        subject: row.subject_ct ? crypto.decrypt(row.subject_ct) : '',
+        html: row.html_ct ? crypto.decrypt(row.html_ct) : '',
+        text: row.text_ct ? crypto.decrypt(row.text_ct) : '',
+        attachments: attachments.length ? attachments : undefined,
+      }
     })
   }
 

@@ -14,6 +14,7 @@ import { QUEUE } from '../queue/jobs'
 import { makeBackfillConsumer } from './backfill'
 import { makeIncrementalConsumer } from './incremental'
 import { makeSendConsumer } from './send'
+import { makeForwardConsumer } from './forward'
 import { makeTriageConsumer } from './triage'
 import { makeTriageBatchConsumer } from './triage-batch'
 import { makeSummaryConsumer } from './enrich'
@@ -45,6 +46,12 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
     }),
     [QUEUE.incremental]: makeIncrementalConsumer({ ...syncDeps, logger: ctx.logger }),
     [QUEUE.send]: makeSendConsumer({
+      loadAccount: ctx.loadAccount,
+      adapterFor: ctx.adapterFor,
+      mail: ctx.mail,
+      saveCredentials: saveCreds,
+    }),
+    [QUEUE.forward]: makeForwardConsumer({
       loadAccount: ctx.loadAccount,
       adapterFor: ctx.adapterFor,
       mail: ctx.mail,

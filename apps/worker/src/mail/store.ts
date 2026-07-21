@@ -177,6 +177,23 @@ export interface SendStore {
   markSent(userId: string, messageId: string, providerMessageId: string): Promise<void>
 }
 
+/** The decrypted source of a forward: the original message's subject, body, attachments. */
+export interface ForwardSourceData {
+  subject: string
+  html: string
+  text: string
+  attachments?: { name: string; mime: string; content: Uint8Array }[]
+}
+
+export interface ForwardStore {
+  /** Load a source inbound message's content + attachments to build a forward, or null. */
+  getForwardSource(
+    userId: string,
+    messageId: string,
+    crypto: AccountCrypto,
+  ): Promise<ForwardSourceData | null>
+}
+
 // -- embeddings (RAG) --------------------------------------------------------
 
 /** Decrypted text for embedding: subject + body, joined by the consumer. */
@@ -375,6 +392,7 @@ export interface MailStore
     UsageStore,
     EnrichStore,
     SendStore,
+    ForwardStore,
     EmbedStore,
     VoiceStore,
     AgentStore,

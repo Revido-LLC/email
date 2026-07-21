@@ -1,5 +1,10 @@
 import * as React from 'react'
-import i18n, { LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/i18n/config'
+import i18n, {
+  LOCALE_STORAGE_KEY,
+  SUPPORTED_LOCALES,
+  isSupportedLocale,
+  type Locale,
+} from '@/i18n/config'
 
 export type AiTab = 'insights' | 'chat'
 /** The resolved, applied theme. */
@@ -83,8 +88,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [aiTab, setAiTab] = React.useState<AiTab>('insights')
   const [aiChatQuery, setAiChatQuery] = React.useState<string | null>(null)
   const [commandOpen, setCommandOpen] = React.useState(false)
-  const [themePreference, setThemePreference] =
-    React.useState<ThemePreference>(readInitialThemePreference)
+  const [themePreference, setThemePreference] = React.useState<ThemePreference>(
+    readInitialThemePreference,
+  )
   const [theme, setTheme] = React.useState<Theme>(() => resolveTheme(readInitialThemePreference()))
   const [locale, setLocale] = React.useState<Locale>(() => {
     const stored = readStored<string | null>(LOCALE_STORAGE_KEY, null)
@@ -132,7 +138,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     navCollapsed,
     toggleNav: () => setNavCollapsed((v) => !v),
     aiPanelOpen,
-    toggleAiPanel: () => setAiPanelOpen((v) => !v),
+    toggleAiPanel: () => {
+      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+        setMobileAiOpen((v) => !v)
+        return
+      }
+      setAiPanelOpen((v) => !v)
+    },
     setAiPanelOpen,
     mobileAiOpen,
     setMobileAiOpen,

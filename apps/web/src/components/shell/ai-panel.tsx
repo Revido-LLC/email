@@ -40,21 +40,66 @@ const factIcon: Record<ExtractedFact['type'], React.ReactNode> = {
   contact: <Sparkles className="size-3.5" />,
 }
 
+function useDesktopAiLayout() {
+  const [isDesktop, setIsDesktop] = React.useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches,
+  )
+
+  React.useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)')
+    const sync = () => setIsDesktop(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
+
+  return isDesktop
+}
+
 export function AIPanel() {
   const { aiPanelOpen, setAiPanelOpen, mobileAiOpen, setMobileAiOpen, aiTab, setAiTab } =
     useAppState()
   const params = useParams({ strict: false }) as { threadId?: string }
   const threadId = params.threadId
+  const isDesktop = useDesktopAiLayout()
 
-  const renderHeader = (onClose: () => void, label: string, icon: React.ReactNode) => (
-    <div className="flex items-center justify-between px-4 pt-3.5">
+  React.useEffect(() => {
+    if (!mobileAiOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileAiOpen(false)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [mobileAiOpen, setMobileAiOpen])
+
+  const renderHeader = (
+    onClose: () => void,
+    label: string,
+    icon: React.ReactNode,
+    autoFocus = false,
+  ) => (
+    <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
       <div className="flex items-center gap-2">
         <div className="flex size-7 items-center justify-center rounded-lg bg-ai/12">
           <Sparkles className="size-4 text-ai" />
         </div>
         <span className="text-base font-semibold">Assistant</span>
       </div>
-      <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={label}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={onClose}
+        aria-label={label}
+        autoFocus={autoFocus}
+      >
         {icon}
       </Button>
     </div>
@@ -67,16 +112,16 @@ export function AIPanel() {
     <Tabs
       value={aiTab}
       onValueChange={(v) => setAiTab(v as 'insights' | 'chat')}
-      className="flex min-h-0 flex-1 flex-col"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
     >
-      <div className="px-4 pt-3">
-        <TabsList className="w-full">
+      <div className="shrink-0 px-4 pt-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="insights">Insights</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
         </TabsList>
       </div>
 
-      <TabsContent value="insights" className="min-h-0 flex-1">
+      <TabsContent value="insights" className="mt-0 min-h-0 flex-1">
         <ScrollArea className="h-full">
           <div className="p-4">
             {threadId ? <ThreadInsights threadId={threadId} /> : <DayInsights />}
@@ -84,7 +129,7 @@ export function AIPanel() {
         </ScrollArea>
       </TabsContent>
 
-      <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
+      <TabsContent value="chat" className="mt-0 flex min-h-0 flex-1 flex-col">
         <ChatTab threadId={threadId} consumeQuery={primary} />
       </TabsContent>
     </Tabs>
@@ -94,13 +139,13 @@ export function AIPanel() {
     <>
       {/* Desktop (lg+): static right column, or a thin reopen rail. */}
       {aiPanelOpen ? (
-        <aside className="hidden h-full w-95 shrink-0 flex-col glass-thin border-y-0 border-r-0 lg:flex">
+        <aside className="hidden h-full w-80 shrink-0 flex-col glass-thin border-y-0 border-r-0 lg:flex xl:w-95">
           {renderHeader(
             () => setAiPanelOpen(false),
             'Collapse panel (⌘J)',
             <PanelRightClose className="size-4" />,
           )}
-          {renderBody(true)}
+          {renderBody(isDesktop)}
         </aside>
       ) : (
         <div className="hidden h-full w-12 shrink-0 flex-col items-center glass-thin border-y-0 border-r-0 py-3 lg:flex">
@@ -117,24 +162,32 @@ export function AIPanel() {
 
       {/* Mobile (<lg): a glass slide-over over a dimmed backdrop. */}
       <div
-        className={cn('fixed inset-0 z-50 lg:hidden', !mobileAiOpen && 'pointer-events-none')}
+        className={cn('fixed inset-0 z-50 h-dvh lg:hidden', !mobileAiOpen && 'pointer-events-none')}
         aria-hidden={!mobileAiOpen}
       >
         <div
           className={cn(
-            'absolute inset-0 bg-foreground/25 transition-opacity duration-200',
+            'absolute inset-0 bg-foreground/35 backdrop-blur-sm transition-opacity duration-200 motion-reduce:transition-none',
             mobileAiOpen ? 'opacity-100' : 'opacity-0',
           )}
           onClick={() => setMobileAiOpen(false)}
         />
         <aside
           className={cn(
-            'glass absolute inset-y-0 right-0 flex w-11/12 max-w-sm flex-col transition-transform duration-200',
+            'absolute inset-0 flex h-dvh w-full flex-col overflow-hidden overscroll-contain bg-background shadow-xl transition-transform duration-200 motion-reduce:transition-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-95 sm:border-l sm:border-border',
             mobileAiOpen ? 'translate-x-0' : 'translate-x-full',
           )}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Assistant"
         >
-          {renderHeader(() => setMobileAiOpen(false), 'Close assistant', <X className="size-4" />)}
-          {renderBody(false)}
+          {renderHeader(
+            () => setMobileAiOpen(false),
+            'Close assistant',
+            <X className="size-4" />,
+            mobileAiOpen,
+          )}
+          {renderBody(!isDesktop)}
         </aside>
       </div>
     </>
@@ -332,7 +385,9 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
           {messages.length === 0 && !isStreaming && (
             <div className="rounded-xl border border-ai/20 bg-ai/5 p-3 text-sm text-muted-foreground">
               <AiTag className="mb-1.5" />
-              <p>Ask about your inbox — “what did I promise Priya?” or “find that $48k proposal.”</p>
+              <p>
+                Ask about your inbox — “what did I promise Priya?” or “find that $48k proposal.”
+              </p>
             </div>
           )}
           {messages.map((m, i) => (
@@ -340,7 +395,7 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
           ))}
           {isStreaming && (
             <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm">
+              <div className="min-w-0 max-w-full break-words rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm sm:max-w-sm">
                 <AiTag className="mb-1.5" />
                 {text ? (
                   <p className="text-muted-foreground">{text}</p>
@@ -353,7 +408,7 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
           <div ref={endRef} />
         </div>
       </ScrollArea>
-      <div className="border-t border-border p-3">
+      <div className="shrink-0 border-t border-border p-3">
         <div className="flex items-end gap-2 rounded-2xl border border-input bg-card p-2 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
           <textarea
             value={input}
@@ -391,7 +446,7 @@ function ChatBubble({ message }: { message: ChatMsg }) {
     <div className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm',
+          'min-w-0 max-w-full break-words rounded-2xl px-3.5 py-2.5 text-sm sm:max-w-sm',
           message.role === 'user'
             ? 'bg-primary text-primary-foreground'
             : 'border border-border bg-card',

@@ -25,8 +25,15 @@ const groupCls =
 
 export function CommandPalette() {
   const { t } = useTranslation()
-  const { commandOpen, setCommandOpen, setAiPanelOpen, setAiTab, toggleTheme, setAiChatQuery } =
-    useAppState()
+  const {
+    commandOpen,
+    setCommandOpen,
+    setAiPanelOpen,
+    setMobileAiOpen,
+    setAiTab,
+    toggleTheme,
+    setAiChatQuery,
+  } = useAppState()
   const navigate = useNavigate()
   const [query, setQuery] = React.useState('')
   const { data: threads } = useInboxByRecency()
@@ -45,10 +52,14 @@ export function CommandPalette() {
     const q = query.trim()
     setCommandOpen(false)
     setQuery('')
-    setAiPanelOpen(true)
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setMobileAiOpen(true)
+    } else {
+      setAiPanelOpen(true)
+    }
     setAiTab('chat')
     if (q) setAiChatQuery(q)
-  }, [query, setAiPanelOpen, setAiTab, setCommandOpen, setAiChatQuery])
+  }, [query, setAiPanelOpen, setMobileAiOpen, setAiTab, setCommandOpen, setAiChatQuery])
 
   return (
     <Dialog open={commandOpen} onOpenChange={setCommandOpen}>

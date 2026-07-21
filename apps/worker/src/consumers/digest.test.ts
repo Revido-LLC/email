@@ -26,11 +26,27 @@ function digestData(overrides: Partial<DigestData> = {}): DigestData {
       {
         category: 'to-reply',
         count: 3,
-        items: [{ subject: 'Contract review', sender: 'legal@acme.com' }],
+        items: [
+          { threadId: 'thread-contract', subject: 'Contract review', sender: 'legal@acme.com' },
+        ],
       },
     ],
-    reminders: [{ subject: 'Ping the vendor', sender: 'vendor@acme.com', dueAt: '2026-07-18' }],
-    commitments: [{ text: 'Send the deck', counterpart: 'sam@acme.com', dueAt: '2026-07-19' }],
+    reminders: [
+      {
+        threadId: 'thread-vendor',
+        subject: 'Ping the vendor',
+        sender: 'vendor@acme.com',
+        dueAt: '2026-07-18',
+      },
+    ],
+    commitments: [
+      {
+        threadId: 'thread-deck',
+        text: 'Send the deck',
+        counterpart: 'sam@acme.com',
+        dueAt: '2026-07-19',
+      },
+    ],
     agentsHandled: 2,
     ...overrides,
   }
@@ -69,6 +85,8 @@ describe('renderDigest', () => {
     expect(html).toContain('YOUR INBOX, DISTILLED')
     expect(html).toContain('>Reply now<')
     expect(html).toContain('Contract review')
+    expect(html).toContain('Open email')
+    expect(html).toContain('/app/thread/thread-contract')
     expect(html).toContain('Open the shortlist')
   })
 
@@ -87,6 +105,7 @@ describe('renderDigest', () => {
             category: 'to-reply',
             count: 20,
             items: Array.from({ length: 6 }, (_, i) => ({
+              threadId: `thread-reply-${i + 1}`,
               subject: `Reply ${i + 1}`,
               sender: 'Sam',
             })),
@@ -94,15 +113,17 @@ describe('renderDigest', () => {
           {
             category: 'notifications',
             count: 40,
-            items: [{ subject: 'Do not show', sender: 'Bot' }],
+            items: [{ threadId: 'thread-bot', subject: 'Do not show', sender: 'Bot' }],
           },
         ],
         reminders: Array.from({ length: 4 }, (_, i) => ({
+          threadId: `thread-reminder-${i + 1}`,
           subject: `Reminder ${i + 1}`,
           sender: 'Alex',
           dueAt: `2026-07-${18 + i}`,
         })),
         commitments: Array.from({ length: 4 }, (_, i) => ({
+          threadId: `thread-commitment-${i + 1}`,
           text: `Commitment ${i + 1}`,
           counterpart: 'Taylor',
           dueAt: `2026-07-${22 + i}`,
@@ -123,6 +144,7 @@ describe('renderDigest', () => {
     const text = renderDigestText(digestData(), '2026-07-17')
     expect(text).toContain('⚡ Your Revido brief: 3 priorities')
     expect(text).toContain('REPLY: Contract review')
+    expect(text).toContain('/app/thread/thread-contract')
     expect(text).toContain('https://email.revido.co/app')
   })
 })

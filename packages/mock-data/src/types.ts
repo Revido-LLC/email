@@ -214,7 +214,7 @@ export interface Commitment {
 export interface DigestBundle {
   category: CategoryId
   count: number
-  items: { subject: string; sender: string }[]
+  items: { threadId?: string; subject: string; sender: string }[]
 }
 
 export interface TodayBrief {

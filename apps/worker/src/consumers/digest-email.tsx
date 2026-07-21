@@ -38,6 +38,7 @@ export interface ShortlistItem {
   kind: 'reply' | 'due'
   title: string
   detail: string
+  href: string
   dueAt?: string
 }
 
@@ -54,6 +55,7 @@ const COPY = {
     more: 'The rest of your inbox is waiting quietly in Revido.',
     agents: (count: number) => `AUTOPILOT · ${count} handled since yesterday`,
     cta: 'Open the shortlist →',
+    openEmail: 'Open email →',
     preview: (count: number) =>
       count === 1
         ? 'Your inbox, distilled to one move.'
@@ -71,6 +73,7 @@ const COPY = {
     more: 'De rest van je inbox wacht rustig in Revido.',
     agents: (count: number) => `AUTOPILOOT · ${count} afgehandeld sinds gisteren`,
     cta: 'Open je shortlist →',
+    openEmail: 'Open e-mail →',
     preview: (count: number) =>
       count === 1
         ? 'Je inbox, teruggebracht tot één actie.'
@@ -148,6 +151,18 @@ const styles = {
     margin: 0,
   },
   itemDetail: { color: '#817970', fontSize: '12px', lineHeight: '18px', margin: '4px 0 0' },
+  itemButton: {
+    backgroundColor: '#f0ece5',
+    border: '1px solid #ddd6cc',
+    borderRadius: '2px',
+    color: '#141311',
+    display: 'inline-block',
+    fontSize: '11px',
+    fontWeight: 700,
+    marginTop: '10px',
+    padding: '7px 10px',
+    textDecoration: 'none',
+  },
   quiet: { color: '#817970', fontSize: '12px', lineHeight: '19px', margin: '18px 0 0' },
   autopilot: {
     backgroundColor: '#fff0eb',
@@ -234,6 +249,9 @@ export function DigestEmail(props: DigestEmailProps): ReactElement {
                     {item.detail}
                     {item.dueAt ? ` · ${formatDue(props.locale, item.dueAt)}` : ''}
                   </Text>
+                  <Button href={item.href} style={styles.itemButton}>
+                    {t.openEmail}
+                  </Button>
                 </Column>
               </Row>
             ))}

@@ -912,10 +912,14 @@ export class PgMailStore implements MailStore {
         order by t.priority_score desc, t.last_message_at desc
         limit 3
       `
-      const itemsByCategory = new Map<CategoryId, { subject: string; sender: string }[]>()
+      const itemsByCategory = new Map<
+        CategoryId,
+        { threadId: string; subject: string; sender: string }[]
+      >()
       for (const s of samples) {
         const list = itemsByCategory.get(s.category) ?? []
         list.push({
+          threadId: s.id,
           subject: s.subject_ct ? crypto.decrypt(s.subject_ct) : '(no subject)',
           sender: s.sender_name || s.sender_email || 'Unknown',
         })
@@ -930,18 +934,30 @@ export class PgMailStore implements MailStore {
         }))
 
       const reminderRows = await sql<
-        { subject_ct: Ciphertext | null; sender: string | null; due_at: DbTimestamp }[]
-      >`select subject_ct, sender, due_at from reminders order by due_at asc limit 3`
+        {
+          thread_id: string
+          subject_ct: Ciphertext | null
+          sender: string | null
+          due_at: DbTimestamp
+        }[]
+      >`select thread_id, subject_ct, sender, due_at from reminders order by due_at asc limit 3`
       const reminders = reminderRows.map((r) => ({
+        threadId: r.thread_id,
         subject: r.subject_ct ? crypto.decrypt(r.subject_ct) : '(no subject)',
         sender: r.sender ?? '',
         dueAt: timestampIso(r.due_at),
       }))
 
       const commitmentRows = await sql<
-        { text_ct: Ciphertext | null; counterpart: string | null; due_at: DbTimestamp }[]
-      >`select text_ct, counterpart, due_at from commitments order by due_at asc limit 3`
+        {
+          thread_id: string
+          text_ct: Ciphertext | null
+          counterpart: string | null
+          due_at: DbTimestamp
+        }[]
+      >`select thread_id, text_ct, counterpart, due_at from commitments order by due_at asc limit 3`
       const commitments = commitmentRows.map((r) => ({
+        threadId: r.thread_id,
         text: r.text_ct ? crypto.decrypt(r.text_ct) : '',
         counterpart: r.counterpart ?? '',
         dueAt: timestampIso(r.due_at),

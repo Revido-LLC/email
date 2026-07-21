@@ -62,6 +62,9 @@ function digestShortlist(data: DigestData): {
     kind: 'reply',
     title: shorten(item.subject, 76),
     detail: shorten(item.sender, 48),
+    href: item.threadId
+      ? `${DIGEST_APP_URL}/thread/${encodeURIComponent(item.threadId)}`
+      : DIGEST_APP_URL,
   }))
 
   const due: ShortlistItem[] = [
@@ -70,12 +73,14 @@ function digestShortlist(data: DigestData): {
       title: shorten(item.subject, 76),
       detail: shorten(item.sender, 48),
       dueAt: item.dueAt,
+      href: `${DIGEST_APP_URL}/thread/${encodeURIComponent(item.threadId)}`,
     })),
     ...data.commitments.map((item) => ({
       kind: 'due' as const,
       title: shorten(item.text, 88),
       detail: shorten(item.counterpart, 48),
       dueAt: item.dueAt,
+      href: `${DIGEST_APP_URL}/thread/${encodeURIComponent(item.threadId)}`,
     })),
   ]
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
@@ -113,7 +118,7 @@ export function renderDigestText(data: DigestData, date: string): string {
       : { reply: 'REPLY', due: 'DUE', more: 'The rest stays in Revido.' }
   const lines = props.items.map((item) => {
     const label = item.kind === 'reply' ? labels.reply : labels.due
-    return `${label}: ${item.title}${item.detail ? ` — ${item.detail}` : ''}`
+    return `${label}: ${item.title}${item.detail ? ` — ${item.detail}` : ''}\n${item.href}`
   })
   if (props.hiddenCount > 0) lines.push(`${labels.more} · ${DIGEST_APP_URL}`)
   return [heading, date, '', ...lines, '', DIGEST_APP_URL].join('\n')

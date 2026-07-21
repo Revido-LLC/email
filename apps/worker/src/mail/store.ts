@@ -356,8 +356,8 @@ export interface DigestData {
   name: string | null
   outputLanguage: OutputLanguage
   bundles: DigestBundle[]
-  reminders: { subject: string; sender: string; dueAt: string }[]
-  commitments: { text: string; counterpart: string; dueAt: string }[]
+  reminders: { threadId: string; subject: string; sender: string; dueAt: string }[]
+  commitments: { threadId: string; text: string; counterpart: string; dueAt: string }[]
   agentsHandled: number
 }
 
@@ -367,7 +367,8 @@ export interface DigestStore {
 
 /** The full mail store: every port a consumer might need. */
 export interface MailStore
-  extends SyncStore,
+  extends
+    SyncStore,
     TriageStore,
     UsageStore,
     EnrichStore,

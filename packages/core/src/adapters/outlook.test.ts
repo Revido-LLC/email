@@ -12,13 +12,27 @@ const creds = {
 }
 
 describe('OutlookAdapter.backfill', () => {
-  it('parses a delta page and reports completion when only a deltaLink remains', async () => {
+  it('lists messages newest-first and reports completion when no nextLink remains', async () => {
+    const calls: string[] = []
     const { fetchImpl } = makeFakeFetch([
-      { when: (u) => u.includes('/me/messages/delta'), json: messagesDelta },
+      {
+        when: (u) => {
+          if (u.includes('/me/messages') && !u.includes('/me/messages/delta')) {
+            calls.push(u)
+            return true
+          }
+          return false
+        },
+        json: messagesDelta,
+      },
     ])
     const adapter = new OutlookAdapter({ fetchImpl, userEmail: 'jane@example.com' })
     const page = await adapter.backfill(creds)
 
+    // Backfill must NOT use delta (Graph rejects it on /me/messages); it lists
+    // newest-first so the consumer can stop at the 30-day cutoff.
+    expect(calls[0]).toContain('$orderby=receivedDateTime%20desc')
+    expect(calls[0]).not.toContain('/delta')
     expect(page.messages).toHaveLength(2)
     // No nextLink on the fixture -> backfill is complete.
     expect(page.nextCursor).toBeNull()
@@ -163,7 +177,8 @@ describe('OutlookAdapter.watch', () => {
   it('creates a change-notification subscription and seeds a deltaLink cursor', async () => {
     const { fetchImpl, calls } = makeFakeFetch([
       { when: (u) => u.includes('/subscriptions'), json: subscription },
-      { when: (u) => u.includes('/me/messages/delta'), json: messagesDelta },
+      // Delta is only supported per-folder; the seed must hit the inbox folder.
+      { when: (u) => u.includes('/me/mailFolders/inbox/messages/delta'), json: messagesDelta },
     ])
     const adapter = new OutlookAdapter({
       fetchImpl,
@@ -175,6 +190,8 @@ describe('OutlookAdapter.watch', () => {
     expect(reg.expiresAt).toBe('2024-07-18T09:00:00Z')
     expect(reg.cursor).toContain('DELTA_TOKEN_1')
 
+    const seedCall = calls.find((c) => c.url.includes('/me/mailFolders/inbox/messages/delta'))
+    expect(seedCall).toBeDefined()
     const subCall = calls.find((c) => c.method === 'POST' && c.url.includes('/subscriptions'))
     const subBody = JSON.parse(subCall!.body!) as { resource: string; notificationUrl: string }
     expect(subBody.resource).toBe('/me/messages')

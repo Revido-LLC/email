@@ -1,16 +1,20 @@
 /**
  * OutlookAdapter — `ProviderAdapter` over Microsoft Graph (v1.0).
  *
- * - backfill: `/me/messages/delta` drained page-by-page via `@odata.nextLink`
- *   (used as the `SyncCursor`); the final page carries the `@odata.deltaLink`.
- * - incremental: GET a stored `deltaLink`; `@removed` items are deletes, the
- *   response's new `@odata.deltaLink` is the next cursor.
+ * - backfill: `/me/messages` listed newest-first (`$orderby=receivedDateTime
+ *   desc`) and paged via `@odata.nextLink` (the `$skiptoken` is the `SyncCursor`).
+ *   Graph rejects `/delta` on `/me/messages` ("Change tracking is not supported
+ *   against 'microsoft.graph.message'"), so historical import is a plain ordered
+ *   list — the consumer stops once a page crosses the 30-day cutoff.
+ * - incremental: GET a stored per-folder `deltaLink`; `@removed` items are
+ *   deletes, the response's new `@odata.deltaLink` is the next cursor.
  * - send: `createReply` + `send` for replies (Graph sets the threading headers),
  *   `sendMail` for fresh messages.
  * - watch/renew: change-notification subscriptions on `/me/messages` (~3-day
  *   lifetime). The webhook validationToken/clientState handshake is the API's
  *   job, not the adapter's — we only create/renew/delete the subscription and
- *   fetch a starting `deltaLink` for incremental sync.
+ *   fetch a starting `deltaLink` (from the inbox folder, the only place Graph
+ *   supports message delta) for incremental sync.
  *
  * Auth/refresh lives in `connect()`. All calls go through an injectable
  * `fetchImpl` so tests drive the adapter against recorded fixtures.
@@ -148,13 +152,16 @@ export class OutlookAdapter implements ProviderAdapter {
   }
 
   async backfill(creds: ProviderCredentials, cursor?: SyncCursor): Promise<BackfillPage> {
+    // Graph has no delta on `/me/messages`, so backfill is a newest-first list;
+    // the consumer imports each page until one crosses the 30-day cutoff. The
+    // `@odata.nextLink` (an opaque `$skiptoken` URL) is the pagination cursor.
     const url =
       cursor ??
-      `${GRAPH_BASE}/me/messages/delta?$select=${MESSAGE_SELECT}&$top=${this.opts.backfillPageSize ?? 25}`
+      `${GRAPH_BASE}/me/messages?$select=${MESSAGE_SELECT}&$top=${this.opts.backfillPageSize ?? 25}&$orderby=receivedDateTime%20desc`
     const res = await authedJson<GraphDeltaResponse>(this.fetchImpl, creds.accessToken, url)
     const messages = (res.value ?? []).filter((m) => !m['@removed']).map((m) => this.parse(m))
-    // More pages → hand back the nextLink; final page → backfill complete. The
-    // deltaLink on the final page is (re)acquired by `watch()` to seed incremental.
+    // More pages → hand back the nextLink; no nextLink → backfill reached the
+    // oldest message. Incremental sync (seeded by `watch()`) covers new arrivals.
     return { messages, nextCursor: res['@odata.nextLink'] ?? null }
   }
 
@@ -308,9 +315,13 @@ export class OutlookAdapter implements ProviderAdapter {
     )
   }
 
-  /** Drain the delta stream to its `deltaLink` — the cursor for incremental sync. */
+  /**
+   * Drain the inbox delta stream to its `deltaLink` — the cursor for incremental
+   * sync. Graph only supports message delta per-folder, so this tracks the inbox
+   * (where new mail lands); whole-mailbox history came from `backfill()`.
+   */
   private async currentDeltaLink(creds: ProviderCredentials): Promise<SyncCursor> {
-    let url = `${GRAPH_BASE}/me/messages/delta?$select=id&$top=${this.opts.backfillPageSize ?? 50}`
+    let url = `${GRAPH_BASE}/me/mailFolders/inbox/messages/delta?$select=id&$top=${this.opts.backfillPageSize ?? 50}`
     // Follow nextLinks until Graph hands back the deltaLink token.
     for (;;) {
       const res: GraphDeltaResponse = await authedJson<GraphDeltaResponse>(

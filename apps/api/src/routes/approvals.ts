@@ -8,12 +8,13 @@
  * activity feed reflects what was executed.
  */
 import { withUser } from '@revido/db/client'
-import { agentRuns, approvals } from '@revido/db/schema'
+import { agentRuns, approvals, threads } from '@revido/db/schema'
 import type { DbTransaction } from '@revido/db/client'
 import { count, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getUserCrypto, type UserCrypto } from '../lib/crypto'
 import { notFound, readJson } from '../lib/http'
+import { enqueueJob, JobQueue, sendRunAt, type ForwardJobPayload } from '../lib/jobs'
 import { mapApproval } from '../lib/mappers'
 import { protectedRouter } from '../lib/protected'
 
@@ -74,6 +75,26 @@ approvalsRouter.get('/count', async (c) => {
   return c.json(n)
 })
 
+/**
+ * Resolve a `forward` approval into an enqueueable payload, or null when the row
+ * isn't a forward or is missing the destination / source message. Looks up the
+ * account from the approval's thread so the worker can send from the right mailbox.
+ */
+async function forwardIntent(
+  tx: DbTransaction,
+  userId: string,
+  approval: ApprovalRow,
+): Promise<ForwardJobPayload | null> {
+  if (approval.action !== 'forward') return null
+  const to = approval.params?.to
+  if (!to || !approval.messageId || !approval.threadId) return null
+  const thread = (
+    await tx.select({ accountId: threads.accountId }).from(threads).where(eq(threads.id, approval.threadId)).limit(1)
+  ).at(0)
+  if (!thread) return null
+  return { userId, accountId: thread.accountId, sourceMessageId: approval.messageId, to }
+}
+
 /** POST /approvals/:id/approve — approve, or edit-then-approve with `editedPreview`. */
 approvalsRouter.post('/:id/approve', async (c) => {
   const userId = c.get('userId')
@@ -81,14 +102,19 @@ approvalsRouter.post('/:id/approve', async (c) => {
   const { editedPreview } = await readJson(c, approveSchema)
   const crypto = await getUserCrypto(userId)
   const resolved = editedPreview !== undefined ? 'edited' : 'approved'
-  const ok = await withUser(userId, async (tx) => {
+  const result = await withUser(userId, async (tx) => {
     const row = (await tx.select().from(approvals).where(eq(approvals.id, id)).limit(1)).at(0)
-    if (!row) return false
+    if (!row) return { ok: false as const, forward: null }
+    const forward = await forwardIntent(tx, userId, row)
     await recordRun(tx, crypto, userId, row, editedPreview ?? row.action)
     await tx.delete(approvals).where(eq(approvals.id, id))
-    return true
+    return { ok: true as const, forward }
   })
-  if (!ok) return notFound(c)
+  if (!result.ok) return notFound(c)
+  // Execute an approved forward on the same deferred/undo window as a normal send.
+  if (result.forward) {
+    await enqueueJob(JobQueue.forward, result.forward, { runAt: sendRunAt() })
+  }
   return c.json({ resolved })
 })
 
@@ -109,20 +135,25 @@ approvalsRouter.post('/batch-approve', async (c) => {
   const userId = c.get('userId')
   const { agentId } = await readJson(c, batchApproveSchema)
   const crypto = await getUserCrypto(userId)
-  const resolvedIds = await withUser(userId, async (tx) => {
+  const { ids, forwards } = await withUser(userId, async (tx) => {
     const rows = agentId
       ? await tx.select().from(approvals).where(eq(approvals.agentId, agentId))
       : await tx.select().from(approvals)
+    const forwards: ForwardJobPayload[] = []
     for (const row of rows) {
+      const forward = await forwardIntent(tx, userId, row)
+      if (forward) forwards.push(forward)
       await recordRun(tx, crypto, userId, row, row.action)
     }
     if (rows.length) {
-      const ids = rows.map((r) => r.id)
       if (agentId) await tx.delete(approvals).where(eq(approvals.agentId, agentId))
       else await tx.delete(approvals)
-      return ids
+      return { ids: rows.map((r) => r.id), forwards }
     }
-    return []
+    return { ids: [] as string[], forwards }
   })
-  return c.json({ resolved: resolvedIds })
+  for (const forward of forwards) {
+    await enqueueJob(JobQueue.forward, forward, { runAt: sendRunAt() })
+  }
+  return c.json({ resolved: ids })
 })

@@ -23,10 +23,18 @@ import type { Provider } from '@revido/db'
 /** Logical queue names polled by the worker. */
 export const JobQueue = {
   send: 'send',
+  forward: 'forward',
   backfill: 'backfill',
   incremental: 'incremental',
   chaser: 'chaser',
 } as const
+
+export interface ForwardJobPayload {
+  userId: string
+  accountId: string
+  sourceMessageId: string
+  to: string
+}
 
 export type JobQueueName = (typeof JobQueue)[keyof typeof JobQueue]
 
@@ -60,7 +68,7 @@ export interface ChaserJobPayload {
 /** Insert a job row and return its id. */
 export async function enqueueJob(
   queue: JobQueueName,
-  payload: Record<string, unknown>,
+  payload: object,
   options: { runAt?: Date } = {},
 ): Promise<{ id: string }> {
   return asService(async (tx) => {

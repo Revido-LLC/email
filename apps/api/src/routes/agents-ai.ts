@@ -74,10 +74,12 @@ export const AGENT_PLAN_JSON_SCHEMA: Record<string, unknown> = {
   },
 }
 
-const COMPILE_SYSTEM = `You compile a Revido Mail user's natural-language inbox rule into a strict JSON agent plan. The plan has:
+export const COMPILE_SYSTEM = `You compile a Revido Mail user's natural-language inbox rule into a strict JSON agent plan. The plan has:
 - "trigger": "new-mail" (evaluate each newly arrived thread) or "scheduled" (run on a cadence). Use "scheduled" only when the rule is explicitly time-based, and then also set "schedule" to a short cron-like or human cadence string.
 - "conditions": an array of {"field","op","value"} clauses, ALL of which must hold. Valid fields include category, subject, priority, priorityScore, from, participant, label, language, awaitingReply, unread, starred, hasAttachments, snoozed. Valid ops: is, is-not, contains, not-contains, matches (regex), gt, lt. Values are always strings. An empty array means "every thread".
-- "actions": an array of {"type","label"} the agent performs when the conditions match. Valid types: ${AGENT_ACTION_TYPES.join(', ')}. "label" is a short human description of the action. Prefer the least destructive action set that satisfies the rule.
+  There is also a special "content" field: its "value" is a short natural-language description of what the message OR its attachment IS — e.g. "an invoice or receipt", "a signed contract", "a shipping notification". Use "content" ONLY when the rule depends on what the document actually is, not on metadata; combine it with cheap metadata clauses (e.g. hasAttachments is true) when the user implies them. Prefer "op":"is" for content clauses.
+- "actions": an array of {"type","label"} — plus "params" where noted — the agent performs when the conditions match. Valid types: ${AGENT_ACTION_TYPES.join(', ')}. "label" is a short human description of the action. Prefer the least destructive action set that satisfies the rule.
+  For a "forward" action you MUST include "params": {"to": "<recipient email address>"} taken from the rule. If the rule asks to forward but names no address, still emit the forward action with "params": {"to": ""} so the app can ask the user for it.
 Return ONLY the JSON object — no prose, no code fence.`
 
 export const agentsAiRouter = new Hono<{ Variables: Variables }>()

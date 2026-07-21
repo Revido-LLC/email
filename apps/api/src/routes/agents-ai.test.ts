@@ -179,3 +179,12 @@ describe('POST /agents/dry-run', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('COMPILE_SYSTEM prompt', () => {
+  it('documents the content field and the forward destination param', async () => {
+    const { COMPILE_SYSTEM } = await import('./agents-ai')
+    expect(COMPILE_SYSTEM).toContain('"content"')
+    expect(COMPILE_SYSTEM).toContain('params')
+    expect(COMPILE_SYSTEM).toMatch(/forward[\s\S]*"to"/i)
+  })
+})

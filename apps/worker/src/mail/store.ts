@@ -264,9 +264,13 @@ export interface EnqueueApprovalInput {
   agentIcon: string | null
   action: string
   threadId: string
+  /** Source inbound message for a `forward` action (so approval can execute it). */
+  messageId?: string
   subject: string
   sender: string
   preview: string
+  /** Action config carried to the approval, e.g. forward `{ to }`. */
+  params?: Record<string, string>
   crypto: AccountCrypto
 }
 

@@ -21,8 +21,13 @@
 
 import {
   actionNeedsApproval,
+  buildContentClassifierPrompt,
   buildDraftPrompt,
   compilePredicate,
+  contentClauses,
+  CONTENT_CLASSIFIER_SCHEMA,
+  forwardDestination,
+  type AgentCondition,
   type CompiledAgentAction,
   type LlmThinking,
 } from '@revido/core'
@@ -36,13 +41,17 @@ import type {
 } from '../mail/store'
 import type { EnrichStore } from '../mail/store'
 import type { WorkerLlmClient } from '../llm'
+import type { JobStore } from '../queue/store'
 import type { JobConsumer } from '../queue/runner'
-import { agentRunPayload } from '../queue/jobs'
+import { agentRunPayload, QUEUE, type ForwardPayload } from '../queue/jobs'
 
 /** Bounds so a runaway plan can't loop or spend without limit. */
 const MAX_ITERATIONS = 50
 const TOKEN_CEILING = 100_000
 const DRAFT_MAX_TOKENS = 1024
+const CLASSIFY_MAX_TOKENS = 64
+/** Deferred/undo window for an auto-forward, mirroring the send path. */
+const FORWARD_UNDO_MS = 10_000
 
 export interface AgentRunDeps {
   loadUser(userId: string): Promise<UserContext>
@@ -53,6 +62,7 @@ export interface AgentRunDeps {
     Pick<EnrichStore, 'getThread'> &
     Pick<UsageStore, 'increment'>
   llm: Pick<WorkerLlmClient, 'complete'>
+  jobs: Pick<JobStore, 'enqueue'>
   now?(): Date
 }
 
@@ -89,13 +99,25 @@ export function makeAgentRunConsumer(deps: AgentRunDeps): JobConsumer {
 
     const stored = await deps.mail.getAgentPlan(userId, agentId)
     if (!stored) return // agent was deleted between enqueue and run.
-    const { plan, name: agentName, icon: agentIcon } = stored
+    const { plan, name: agentName, icon: agentIcon, trusted } = stored
     if (plan.actions.length === 0) return
 
     const threads = await deps.mail.listAgentThreads(userId, user.crypto, { threadIds })
     const predicate = compilePredicate(plan)
-    const matched = threads.filter(predicate)
-    if (matched.length === 0) return // nothing to act on; skip an empty run row.
+    const candidates = threads.filter(predicate)
+    if (candidates.length === 0) return // nothing to act on; skip an empty run row.
+
+    // Stage 2 (hybrid): a rule with `content` clauses only forwards a candidate the
+    // AI classifier confirms. The paid check runs ONLY on candidates the cheap
+    // structured predicate already passed, and is fail-closed (any error ⇒ drop).
+    const clauses = contentClauses(plan)
+    const matched: Thread[] = []
+    for (const thread of candidates) {
+      if (clauses.length === 0 || (await classifyThreadContent(deps, user, thread, clauses))) {
+        matched.push(thread)
+      }
+    }
+    if (matched.length === 0) return
 
     let iterations = 0
     let tokens = 0
@@ -113,6 +135,50 @@ export function makeAgentRunConsumer(deps: AgentRunDeps): JobConsumer {
           break outer
         }
         iterations += 1
+
+        if (action.type === 'forward') {
+          const to = forwardDestination(action)
+          const sourceMessageId = thread.messageIds.at(-1)
+          if (!to || !sourceMessageId) {
+            reasoning.push(`Skipped forward on "${thread.subject}": no valid destination.`)
+            continue
+          }
+          if (trusted) {
+            // Trusted rule → forward without approval, on the 10s deferred/undo window.
+            const payload: ForwardPayload = {
+              userId,
+              accountId: thread.accountId,
+              sourceMessageId,
+              to,
+            }
+            await deps.jobs.enqueue(QUEUE.forward, payload, {
+              runAt: new Date(now().getTime() + FORWARD_UNDO_MS),
+            })
+            applied += 1
+            touched = true
+            reasoning.push(`Auto-forwarded "${thread.subject}" to ${to}.`)
+          } else {
+            // Untrusted → queue for one-tap approval, carrying the destination + source.
+            await deps.mail.enqueueApproval({
+              userId,
+              agentId,
+              agentName,
+              agentIcon,
+              action: 'forward',
+              threadId: thread.id,
+              messageId: sourceMessageId,
+              subject: thread.subject,
+              sender,
+              preview: action.label,
+              params: { to },
+              crypto: user.crypto,
+            })
+            approvals += 1
+            touched = true
+            reasoning.push(`Queued forward of "${thread.subject}" to ${to} for approval.`)
+          }
+          continue
+        }
 
         if (actionNeedsApproval(action.type)) {
           // strict tool → queue for human approval instead of executing.
@@ -182,6 +248,43 @@ export function makeAgentRunConsumer(deps: AgentRunDeps): JobConsumer {
 /** The literal label to apply for a `label` action (structured param preferred). */
 function labelFor(action: CompiledAgentAction): string {
   return action.params?.label ?? action.params?.value ?? action.label
+}
+
+/**
+ * Stage-2 content check: does the thread satisfy EVERY content clause? Loads the
+ * decrypted body text once and asks the classifier per clause. Fail-closed — any
+ * missing text, LLM error, or non-boolean result counts as no match, so an
+ * uncertain classification never auto-forwards private mail.
+ */
+async function classifyThreadContent(
+  deps: AgentRunDeps,
+  user: UserContext,
+  thread: Thread,
+  clauses: AgentCondition[],
+): Promise<boolean> {
+  try {
+    const full = await deps.mail.getThread(user.userId, thread.id, user.crypto)
+    if (!full || full.messages.length === 0) return false
+    const text = [full.subject, ...full.messages.map((m) => m.body)].join('\n\n').trim()
+    if (!text) return false
+    for (const clause of clauses) {
+      const prompt = buildContentClassifierPrompt(text, clause.value)
+      const result = await deps.llm.complete({
+        model: 'triage',
+        system: prompt.system,
+        messages: prompt.messages,
+        maxTokens: CLASSIFY_MAX_TOKENS,
+        responseFormat: { type: 'json', schema: CONTENT_CLASSIFIER_SCHEMA },
+        userId: user.userId,
+      })
+      await deps.mail.increment(user.userId, 'ai_enrichments')
+      const match = (result.json as { match?: unknown } | undefined)?.match
+      if (match !== true) return false
+    }
+    return true
+  } catch {
+    return false // fail-closed
+  }
 }
 
 /** Compose a reply draft via the LLM. Returns the token spend to charge the ceiling. */

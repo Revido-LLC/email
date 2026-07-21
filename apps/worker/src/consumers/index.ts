@@ -88,6 +88,7 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       loadUser: ctx.loadUser,
       mail: ctx.mail,
       llm: ctx.llm,
+      jobs: ctx.jobs,
     }),
     [QUEUE.chaser]: makeChaserConsumer({
       loadAccount: ctx.loadAccount,

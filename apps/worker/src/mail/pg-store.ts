@@ -810,15 +810,18 @@ export class PgMailStore implements MailStore {
 
   async enqueueApproval(input: EnqueueApprovalInput): Promise<void> {
     const { userId, crypto } = input
+    const params = input.params ? JSON.stringify(input.params) : null
     await this.db.withUser(userId, async (sql) => {
       await sql`
         insert into approvals
-          (user_id, agent_id, agent_name, agent_icon, action, thread_id,
-           subject_ct, sender, preview_ct)
+          (user_id, agent_id, agent_name, agent_icon, action, thread_id, message_id,
+           subject_ct, sender, preview_ct, params)
         values
           (${userId}, ${input.agentId}, ${input.agentName}, ${input.agentIcon}, ${input.action},
-           ${input.threadId}, ${serializeCiphertext(crypto.encrypt(input.subject))}::jsonb,
-           ${input.sender}, ${serializeCiphertext(crypto.encrypt(input.preview))}::jsonb)
+           ${input.threadId}, ${input.messageId ?? null},
+           ${serializeCiphertext(crypto.encrypt(input.subject))}::jsonb,
+           ${input.sender}, ${serializeCiphertext(crypto.encrypt(input.preview))}::jsonb,
+           ${params}::jsonb)
       `
     })
   }

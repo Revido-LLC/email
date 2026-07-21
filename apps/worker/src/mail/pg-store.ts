@@ -776,7 +776,22 @@ export class PgMailStore implements MailStore {
         list.push({ name: p.name ?? '', email: p.email ?? '' })
         byThread.set(p.thread_id, list)
       }
-      return rows.map((r) => toDomainThreadMeta(r, crypto, byThread.get(r.id) ?? []))
+
+      // Latest INBOUND message id per thread — the message a `forward` action
+      // acts on. Without this, `thread.messageIds` would be empty and a forward
+      // rule could never resolve a source message.
+      const latest = await sql<{ thread_id: string; id: string }[]>`
+        select distinct on (thread_id) thread_id, id
+        from messages
+        where thread_id in ${sql(threadIds)} and outbound = false
+        order by thread_id, date desc
+      `
+      const latestByThread = new Map<string, string>()
+      for (const m of latest) latestByThread.set(m.thread_id, m.id)
+
+      return rows.map((r) =>
+        toDomainThreadMeta(r, crypto, byThread.get(r.id) ?? [], latestByThread.get(r.id)),
+      )
     })
   }
 
@@ -1077,6 +1092,7 @@ function toDomainThreadMeta(
   row: ThreadMetaRow,
   crypto: AccountCrypto,
   participants: Contact[],
+  latestInboundMessageId?: string,
 ): Thread {
   return {
     id: row.id,
@@ -1094,7 +1110,7 @@ function toDomainThreadMeta(
     hasAttachments: row.has_attachments,
     badges: [],
     extracted: [],
-    messageIds: [],
+    messageIds: latestInboundMessageId ? [latestInboundMessageId] : [],
     lastMessageAt: timestampIso(row.last_message_at),
     awaitingReply: row.awaiting_reply,
     labels: row.labels,

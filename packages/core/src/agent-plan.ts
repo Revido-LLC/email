@@ -79,6 +79,42 @@ export function isContentClause(cond: AgentCondition): boolean {
   return cond.field.trim().toLowerCase() === CONTENT_FIELD
 }
 
+/** Recognized condition operators (single tokens), used by the clause parser. */
+const CONDITION_OPS = ['is-not', 'not-contains', 'is', 'contains', 'matches', 'gt', 'lt'] as const
+
+/**
+ * Serialize a condition to the stored, human-readable `"field op value"` clause.
+ * This string is BOTH the UI display and the machine-reconstructable config, so
+ * `parseConditionClause` is its exact inverse. Single source of truth for the
+ * format across the api (which stores it) and the worker (which rebuilds the plan).
+ */
+export function serializeConditionClause(cond: AgentCondition): string {
+  return `${cond.field} ${cond.op} ${cond.value}`
+}
+
+/**
+ * Parse a stored `"field op value"` clause back into a condition, or null if it
+ * isn't a recognizable clause. Positional: first token is the field, the next
+ * recognized operator token is the op, and everything after it is the value
+ * (values may contain spaces, e.g. "an invoice or receipt").
+ */
+export function parseConditionClause(clause: string): AgentCondition | null {
+  const trimmed = clause.trim()
+  const firstSpace = trimmed.indexOf(' ')
+  if (firstSpace <= 0) return null
+  const field = trimmed.slice(0, firstSpace)
+  const rest = trimmed.slice(firstSpace + 1)
+  const restLower = rest.toLowerCase()
+  for (const op of CONDITION_OPS) {
+    if (restLower === op || restLower.startsWith(op + ' ')) {
+      const value = rest.slice(op.length).trim()
+      const parsed = agentConditionSchema.safeParse({ field, op, value })
+      return parsed.success ? parsed.data : null
+    }
+  }
+  return null
+}
+
 /** The content-classification clauses in a plan (evaluated by the worker's AI stage). */
 export function contentClauses(plan: AgentPlan): AgentCondition[] {
   return plan.conditions.filter(isContentClause)

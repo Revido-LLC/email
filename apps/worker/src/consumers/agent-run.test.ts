@@ -63,7 +63,7 @@ function harness(plan: AgentPlan): Harness {
   const approvals: EnqueueApprovalInput[] = []
   const runs: RecordAgentRunInput[] = []
   const increments: string[] = []
-  const stored: StoredAgentPlan = { name: 'Newsletter Filer', icon: 'inbox', plan }
+  const stored: StoredAgentPlan = { name: 'Newsletter Filer', icon: 'inbox', trusted: false, plan }
 
   const deps: AgentRunDeps = {
     loadUser: () => Promise.resolve(fakeUser()),

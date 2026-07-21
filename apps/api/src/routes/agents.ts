@@ -9,7 +9,7 @@
  */
 import { withUser } from '@revido/db/client'
 import { agentActions, agents } from '@revido/db/schema'
-import { agentPlanSchema, actionNeedsApproval } from '@revido/core/agent-plan'
+import { agentPlanSchema, actionNeedsApproval, serializeConditionClause } from '@revido/core/agent-plan'
 import type { AgentActionType } from '@revido/core/agent-plan'
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -20,16 +20,13 @@ import { protectedRouter } from '../lib/protected'
 const createAgentSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  /** Opt-in auto-run: consequential actions (forward) run without approval. */
+  trusted: z.boolean().optional(),
   plan: agentPlanSchema,
 })
 const toggleAgentSchema = z.object({ enabled: z.boolean() })
 
 export const agentsRouter = protectedRouter()
-
-/** Render an `AgentPlan` condition into the stored human-readable clause. */
-function conditionClause(cond: { field: string; op: string; value: string }): string {
-  return `${cond.field} ${cond.op} ${cond.value}`
-}
 
 /** GET /agents (?enabled=true) — the agent gallery. */
 agentsRouter.get('/', async (c) => {
@@ -75,8 +72,9 @@ agentsRouter.post('/', async (c) => {
           description: body.description ?? null,
           enabled: true,
           trigger: body.plan.trigger,
-          conditions: body.plan.conditions.map(conditionClause),
+          conditions: body.plan.conditions.map(serializeConditionClause),
           prebuilt: false,
+          trusted: body.trusted ?? false,
         })
         .returning()
     ).at(0)
@@ -91,6 +89,7 @@ agentsRouter.post('/', async (c) => {
           label: action.label,
           needsApproval: actionNeedsApproval(action.type as AgentActionType),
           position,
+          params: action.params ?? null,
         })),
       )
     }

@@ -9,7 +9,9 @@ import {
   contentClauses,
   CONTENT_FIELD,
   forwardDestination,
+  parseConditionClause,
   planRequiresApproval,
+  serializeConditionClause,
   type AgentPlan,
 } from './agent-plan'
 
@@ -294,6 +296,30 @@ describe('content clauses (hybrid AI stage)', () => {
       { field: 'category', op: 'is', value: 'receipts' },
     ])
     expect(contentClauses(p)).toEqual([{ field: CONTENT_FIELD, op: 'is', value: 'an invoice' }])
+  })
+})
+
+describe('condition clause round-trip (serialize ↔ parse)', () => {
+  it('round-trips a simple structured clause', () => {
+    const cond = { field: 'category', op: 'is', value: 'receipts' } as const
+    expect(parseConditionClause(serializeConditionClause(cond))).toEqual(cond)
+  })
+
+  it('round-trips a content clause whose value contains spaces', () => {
+    const cond = { field: 'content', op: 'is', value: 'an invoice or receipt' } as const
+    expect(parseConditionClause(serializeConditionClause(cond))).toEqual(cond)
+  })
+
+  it('round-trips a hyphenated operator (is-not / not-contains)', () => {
+    const a = { field: 'category', op: 'is-not', value: 'promotions' } as const
+    const b = { field: 'subject', op: 'not-contains', value: 'draft copy' } as const
+    expect(parseConditionClause(serializeConditionClause(a))).toEqual(a)
+    expect(parseConditionClause(serializeConditionClause(b))).toEqual(b)
+  })
+
+  it('returns null for an unparseable clause', () => {
+    expect(parseConditionClause('garbage')).toBeNull()
+    expect(parseConditionClause('')).toBeNull()
   })
 })
 

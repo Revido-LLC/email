@@ -22,7 +22,7 @@ import type {
 import type { Ciphertext } from '@revido/db/crypto'
 import {
   AGENT_ACTION_TYPES,
-  agentConditionSchema,
+  parseConditionClause,
   createStorageProvider,
   type AgentActionType,
   type AgentCondition,
@@ -670,18 +670,27 @@ export class PgMailStore implements MailStore {
   async getAgentPlan(userId: string, agentId: string): Promise<StoredAgentPlan | null> {
     return this.db.withUser(userId, async (sql) => {
       const heads = await sql<
-        { name: string; icon: string | null; trigger: string | null; conditions: string[] }[]
+        {
+          name: string
+          icon: string | null
+          trigger: string | null
+          conditions: string[]
+          trusted: boolean
+        }[]
       >`
-        select name, icon, trigger, conditions from agents where id = ${agentId} limit 1
+        select name, icon, trigger, conditions, trusted from agents where id = ${agentId} limit 1
       `
       const head = heads[0]
       if (!head) return null
-      const actionRows = await sql<{ type: string; label: string }[]>`
-        select type, label from agent_actions where agent_id = ${agentId} order by position asc
+      const actionRows = await sql<
+        { type: string; label: string; params: Record<string, string> | null }[]
+      >`
+        select type, label, params from agent_actions where agent_id = ${agentId} order by position asc
       `
       return {
         name: head.name,
         icon: head.icon,
+        trusted: head.trusted,
         plan: reconstructPlan(head.trigger, head.conditions, actionRows),
       }
     })
@@ -1043,30 +1052,31 @@ function toDomainThreadMeta(
 /**
  * Rebuild an {@link AgentPlan} from an agent's stored (plaintext) config.
  *
- * `agents.conditions` is a free-form `text[]` of human-readable clauses; when the
- * compiler (api-service) persisted them as JSON-encoded {@link AgentCondition}s
- * they round-trip here, otherwise a non-JSON clause is dropped (the agent then
- * matches every candidate thread, and consequential actions still gate). Actions
- * come from `agent_actions` (ordered), keeping only recognized action types.
+ * `agents.conditions` is a `text[]` of `"field op value"` clauses (the same string
+ * shown in the UI); `parseConditionClause` is the exact inverse of the api's
+ * `serializeConditionClause`, so conditions round-trip into machine predicates. An
+ * unparseable clause is dropped. Actions come from `agent_actions` (ordered),
+ * keeping only recognized action types and carrying their `params` (e.g. a forward
+ * destination) through to the runtime.
  */
 function reconstructPlan(
   trigger: string | null,
   conditions: string[],
-  actions: { type: string; label: string }[],
+  actions: { type: string; label: string; params: Record<string, string> | null }[],
 ): AgentPlan {
   const parsedConditions: AgentCondition[] = []
   for (const clause of conditions) {
-    try {
-      const parsed = agentConditionSchema.safeParse(JSON.parse(clause))
-      if (parsed.success) parsedConditions.push(parsed.data)
-    } catch {
-      // non-JSON free-form clause — not machine-evaluable, skip.
-    }
+    const parsed = parseConditionClause(clause)
+    if (parsed) parsedConditions.push(parsed)
   }
   const known = new Set<string>(AGENT_ACTION_TYPES)
   const planActions = actions
     .filter((a) => known.has(a.type))
-    .map((a) => ({ type: a.type as AgentActionType, label: a.label }))
+    .map((a) => ({
+      type: a.type as AgentActionType,
+      label: a.label,
+      ...(a.params ? { params: a.params } : {}),
+    }))
   return {
     trigger: trigger === 'scheduled' ? 'scheduled' : 'new-mail',
     conditions: parsedConditions,

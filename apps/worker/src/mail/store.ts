@@ -223,6 +223,8 @@ export interface VoiceStore {
 export interface StoredAgentPlan {
   name: string
   icon: string | null
+  /** Opt-in auto-run: consequential actions (forward) run without approval. */
+  trusted: boolean
   plan: AgentPlan
 }
 

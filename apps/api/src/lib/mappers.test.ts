@@ -44,6 +44,8 @@ describe('mapApproval', () => {
       subjectCt: crypto.encrypt('Invoice #42'),
       sender: 'billing@acme.co',
       previewCt: crypto.encrypt('Archive this receipt?'),
+      params: null,
+      messageId: null,
       createdAt: new Date('2026-07-15T10:00:00Z'),
     }
     const dto = mapApproval(crypto, row)

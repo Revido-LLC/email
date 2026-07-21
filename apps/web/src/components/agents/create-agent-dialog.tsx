@@ -30,15 +30,24 @@ import {
 import * as React from 'react'
 import { Icon } from '@/lib/icons'
 import { useThreadsByCategory } from '@/lib/hooks'
+import { useCompileAgent } from '@/lib/hooks/agents'
 import {
   compilePlan,
+  forwardActionTo,
   planFromAgent,
+  planHasForward,
   planNeedsApproval,
+  planToDisplay,
   toAgentPlan,
   type CompiledPlan,
 } from './compile'
 
-export type CreateAgentInput = { name: string; description: string; plan: AgentPlan }
+export type CreateAgentInput = {
+  name: string
+  description: string
+  plan: AgentPlan
+  trusted?: boolean
+}
 export type WizardSeed = { kind: 'nl'; text: string } | { kind: 'agent'; agent: AgentDef }
 
 type Step = 'describe' | 'plan' | 'dryrun' | 'name'
@@ -115,6 +124,14 @@ function WizardBody({
     fromAgent ? planFromAgent(seed.agent) : compilePlan(seed.kind === 'nl' ? seed.text : ''),
   )
   const [name, setName] = React.useState(fromAgent ? seed.agent.name : '')
+  // The real (server-compiled) plan we submit — preserves forward params + content
+  // clauses the client display can't represent. Null until the compile call lands.
+  const [apiPlan, setApiPlan] = React.useState<AgentPlan | null>(null)
+  const [trusted, setTrusted] = React.useState(false)
+  const [forwardTo, setForwardTo] = React.useState('')
+  const compile = useCompileAgent()
+
+  const isForward = apiPlan != null && planHasForward(apiPlan)
 
   // Dry-run preview over the user's real mail in the plan's category.
   const { data: candidates } = useThreadsByCategory(plan.category)
@@ -125,8 +142,19 @@ function WizardBody({
   const stepIndex = STEPS.findIndex((s) => s.id === step)
   const alreadyActive = fromAgent && seed.agent.enabled
 
-  function compileAndAdvance() {
-    setPlan(compilePlan(description))
+  async function compileAndAdvance() {
+    // Server-side natural-language compile (Opus). Any rule the user can describe
+    // — including "forward invoices to accounting@…" — compiles here. Fall back to
+    // the offline preview compiler only if the call fails.
+    try {
+      const compiled = await compile.mutateAsync({ description })
+      setApiPlan(compiled)
+      setPlan(planToDisplay(compiled, description.trim().slice(0, 40) || 'New agent'))
+      setForwardTo(forwardActionTo(compiled) ?? '')
+    } catch {
+      setApiPlan(null)
+      setPlan(compilePlan(description))
+    }
     setStep('plan')
   }
 
@@ -137,10 +165,24 @@ function WizardBody({
       onCreate({
         name: name.trim() || plan.suggestedName,
         description: description.trim() || `Automatically handles mail ${plan.matchLabel}.`,
-        plan: toAgentPlan(plan),
+        plan: submitPlan(),
+        trusted: isForward ? trusted : undefined,
       })
     }
     onClose()
+  }
+
+  /** The plan to persist: the real API plan with the edited forward destination. */
+  function submitPlan(): AgentPlan {
+    if (!apiPlan) return toAgentPlan(plan)
+    return {
+      ...apiPlan,
+      actions: apiPlan.actions.map((a) =>
+        a.type === 'forward'
+          ? { ...a, params: { ...(a.params ?? {}), to: forwardTo.trim() } }
+          : a,
+      ),
+    }
   }
 
   return (
@@ -297,6 +339,50 @@ function WizardBody({
                 />
               </div>
             </div>
+
+            {isForward && (
+              <div className="space-y-3 rounded-2xl border border-border bg-card p-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Forward matching mail to
+                  </label>
+                  <Input
+                    value={forwardTo}
+                    onChange={(e) => setForwardTo(e.target.value)}
+                    placeholder="accounting@revido.co"
+                    className="mt-1"
+                    type="email"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTrusted((v) => !v)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">Forward automatically</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {trusted
+                        ? 'Forwards the moment a match arrives (10-second undo).'
+                        : 'Off — each forward waits for your one-tap approval.'}
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors',
+                      trusted ? 'bg-ai' : 'bg-muted',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'inline-block size-4 rounded-full bg-white transition-transform',
+                        trusted ? 'translate-x-4' : 'translate-x-0.5',
+                      )}
+                    />
+                  </span>
+                </button>
+              </div>
+            )}
             <div className="flex items-start gap-2 rounded-xl bg-ai/10 p-3">
               <Sparkle className="mt-0.5" />
               <p className="text-sm text-muted-foreground">
@@ -330,8 +416,12 @@ function WizardBody({
         )}
 
         {step === 'describe' && (
-          <Button variant="ai" onClick={compileAndAdvance} disabled={description.trim().length < 4}>
-            <Sparkles /> Compile plan
+          <Button
+            variant="ai"
+            onClick={compileAndAdvance}
+            disabled={description.trim().length < 4 || compile.isPending}
+          >
+            <Sparkles /> {compile.isPending ? 'Compiling…' : 'Compile plan'}
           </Button>
         )}
         {step === 'plan' && (
@@ -345,7 +435,11 @@ function WizardBody({
           </Button>
         )}
         {step === 'name' && (
-          <Button variant="ai" onClick={finish}>
+          <Button
+            variant="ai"
+            onClick={finish}
+            disabled={isForward && forwardTo.trim().length === 0}
+          >
             {alreadyActive ? (
               <>Done</>
             ) : (

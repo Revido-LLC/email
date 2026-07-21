@@ -186,6 +186,47 @@ function labelFor(category: CategoryId): string {
     .join(' ')
 }
 
+/** The forward destination of a real API plan's forward action, or null. */
+export function forwardActionTo(plan: AgentPlan): string | null {
+  const fwd = plan.actions.find((a) => a.type === 'forward')
+  const to = fwd?.params?.to?.trim()
+  return to ? to : null
+}
+
+/** Whether a real API plan forwards mail (drives the "auto-forward" toggle). */
+export function planHasForward(plan: AgentPlan): boolean {
+  return plan.actions.some((a) => a.type === 'forward')
+}
+
+/**
+ * Adapt a real (server-compiled) `AgentPlan` into the wizard's display shape so
+ * the existing plan/dry-run UI can render it. The category is taken from a
+ * `category is X` clause when present (for an accurate preview); otherwise the
+ * preview is permissive. The submitted plan is the real one, not this display.
+ */
+export function planToDisplay(plan: AgentPlan, suggestedName: string): CompiledPlan {
+  const categoryClause = plan.conditions.find((c) => c.field.toLowerCase() === 'category')
+  const category = (categoryClause?.value as CategoryId) ?? 'fyi'
+  const scheduled = plan.trigger === 'scheduled'
+  const conditions = plan.conditions.map((c) => `${c.field} ${c.op} ${c.value}`)
+  return {
+    suggestedName,
+    icon: planHasForward(plan) ? 'Send' : 'Tag',
+    accent: category,
+    trigger: scheduled ? (plan.schedule ?? 'On a schedule') : 'New mail arrives',
+    conditions: conditions.length ? conditions : ['Every message'],
+    actions: plan.actions.map((a) => ({
+      label: a.label,
+      needsApproval: CONSEQUENTIAL.has(a.type),
+    })),
+    category,
+    matchLabel: categoryClause ? `in ${labelFor(category)}` : 'across your inbox',
+    predicate: categoryClause ? (t) => t.category === category : () => true,
+  }
+}
+
+const CONSEQUENTIAL = new Set<AgentActionType>(['send', 'unsubscribe', 'delete', 'forward'])
+
 /** Best-effort map a human action label to a structured plan action type. */
 function actionType(label: string): AgentActionType {
   const l = label.toLowerCase()

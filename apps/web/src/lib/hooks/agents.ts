@@ -66,7 +66,7 @@ export function useDryRunAgent() {
 export function useCreateAgent() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { name: string; description: string; plan: AgentPlan }) =>
+    mutationFn: (input: { name: string; description: string; plan: AgentPlan; trusted?: boolean }) =>
       api.post<AgentDef>('/agents', input),
     onSuccess: () => invalidateAgentCaches(qc),
   })

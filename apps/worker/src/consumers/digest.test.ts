@@ -65,16 +65,18 @@ describe('renderDigest', () => {
   it('renders non-empty HTML with the English labels', async () => {
     const html = await renderDigest(digestData(), '2026-07-17')
     expect(html.length).toBeGreaterThan(0)
-    expect(html).toContain('3 priorities worth opening')
-    expect(html).toContain('>Reply<')
+    expect(html).toContain('Your inbox, distilled to 3 moves')
+    expect(html).toContain('YOUR INBOX, DISTILLED')
+    expect(html).toContain('>Reply now<')
     expect(html).toContain('Contract review')
-    expect(html).toContain('Open Revido Mail')
+    expect(html).toContain('Open the shortlist')
   })
 
   it('renders the Dutch template when the user prefers nl', async () => {
     const html = await renderDigest(digestData({ outputLanguage: 'nl' }), '2026-07-17')
-    expect(html).toContain('3 prioriteiten om te openen')
-    expect(html).toContain('>Antwoord<')
+    expect(html).toContain('Je inbox, teruggebracht tot 3 acties')
+    expect(html).toContain('JE INBOX, TERUGGEBRACHT')
+    expect(html).toContain('>Nu antwoorden<')
   })
 
   it('caps the HTML at three replies and two due items', async () => {
@@ -119,7 +121,7 @@ describe('renderDigest', () => {
 
   it('renders a useful plain-text fallback', () => {
     const text = renderDigestText(digestData(), '2026-07-17')
-    expect(text).toContain('3 priorities for today')
+    expect(text).toContain('⚡ Your Revido brief: 3 priorities')
     expect(text).toContain('REPLY: Contract review')
     expect(text).toContain('https://email.revido.co/app')
   })
@@ -132,7 +134,7 @@ describe('makeDigestConsumer', () => {
 
     expect(h.sent).toHaveLength(1)
     expect(h.sent[0]?.to).toBe('me@example.com')
-    expect(h.sent[0]?.subject).toBe('3 priorities for today')
+    expect(h.sent[0]?.subject).toBe('⚡ Your Revido brief: 3 priorities')
     expect(h.sent[0]?.html.length).toBeGreaterThan(0)
     expect(h.sent[0]?.html).toContain('Contract review')
     expect(h.sent[0]?.text).toContain('REPLY: Contract review')

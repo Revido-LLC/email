@@ -10,12 +10,14 @@
 import {
   Body,
   Button,
+  Column,
   Container,
   Head,
   Heading,
   Hr,
   Html,
   Preview,
+  Row,
   Section,
   Text,
 } from '@react-email/components'
@@ -41,93 +43,136 @@ export interface ShortlistItem {
 
 const COPY = {
   en: {
-    brand: 'REVIDO MAIL',
+    brand: 'REVIDO / MORNING BRIEF',
     singular: 'priority',
     plural: 'priorities',
-    intro: 'The shortest useful version of your inbox.',
-    reply: 'Reply',
-    due: 'Due',
-    more: 'The rest stays in Revido until you are ready.',
-    agents: (count: number) => `${count} handled automatically since yesterday.`,
-    cta: 'Open Revido Mail',
+    headline: 'YOUR INBOX, DISTILLED.',
+    intro: 'The few things worth your attention. Everything else stays out of the way.',
+    shortlist: 'TODAY’S SHORTLIST',
+    reply: 'Reply now',
+    due: 'On your radar',
+    more: 'The rest of your inbox is waiting quietly in Revido.',
+    agents: (count: number) => `AUTOPILOT · ${count} handled since yesterday`,
+    cta: 'Open the shortlist →',
     preview: (count: number) =>
-      count === 1 ? 'One priority worth opening.' : `${count} priorities worth opening.`,
+      count === 1
+        ? 'Your inbox, distilled to one move.'
+        : `Your inbox, distilled to ${count} moves.`,
   },
   nl: {
-    brand: 'REVIDO MAIL',
+    brand: 'REVIDO / OCHTENDBRIEFING',
     singular: 'prioriteit',
     plural: 'prioriteiten',
-    intro: 'De kortste bruikbare versie van je inbox.',
-    reply: 'Antwoord',
-    due: 'Deadline',
-    more: 'De rest blijft in Revido tot je er klaar voor bent.',
-    agents: (count: number) => `${count} automatisch afgehandeld sinds gisteren.`,
-    cta: 'Open Revido Mail',
+    headline: 'JE INBOX, TERUGGEBRACHT.',
+    intro: 'Alleen wat je aandacht verdient. De rest blijft uit de weg.',
+    shortlist: 'JOUW SHORTLIST VANDAAG',
+    reply: 'Nu antwoorden',
+    due: 'Op je radar',
+    more: 'De rest van je inbox wacht rustig in Revido.',
+    agents: (count: number) => `AUTOPILOOT · ${count} afgehandeld sinds gisteren`,
+    cta: 'Open je shortlist →',
     preview: (count: number) =>
-      count === 1 ? 'Eén prioriteit om te openen.' : `${count} prioriteiten om te openen.`,
+      count === 1
+        ? 'Je inbox, teruggebracht tot één actie.'
+        : `Je inbox, teruggebracht tot ${count} acties.`,
   },
 } as const
 
 const styles = {
   body: {
-    backgroundColor: '#f4f1eb',
-    color: '#171513',
+    backgroundColor: '#ebe7df',
+    color: '#141311',
     fontFamily: "'Trebuchet MS', Tahoma, sans-serif",
     margin: 0,
   },
-  container: {
-    backgroundColor: '#ffffff',
-    borderTop: '5px solid #d97706',
-    margin: '32px auto',
-    maxWidth: '560px',
-    padding: '0 32px 32px',
-  },
+  container: { backgroundColor: '#ffffff', margin: '32px auto', maxWidth: '600px', padding: 0 },
+  hero: { backgroundColor: '#141311', padding: '30px 34px 34px' },
   brand: {
-    color: '#8a8178',
+    color: '#ff6940',
     fontSize: '11px',
     fontWeight: 700,
-    letterSpacing: '1.8px',
-    margin: '28px 0 22px',
+    letterSpacing: '2px',
+    margin: '0 0 26px',
   },
-  h1: {
-    color: '#171513',
-    fontSize: '32px',
+  countColumn: { verticalAlign: 'top', width: '118px' },
+  count: {
+    color: '#ff6940',
+    fontFamily: "'Courier New', monospace",
+    fontSize: '70px',
     fontWeight: 700,
-    letterSpacing: '-1px',
-    lineHeight: '38px',
+    letterSpacing: '-6px',
+    lineHeight: '70px',
     margin: 0,
   },
-  intro: { color: '#746b63', fontSize: '14px', lineHeight: '22px', margin: '8px 0 26px' },
-  item: { borderTop: '1px solid #e8e3dc', padding: '16px 0 14px' },
-  itemLabel: {
-    color: '#b45309',
+  headline: {
+    color: '#ffffff',
+    fontSize: '27px',
+    fontWeight: 700,
+    letterSpacing: '-0.8px',
+    lineHeight: '31px',
+    margin: '5px 0 7px',
+  },
+  heroIntro: { color: '#bdb7ad', fontSize: '13px', lineHeight: '20px', margin: 0 },
+  date: { color: '#d8d2c8', fontSize: '12px', lineHeight: '18px', margin: '22px 0 0' },
+  content: { padding: '27px 34px 8px' },
+  shortlist: {
+    color: '#625b54',
     fontSize: '10px',
     fontWeight: 700,
-    letterSpacing: '1.2px',
-    margin: '0 0 5px',
+    letterSpacing: '1.7px',
+    margin: '0 0 8px',
+  },
+  item: { borderBottom: '1px solid #e9e4dd', padding: '17px 0 16px' },
+  indexColumn: { verticalAlign: 'top', width: '42px' },
+  index: {
+    color: '#ff6940',
+    fontFamily: "'Courier New', monospace",
+    fontSize: '12px',
+    fontWeight: 700,
+    lineHeight: '18px',
+    margin: '1px 0 0',
+  },
+  itemLabel: {
+    color: '#746c64',
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '1.1px',
+    margin: '0 0 4px',
     textTransform: 'uppercase' as const,
   },
   itemTitle: {
-    color: '#171513',
-    fontSize: '15px',
+    color: '#141311',
+    fontSize: '16px',
     fontWeight: 700,
     lineHeight: '21px',
     margin: 0,
   },
-  itemDetail: { color: '#746b63', fontSize: '12px', lineHeight: '18px', margin: '3px 0 0' },
-  quiet: { color: '#8a8178', fontSize: '12px', lineHeight: '19px', margin: '18px 0 0' },
-  button: {
-    backgroundColor: '#171513',
-    borderRadius: '8px',
-    color: '#ffffff',
-    display: 'inline-block',
-    fontSize: '13px',
+  itemDetail: { color: '#817970', fontSize: '12px', lineHeight: '18px', margin: '4px 0 0' },
+  quiet: { color: '#817970', fontSize: '12px', lineHeight: '19px', margin: '18px 0 0' },
+  autopilot: {
+    backgroundColor: '#fff0eb',
+    borderLeft: '4px solid #ff6940',
+    color: '#8f321c',
+    fontSize: '11px',
     fontWeight: 700,
-    marginTop: '24px',
-    padding: '12px 18px',
+    letterSpacing: '0.7px',
+    lineHeight: '18px',
+    margin: '20px 0 0',
+    padding: '11px 13px',
+  },
+  button: {
+    backgroundColor: '#ff6940',
+    borderRadius: '2px',
+    color: '#141311',
+    display: 'inline-block',
+    fontSize: '14px',
+    fontWeight: 700,
+    marginTop: '26px',
+    padding: '14px 20px',
     textDecoration: 'none',
   },
-  footer: { color: '#9a9188', fontSize: '10px', lineHeight: '16px', margin: '24px 0 0' },
+  footerSection: { backgroundColor: '#141311', padding: '18px 34px' },
+  footer: { color: '#8e8981', fontSize: '10px', lineHeight: '16px', margin: 0 },
 }
 
 function formatDate(locale: DigestLocale, value: string): string {
@@ -159,35 +204,53 @@ export function DigestEmail(props: DigestEmailProps): ReactElement {
       <Preview>{t.preview(count)}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Text style={styles.brand}>{t.brand}</Text>
-          <Heading style={styles.h1}>
-            {count} {noun}
-          </Heading>
-          <Text style={styles.intro}>
-            {formatDate(props.locale, props.date)} · {t.intro}
-          </Text>
+          <Section style={styles.hero}>
+            <Text style={styles.brand}>{t.brand}</Text>
+            <Row>
+              <Column style={styles.countColumn}>
+                <Text style={styles.count}>{String(count).padStart(2, '0')}</Text>
+              </Column>
+              <Column style={{ verticalAlign: 'top' }}>
+                <Heading style={styles.headline}>{t.headline}</Heading>
+                <Text style={styles.heroIntro}>{t.intro}</Text>
+              </Column>
+            </Row>
+            <Text style={styles.date}>
+              {formatDate(props.locale, props.date)} · {count} {noun}
+            </Text>
+          </Section>
 
-          {props.items.map((item, index) => (
-            <Section key={`${item.kind}-${index}`} style={styles.item}>
-              <Text style={styles.itemLabel}>{item.kind === 'reply' ? t.reply : t.due}</Text>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemDetail}>
-                {item.detail}
-                {item.dueAt ? ` · ${formatDue(props.locale, item.dueAt)}` : ''}
-              </Text>
-            </Section>
-          ))}
+          <Section style={styles.content}>
+            <Text style={styles.shortlist}>{t.shortlist}</Text>
+            {props.items.map((item, index) => (
+              <Row key={`${item.kind}-${index}`} style={styles.item}>
+                <Column style={styles.indexColumn}>
+                  <Text style={styles.index}>{String(index + 1).padStart(2, '0')}</Text>
+                </Column>
+                <Column style={{ verticalAlign: 'top' }}>
+                  <Text style={styles.itemLabel}>{item.kind === 'reply' ? t.reply : t.due}</Text>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={styles.itemDetail}>
+                    {item.detail}
+                    {item.dueAt ? ` · ${formatDue(props.locale, item.dueAt)}` : ''}
+                  </Text>
+                </Column>
+              </Row>
+            ))}
 
-          {props.hiddenCount > 0 ? <Text style={styles.quiet}>{t.more}</Text> : null}
-          {props.agentsHandled > 0 ? (
-            <Text style={styles.quiet}>{t.agents(props.agentsHandled)}</Text>
-          ) : null}
+            {props.hiddenCount > 0 ? <Text style={styles.quiet}>{t.more}</Text> : null}
+            {props.agentsHandled > 0 ? (
+              <Text style={styles.autopilot}>{t.agents(props.agentsHandled)}</Text>
+            ) : null}
 
-          <Button href={props.appUrl} style={styles.button}>
-            {t.cta}
-          </Button>
-          <Hr style={{ borderColor: '#e8e3dc', margin: '28px 0 0' }} />
-          <Text style={styles.footer}>Revido Mail · email.revido.co</Text>
+            <Button href={props.appUrl} style={styles.button}>
+              {t.cta}
+            </Button>
+            <Hr style={{ borderColor: '#e9e4dd', margin: '30px 0 0' }} />
+          </Section>
+          <Section style={styles.footerSection}>
+            <Text style={styles.footer}>REVIDO MAIL · EMAIL.REVIDO.CO</Text>
+          </Section>
         </Container>
       </Body>
     </Html>

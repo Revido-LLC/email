@@ -38,8 +38,12 @@ function localeFor(pref: OutputLanguage): DigestLocale {
 
 function subjectFor(locale: DigestLocale, count: number): string {
   if (locale === 'nl')
-    return count === 1 ? '1 prioriteit voor vandaag' : `${count} prioriteiten voor vandaag`
-  return count === 1 ? '1 priority for today' : `${count} priorities for today`
+    return count === 1
+      ? '⚡ Je Revido-briefing: 1 prioriteit'
+      : `⚡ Je Revido-briefing: ${count} prioriteiten`
+  return count === 1
+    ? '⚡ Your Revido brief: 1 priority'
+    : `⚡ Your Revido brief: ${count} priorities`
 }
 
 const DIGEST_APP_URL = 'https://email.revido.co/app'

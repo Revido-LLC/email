@@ -1,158 +1,193 @@
 /**
  * The daily-digest email template (`@react-email`), bilingual EN/NL.
  *
- * A pure presentational component rendered to HTML by the `digest` consumer and
- * sent via Resend. It receives already-decrypted, plain display data (no
- * ciphertext, no db types) so it stays a dumb view. Copy is selected by `locale`
- * ('en' | 'nl'); category labels come from {@link CATEGORY_LABELS}.
+ * This is deliberately a shortlist, not a mirror of the inbox. It shows at most
+ * three replies and two due items, then sends the reader back to Revido for the
+ * rest. Keeping that ceiling here protects the email even when an inbox contains
+ * thousands of unread threads.
  */
 
-import { Body, Container, Head, Heading, Hr, Html, Section, Text } from '@react-email/components'
+import {
+  Body,
+  Button,
+  Container,
+  Head,
+  Heading,
+  Hr,
+  Html,
+  Preview,
+  Section,
+  Text,
+} from '@react-email/components'
 import type { ReactElement } from 'react'
-import type { CategoryId, DigestBundle } from '@revido/db'
 
 export type DigestLocale = 'en' | 'nl'
 
 export interface DigestEmailProps {
   locale: DigestLocale
-  name: string | null
   date: string
-  bundles: DigestBundle[]
-  reminders: { subject: string; sender: string }[]
-  commitments: { text: string; counterpart: string }[]
+  items: ShortlistItem[]
+  hiddenCount: number
   agentsHandled: number
+  appUrl: string
 }
 
-const COPY: Record<DigestLocale, Record<string, string>> = {
-  en: {
-    preview: 'Your daily inbox digest',
-    greeting: 'Good morning',
-    intro: "Here's what's waiting in your inbox today.",
-    needYou: 'Needs you',
-    promises: 'Your open commitments',
-    agents: 'handled automatically by your agents',
-    nothing: 'Nothing pressing — enjoy the quiet.',
-    unreadSuffix: 'unread',
-  },
-  nl: {
-    preview: 'Je dagelijkse inbox-overzicht',
-    greeting: 'Goedemorgen',
-    intro: 'Dit staat er vandaag klaar in je inbox.',
-    needYou: 'Vraagt om jou',
-    promises: 'Je openstaande toezeggingen',
-    agents: 'automatisch afgehandeld door je agents',
-    nothing: 'Niets dringends — geniet van de rust.',
-    unreadSuffix: 'ongelezen',
-  },
+export interface ShortlistItem {
+  kind: 'reply' | 'due'
+  title: string
+  detail: string
+  dueAt?: string
 }
 
-const CATEGORY_LABELS: Record<DigestLocale, Record<CategoryId, string>> = {
+const COPY = {
   en: {
-    'to-reply': 'To reply',
-    'awaiting-reply': 'Awaiting reply',
-    fyi: 'FYI',
-    newsletters: 'Newsletters',
-    notifications: 'Notifications',
-    promotions: 'Promotions',
-    receipts: 'Receipts',
-    calendar: 'Calendar',
-    personal: 'Personal',
+    brand: 'REVIDO MAIL',
+    singular: 'priority',
+    plural: 'priorities',
+    intro: 'The shortest useful version of your inbox.',
+    reply: 'Reply',
+    due: 'Due',
+    more: 'The rest stays in Revido until you are ready.',
+    agents: (count: number) => `${count} handled automatically since yesterday.`,
+    cta: 'Open Revido Mail',
+    preview: (count: number) =>
+      count === 1 ? 'One priority worth opening.' : `${count} priorities worth opening.`,
   },
   nl: {
-    'to-reply': 'Beantwoorden',
-    'awaiting-reply': 'Wacht op antwoord',
-    fyi: 'Ter info',
-    newsletters: 'Nieuwsbrieven',
-    notifications: 'Meldingen',
-    promotions: 'Aanbiedingen',
-    receipts: 'Bonnen',
-    calendar: 'Agenda',
-    personal: 'Persoonlijk',
+    brand: 'REVIDO MAIL',
+    singular: 'prioriteit',
+    plural: 'prioriteiten',
+    intro: 'De kortste bruikbare versie van je inbox.',
+    reply: 'Antwoord',
+    due: 'Deadline',
+    more: 'De rest blijft in Revido tot je er klaar voor bent.',
+    agents: (count: number) => `${count} automatisch afgehandeld sinds gisteren.`,
+    cta: 'Open Revido Mail',
+    preview: (count: number) =>
+      count === 1 ? 'Eén prioriteit om te openen.' : `${count} prioriteiten om te openen.`,
   },
-}
+} as const
 
 const styles = {
-  body: { backgroundColor: '#faf9f7', fontFamily: 'Helvetica, Arial, sans-serif', color: '#1c1917' },
-  container: { margin: '0 auto', padding: '24px', maxWidth: '560px' },
-  h1: { fontSize: '22px', fontWeight: 600, margin: '0 0 4px' },
-  intro: { fontSize: '14px', color: '#57534e', margin: '0 0 20px' },
-  h2: { fontSize: '13px', fontWeight: 600, textTransform: 'uppercase' as const, color: '#78716c', margin: '20px 0 8px' },
-  bundle: { fontSize: '14px', margin: '0 0 6px' },
-  count: { color: '#a8a29e' },
-  item: { fontSize: '13px', color: '#44403c', margin: '2px 0' },
-  agents: { fontSize: '13px', color: '#57534e', marginTop: '16px' },
+  body: {
+    backgroundColor: '#f4f1eb',
+    color: '#171513',
+    fontFamily: "'Trebuchet MS', Tahoma, sans-serif",
+    margin: 0,
+  },
+  container: {
+    backgroundColor: '#ffffff',
+    borderTop: '5px solid #d97706',
+    margin: '32px auto',
+    maxWidth: '560px',
+    padding: '0 32px 32px',
+  },
+  brand: {
+    color: '#8a8178',
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '1.8px',
+    margin: '28px 0 22px',
+  },
+  h1: {
+    color: '#171513',
+    fontSize: '32px',
+    fontWeight: 700,
+    letterSpacing: '-1px',
+    lineHeight: '38px',
+    margin: 0,
+  },
+  intro: { color: '#746b63', fontSize: '14px', lineHeight: '22px', margin: '8px 0 26px' },
+  item: { borderTop: '1px solid #e8e3dc', padding: '16px 0 14px' },
+  itemLabel: {
+    color: '#b45309',
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '1.2px',
+    margin: '0 0 5px',
+    textTransform: 'uppercase' as const,
+  },
+  itemTitle: {
+    color: '#171513',
+    fontSize: '15px',
+    fontWeight: 700,
+    lineHeight: '21px',
+    margin: 0,
+  },
+  itemDetail: { color: '#746b63', fontSize: '12px', lineHeight: '18px', margin: '3px 0 0' },
+  quiet: { color: '#8a8178', fontSize: '12px', lineHeight: '19px', margin: '18px 0 0' },
+  button: {
+    backgroundColor: '#171513',
+    borderRadius: '8px',
+    color: '#ffffff',
+    display: 'inline-block',
+    fontSize: '13px',
+    fontWeight: 700,
+    marginTop: '24px',
+    padding: '12px 18px',
+    textDecoration: 'none',
+  },
+  footer: { color: '#9a9188', fontSize: '10px', lineHeight: '16px', margin: '24px 0 0' },
+}
+
+function formatDate(locale: DigestLocale, value: string): string {
+  return new Intl.DateTimeFormat(locale === 'nl' ? 'nl-NL' : 'en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00Z`))
+}
+
+function formatDue(locale: DigestLocale, value: string): string {
+  return new Intl.DateTimeFormat(locale === 'nl' ? 'nl-NL' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(value))
 }
 
 /** The digest email as a react-email component tree. */
 export function DigestEmail(props: DigestEmailProps): ReactElement {
   const t = COPY[props.locale]
-  const labels = CATEGORY_LABELS[props.locale]
-  const greeting = props.name ? `${t.greeting}, ${props.name}` : t.greeting
-  const empty =
-    props.bundles.length === 0 && props.reminders.length === 0 && props.commitments.length === 0
+  const count = props.items.length
+  const noun = count === 1 ? t.singular : t.plural
 
   return (
     <Html lang={props.locale}>
       <Head />
+      <Preview>{t.preview(count)}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.h1}>{greeting}</Heading>
+          <Text style={styles.brand}>{t.brand}</Text>
+          <Heading style={styles.h1}>
+            {count} {noun}
+          </Heading>
           <Text style={styles.intro}>
-            {props.date} · {t.intro}
+            {formatDate(props.locale, props.date)} · {t.intro}
           </Text>
 
-          {empty ? <Text style={styles.item}>{t.nothing}</Text> : null}
-
-          {props.reminders.length > 0 ? (
-            <Section>
-              <Text style={styles.h2}>{t.needYou}</Text>
-              {props.reminders.map((r, i) => (
-                <Text key={`rem-${i}`} style={styles.item}>
-                  {r.subject} — {r.sender}
-                </Text>
-              ))}
-            </Section>
-          ) : null}
-
-          {props.bundles.length > 0 ? (
-            <Section>
-              {props.bundles.map((b: DigestBundle) => (
-                <Section key={b.category}>
-                  <Text style={styles.bundle}>
-                    <strong>{labels[b.category]}</strong>{' '}
-                    <span style={styles.count}>
-                      · {b.count} {t.unreadSuffix}
-                    </span>
-                  </Text>
-                  {b.items.map((it, i) => (
-                    <Text key={`${b.category}-${i}`} style={styles.item}>
-                      {it.subject} — {it.sender}
-                    </Text>
-                  ))}
-                </Section>
-              ))}
-            </Section>
-          ) : null}
-
-          {props.commitments.length > 0 ? (
-            <Section>
-              <Text style={styles.h2}>{t.promises}</Text>
-              {props.commitments.map((c, i) => (
-                <Text key={`com-${i}`} style={styles.item}>
-                  {c.text} — {c.counterpart}
-                </Text>
-              ))}
-            </Section>
-          ) : null}
-
-          {props.agentsHandled > 0 ? (
-            <>
-              <Hr />
-              <Text style={styles.agents}>
-                {props.agentsHandled} {t.agents}
+          {props.items.map((item, index) => (
+            <Section key={`${item.kind}-${index}`} style={styles.item}>
+              <Text style={styles.itemLabel}>{item.kind === 'reply' ? t.reply : t.due}</Text>
+              <Text style={styles.itemTitle}>{item.title}</Text>
+              <Text style={styles.itemDetail}>
+                {item.detail}
+                {item.dueAt ? ` · ${formatDue(props.locale, item.dueAt)}` : ''}
               </Text>
-            </>
+            </Section>
+          ))}
+
+          {props.hiddenCount > 0 ? <Text style={styles.quiet}>{t.more}</Text> : null}
+          {props.agentsHandled > 0 ? (
+            <Text style={styles.quiet}>{t.agents(props.agentsHandled)}</Text>
           ) : null}
+
+          <Button href={props.appUrl} style={styles.button}>
+            {t.cta}
+          </Button>
+          <Hr style={{ borderColor: '#e8e3dc', margin: '28px 0 0' }} />
+          <Text style={styles.footer}>Revido Mail · email.revido.co</Text>
         </Container>
       </Body>
     </Html>

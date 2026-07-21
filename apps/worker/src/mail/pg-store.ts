@@ -908,19 +908,17 @@ export class PgMailStore implements MailStore {
           (select c.email from messages m join contacts c on c.id = m.from_contact_id
              where m.thread_id = t.id order by m.date desc limit 1) as sender_email
         from threads t
-        where t.unread = true
-        order by t.last_message_at desc
-        limit 60
+        where t.unread = true and t.category = 'to-reply'
+        order by t.priority_score desc, t.last_message_at desc
+        limit 3
       `
       const itemsByCategory = new Map<CategoryId, { subject: string; sender: string }[]>()
       for (const s of samples) {
         const list = itemsByCategory.get(s.category) ?? []
-        if (list.length < 3) {
-          list.push({
-            subject: s.subject_ct ? crypto.decrypt(s.subject_ct) : '(no subject)',
-            sender: s.sender_name || s.sender_email || 'Unknown',
-          })
-        }
+        list.push({
+          subject: s.subject_ct ? crypto.decrypt(s.subject_ct) : '(no subject)',
+          sender: s.sender_name || s.sender_email || 'Unknown',
+        })
         itemsByCategory.set(s.category, list)
       }
       const bundles: DigestBundle[] = counts
@@ -933,7 +931,7 @@ export class PgMailStore implements MailStore {
 
       const reminderRows = await sql<
         { subject_ct: Ciphertext | null; sender: string | null; due_at: DbTimestamp }[]
-      >`select subject_ct, sender, due_at from reminders order by due_at asc limit 10`
+      >`select subject_ct, sender, due_at from reminders order by due_at asc limit 3`
       const reminders = reminderRows.map((r) => ({
         subject: r.subject_ct ? crypto.decrypt(r.subject_ct) : '(no subject)',
         sender: r.sender ?? '',
@@ -942,7 +940,7 @@ export class PgMailStore implements MailStore {
 
       const commitmentRows = await sql<
         { text_ct: Ciphertext | null; counterpart: string | null; due_at: DbTimestamp }[]
-      >`select text_ct, counterpart, due_at from commitments order by due_at asc limit 10`
+      >`select text_ct, counterpart, due_at from commitments order by due_at asc limit 3`
       const commitments = commitmentRows.map((r) => ({
         text: r.text_ct ? crypto.decrypt(r.text_ct) : '',
         counterpart: r.counterpart ?? '',

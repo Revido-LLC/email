@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AccountCrypto, UserContext } from '../db/accounts'
 import type { OutgoingEmail } from '../mail/email'
 import type { DigestData } from '../mail/store'
-import { makeDigestConsumer, renderDigest, type DigestDeps } from './digest'
+import { makeDigestConsumer, renderDigest, renderDigestText, type DigestDeps } from './digest'
 
 const passthroughCrypto: AccountCrypto = {
   encrypt: (plaintext) => ({ ct: plaintext, iv: '', tag: '', v: 1 }),
@@ -36,7 +36,11 @@ function digestData(overrides: Partial<DigestData> = {}): DigestData {
   }
 }
 
-function harness(data: DigestData): { deps: DigestDeps; sent: OutgoingEmail[]; increments: string[] } {
+function harness(data: DigestData): {
+  deps: DigestDeps
+  sent: OutgoingEmail[]
+  increments: string[]
+} {
   const sent: OutgoingEmail[] = []
   const increments: string[] = []
   const deps: DigestDeps = {
@@ -61,14 +65,63 @@ describe('renderDigest', () => {
   it('renders non-empty HTML with the English labels', async () => {
     const html = await renderDigest(digestData(), '2026-07-17')
     expect(html.length).toBeGreaterThan(0)
-    expect(html).toContain('To reply')
+    expect(html).toContain('3 priorities worth opening')
+    expect(html).toContain('>Reply<')
     expect(html).toContain('Contract review')
-    expect(html).toContain('Ada')
+    expect(html).toContain('Open Revido Mail')
   })
 
   it('renders the Dutch template when the user prefers nl', async () => {
     const html = await renderDigest(digestData({ outputLanguage: 'nl' }), '2026-07-17')
-    expect(html).toContain('Beantwoorden')
+    expect(html).toContain('3 prioriteiten om te openen')
+    expect(html).toContain('>Antwoord<')
+  })
+
+  it('caps the HTML at three replies and two due items', async () => {
+    const html = await renderDigest(
+      digestData({
+        bundles: [
+          {
+            category: 'to-reply',
+            count: 20,
+            items: Array.from({ length: 6 }, (_, i) => ({
+              subject: `Reply ${i + 1}`,
+              sender: 'Sam',
+            })),
+          },
+          {
+            category: 'notifications',
+            count: 40,
+            items: [{ subject: 'Do not show', sender: 'Bot' }],
+          },
+        ],
+        reminders: Array.from({ length: 4 }, (_, i) => ({
+          subject: `Reminder ${i + 1}`,
+          sender: 'Alex',
+          dueAt: `2026-07-${18 + i}`,
+        })),
+        commitments: Array.from({ length: 4 }, (_, i) => ({
+          text: `Commitment ${i + 1}`,
+          counterpart: 'Taylor',
+          dueAt: `2026-07-${22 + i}`,
+        })),
+      }),
+      '2026-07-17',
+    )
+    expect(html).toContain('Reply 1')
+    expect(html).toContain('Reply 3')
+    expect(html).not.toContain('Reply 4')
+    expect(html).toContain('Reminder 1')
+    expect(html).toContain('Reminder 2')
+    expect(html).not.toContain('Reminder 3')
+    expect(html).not.toContain('Do not show')
+  })
+
+  it('renders a useful plain-text fallback', () => {
+    const text = renderDigestText(digestData(), '2026-07-17')
+    expect(text).toContain('3 priorities for today')
+    expect(text).toContain('REPLY: Contract review')
+    expect(text).toContain('https://email.revido.co/app')
   })
 })
 
@@ -79,14 +132,27 @@ describe('makeDigestConsumer', () => {
 
     expect(h.sent).toHaveLength(1)
     expect(h.sent[0]?.to).toBe('me@example.com')
-    expect(h.sent[0]?.subject).toBe('Your daily digest — 2026-07-17')
+    expect(h.sent[0]?.subject).toBe('3 priorities for today')
     expect(h.sent[0]?.html.length).toBeGreaterThan(0)
     expect(h.sent[0]?.html).toContain('Contract review')
+    expect(h.sent[0]?.text).toContain('REPLY: Contract review')
     expect(h.increments).toEqual(['digests'])
   })
 
   it('does not send when the user has no delivery address', async () => {
     const h = harness(digestData({ email: '' }))
+    await makeDigestConsumer(h.deps)(PAYLOAD, JOB)
+    expect(h.sent).toHaveLength(0)
+  })
+
+  it('does not send a digest when there is nothing actionable', async () => {
+    const h = harness(
+      digestData({
+        bundles: [{ category: 'notifications', count: 12, items: [] }],
+        reminders: [],
+        commitments: [],
+      }),
+    )
     await makeDigestConsumer(h.deps)(PAYLOAD, JOB)
     expect(h.sent).toHaveLength(0)
   })

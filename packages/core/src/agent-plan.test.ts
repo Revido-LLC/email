@@ -6,6 +6,9 @@ import {
   agentConditionSchema,
   agentPlanSchema,
   compilePredicate,
+  contentClauses,
+  CONTENT_FIELD,
+  forwardDestination,
   planRequiresApproval,
   type AgentPlan,
 } from './agent-plan'
@@ -259,5 +262,54 @@ describe('agentConditionSchema / agentActionSchema', () => {
   it('rejects an unknown action type', () => {
     expect(agentActionSchema.safeParse({ type: 'nuke', label: 'x' }).success).toBe(false)
     expect(agentActionSchema.safeParse({ type: 'archive', label: 'Archive' }).success).toBe(true)
+  })
+})
+
+describe('content clauses (hybrid AI stage)', () => {
+  const plan = (conditions: AgentPlan['conditions']): AgentPlan => ({
+    trigger: 'new-mail',
+    conditions,
+    actions: [],
+  })
+
+  it('compilePredicate treats a content clause as pass-through (deferred to AI stage)', () => {
+    // A content-only rule matches every thread at stage 1; stage 2 (AI) narrows it.
+    const p = plan([{ field: CONTENT_FIELD, op: 'is', value: 'an invoice' }])
+    expect(compilePredicate(p)(makeThread())).toBe(true)
+    expect(compilePredicate(p)(makeThread({ category: 'personal' }))).toBe(true)
+  })
+
+  it('still ANDs a content clause with structured clauses at stage 1', () => {
+    const p = plan([
+      { field: CONTENT_FIELD, op: 'is', value: 'an invoice' },
+      { field: 'category', op: 'is', value: 'receipts' },
+    ])
+    expect(compilePredicate(p)(makeThread({ category: 'receipts' }))).toBe(true)
+    expect(compilePredicate(p)(makeThread({ category: 'personal' }))).toBe(false)
+  })
+
+  it('contentClauses extracts only content-field conditions', () => {
+    const p = plan([
+      { field: CONTENT_FIELD, op: 'is', value: 'an invoice' },
+      { field: 'category', op: 'is', value: 'receipts' },
+    ])
+    expect(contentClauses(p)).toEqual([{ field: CONTENT_FIELD, op: 'is', value: 'an invoice' }])
+  })
+})
+
+describe('forwardDestination', () => {
+  it('returns a valid params.to email', () => {
+    expect(forwardDestination({ type: 'forward', label: 'fwd', params: { to: 'a@b.com' } })).toBe(
+      'a@b.com',
+    )
+    expect(
+      forwardDestination({ type: 'forward', label: 'fwd', params: { to: '  a@b.com ' } }),
+    ).toBe('a@b.com')
+  })
+
+  it('returns null when missing or invalid', () => {
+    expect(forwardDestination({ type: 'forward', label: 'fwd' })).toBeNull()
+    expect(forwardDestination({ type: 'forward', label: 'fwd', params: { to: '' } })).toBeNull()
+    expect(forwardDestination({ type: 'forward', label: 'fwd', params: { to: 'not-an-email' } })).toBeNull()
   })
 })

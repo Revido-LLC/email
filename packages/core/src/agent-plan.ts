@@ -65,6 +65,35 @@ export type AgentPlan = z.infer<typeof agentPlanSchema>
 // "new mail arrives" agent).
 // ---------------------------------------------------------------------------
 
+/**
+ * Reserved condition field for content-based matching. Its `value` is a short
+ * natural-language predicate describing what the message or its attachment IS
+ * ("an invoice or receipt"). It is NOT resolvable from thread metadata, so the
+ * structured predicate treats it as pass-through and the worker evaluates it with
+ * a per-candidate AI classification (the hybrid, cost-controlled path).
+ */
+export const CONTENT_FIELD = 'content'
+
+/** Whether a condition targets the AI content classifier rather than thread metadata. */
+export function isContentClause(cond: AgentCondition): boolean {
+  return cond.field.trim().toLowerCase() === CONTENT_FIELD
+}
+
+/** The content-classification clauses in a plan (evaluated by the worker's AI stage). */
+export function contentClauses(plan: AgentPlan): AgentCondition[] {
+  return plan.conditions.filter(isContentClause)
+}
+
+/**
+ * The validated forward destination of a `forward` action, or null when absent or
+ * not a syntactically valid email. Callers must treat null as "cannot forward".
+ */
+export function forwardDestination(action: CompiledAgentAction): string | null {
+  const to = action.params?.to?.trim()
+  if (!to) return null
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) ? to : null
+}
+
 type FieldValues = { values: (string | number | boolean)[] } | null
 
 /** Resolve a condition `field` to comparable value(s) on a thread. */
@@ -143,6 +172,9 @@ function firstNumber(values: (string | number | boolean)[]): number | undefined 
 
 /** Compile one condition into a thread predicate. */
 function compileCondition(cond: AgentCondition): (t: Thread) => boolean {
+  // Content clauses are not thread-resolvable; the worker's AI stage decides them.
+  // At the structured stage they pass through, so a matching thread stays a candidate.
+  if (isContentClause(cond)) return () => true
   // Precompile the regex for `matches` once, not per-thread.
   let regex: RegExp | null = null
   if (cond.op === 'matches') {

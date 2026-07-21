@@ -50,6 +50,12 @@ export interface OutputLanguageOptions {
 
 // Re-export the frozen triage system prefix so consumers can inspect / cache it.
 export { TRIAGE_SYSTEM_PROMPT } from './prompt-builders/taxonomy'
+// Content classifier for hybrid forwarding-rule conditions.
+export {
+  buildContentClassifierPrompt,
+  CONTENT_CLASSIFIER_SCHEMA,
+  type ContentClassifierPrompt,
+} from './prompt-builders/content-classifier'
 
 /**
  * The message shape triage runs over. Decoupled from both `RawFetchedMessage`

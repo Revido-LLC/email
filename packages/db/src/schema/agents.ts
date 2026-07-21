@@ -7,7 +7,7 @@
  * content (summaries, reasoning, affected-thread snapshots, previews) is
  * ciphertext.
  */
-import { boolean, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { createdAt, encrypted, timestamps } from './columns'
 import { agentRunStatusEnum } from './enums'
 import { users } from './identity'
@@ -32,6 +32,11 @@ export const agents = pgTable(
     runCount: integer('run_count').notNull().default(0),
     affectedCount: integer('affected_count').notNull().default(0),
     prebuilt: boolean('prebuilt').notNull().default(false),
+    /**
+     * Opt-in auto-run. When true, consequential actions (forward) execute without
+     * the approval queue, relying on the send 10s undo window as the safety net.
+     */
+    trusted: boolean('trusted').notNull().default(false),
     ...timestamps(),
   },
   (t) => [index('agents_user_id_idx').on(t.userId)],
@@ -52,6 +57,8 @@ export const agentActions = pgTable(
     label: text('label').notNull(),
     needsApproval: boolean('needs_approval').notNull().default(false),
     position: integer('position').notNull().default(0),
+    /** Action config, e.g. a forward destination `{ "to": "accounting@revido.co" }` (plaintext). */
+    params: jsonb('params').$type<Record<string, string>>(),
   },
   (t) => [
     index('agent_actions_user_id_idx').on(t.userId),
@@ -115,6 +122,10 @@ export const approvals = pgTable(
     sender: text('sender'),
     /** Encrypted action preview (AI). */
     previewCt: encrypted('preview_ct'),
+    /** Action config carried through the queue, e.g. forward `{ "to": "..." }` (plaintext). */
+    params: jsonb('params').$type<Record<string, string>>(),
+    /** Source inbound message a forward approval acts on. */
+    messageId: uuid('message_id'),
     createdAt: createdAt(),
   },
   (t) => [

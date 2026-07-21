@@ -106,7 +106,7 @@ describe('OpenRouterLlmClient.complete response + usage mapping', () => {
     const result = await client.complete(req())
     expect(result.text).toBe('')
     expect(result.stopReason).toBeNull()
-    expect(result.model).toBe('openai/gpt-5-nano')
+    expect(result.model).toBe('openai/gpt-oss-120b')
   })
 })
 
@@ -190,7 +190,13 @@ describe('OpenRouterLlmClient model map', () => {
 
     const base = new OpenRouterLlmClient({ apiKey: 'k', fetchImpl })
     await base.complete(req({ model: 'triage' }))
-    expect(bodyOf(fetchImpl, 0).model).toBe('openai/gpt-5-nano')
+    expect(bodyOf(fetchImpl, 0).model).toBe('openai/gpt-oss-120b')
+
+    await base.complete(req({ model: 'summary' }))
+    expect(bodyOf(fetchImpl, 1).model).toBe('deepseek/deepseek-v4-flash')
+
+    await base.complete(req({ model: 'escalation' }))
+    expect(bodyOf(fetchImpl, 2).model).toBe('openai/gpt-5-mini')
 
     const overridden = new OpenRouterLlmClient({
       apiKey: 'k',
@@ -198,10 +204,10 @@ describe('OpenRouterLlmClient model map', () => {
       fetchImpl,
     })
     await overridden.complete(req({ model: 'triage' }))
-    expect(bodyOf(fetchImpl, 1).model).toBe('moonshotai/kimi-k3')
+    expect(bodyOf(fetchImpl, 3).model).toBe('moonshotai/kimi-k3')
 
     await base.complete(req({ model: 'x-ai/grok-4' }))
-    expect(bodyOf(fetchImpl, 2).model).toBe('x-ai/grok-4')
+    expect(bodyOf(fetchImpl, 4).model).toBe('x-ai/grok-4')
   })
 })
 

@@ -80,8 +80,8 @@ infisical run -- pnpm --filter @revido/web exec vite preview
   no-training / ZDR**: `OPENROUTER_ENFORCE_ZDR` is on by default, so every request sends `provider.zdr` +
   `data_collection: 'deny'` (set it to the literal `false` only to disable). Model choice is per-tier via
   `LLM_MODEL_TRIAGE` / `LLM_MODEL_SUMMARY` / `LLM_MODEL_ESCALATION` (cost-conscious defaults are
-  `openai/gpt-5-nano` for triage/summary and `openai/gpt-5-mini` for escalation; all are editable without
-  a code change). It is the **sole** LLM
+  `openai/gpt-oss-120b` for triage, `deepseek/deepseek-v4-flash` for summaries, and
+  `openai/gpt-5-mini` for escalation; all are editable without a code change). It is the **sole** LLM
   backend (dev and prod), so `OPENROUTER_API_KEY` is required for any AI path. `ANTHROPIC_BATCHES_DISABLED=true`
   is required because OpenRouter has no Batches API, so backfill triage uses the real-time path. Note the
   requirement is retention/no-training, not hard EU residency — which OpenRouter's self-serve tier covers.

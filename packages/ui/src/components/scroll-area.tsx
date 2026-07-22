@@ -11,7 +11,16 @@ export const ScrollArea = React.forwardRef<
     className={cn('relative overflow-hidden', className)}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit]">
+    {/*
+      Radix wraps children in a `display:table; min-width:100%` div (inline style)
+      so horizontal-scroll content can shrink-wrap. But `display:table` also grows
+      to fit any `white-space:nowrap`/`truncate` descendant — so a long, unbroken
+      line blows the viewport past its container instead of truncating (the AI
+      panel / nav / dialogs all scroll vertically only). Force that wrapper back to
+      `block` (`!` beats Radix's inline style) so content clamps to the width and
+      truncation works. All ScrollAreas here are vertical, so this is always right.
+    */}
+    <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit] [&>div]:!block">
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />

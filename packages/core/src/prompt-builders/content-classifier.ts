@@ -35,9 +35,12 @@ export function buildContentClassifierPrompt(
   return {
     system:
       'You decide whether an email — its body and any attachment text — matches a ' +
-      'user-defined rule. Return ONLY strict JSON of the form {"match": true} or ' +
-      '{"match": false}. Be conservative: answer true only when the message clearly ' +
-      'matches the rule. Never add prose or a code fence.',
+      'user-defined rule. Judge what the document actually IS (its type, sender role, and ' +
+      'purpose), not merely which words it mentions: a bank or payment-processor alert that ' +
+      'says you were charged is NOT a merchant receipt; an invoice or bill requesting payment ' +
+      'is NOT a receipt for a completed one. Return ONLY strict JSON of the form ' +
+      '{"match": true} or {"match": false}. Be conservative: answer true only when the message ' +
+      'clearly matches the rule. Never add prose or a code fence.',
     messages: [
       {
         role: 'user',

@@ -78,6 +78,9 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       loadAccount: ctx.loadAccount,
       mail: ctx.mail,
       embeddings: ctx.embeddings,
+      jobs: ctx.jobs,
+      now: ctx.now,
+      logger: ctx.logger,
     }),
     [QUEUE.voiceProfile]: makeVoiceProfileConsumer({
       loadUser: ctx.loadUser,

@@ -27,6 +27,29 @@ const VOYAGE_ENDPOINT = 'https://api.voyageai.com/v1/embeddings'
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/embeddings'
 const DEFAULT_DIMENSIONS = 1024
 
+/**
+ * Thrown when a provider rejects with a retryable capacity signal (HTTP 429 rate
+ * limit / 529 overloaded). Callers can catch this to back off and retry LATER
+ * without treating it as a permanent failure — e.g. the embed consumer defers the
+ * job instead of dead-lettering, so a throttled free-tier key self-paces rather
+ * than losing coverage.
+ */
+export class EmbeddingsRateLimitError extends Error {
+  constructor(
+    readonly status: number,
+    readonly provider: string,
+    body: string,
+  ) {
+    super(`${provider} embeddings rate-limited (${status}): ${body.slice(0, 200)}`)
+    this.name = 'EmbeddingsRateLimitError'
+  }
+}
+
+/** 429 (rate limit) and 529 (overloaded) are transient capacity signals, not hard failures. */
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 529
+}
+
 interface ProviderResponse {
   data: { embedding: number[]; index: number }[]
 }
@@ -73,7 +96,11 @@ export class VoyageEmbeddingsClient implements EmbeddingsClient {
         input_type: opts?.inputType ?? 'document',
       }),
     })
-    if (!res.ok) throw new Error(`Voyage embeddings failed: ${res.status} ${await res.text()}`)
+    if (!res.ok) {
+      const body = await res.text()
+      if (isRetryableStatus(res.status)) throw new EmbeddingsRateLimitError(res.status, 'Voyage', body)
+      throw new Error(`Voyage embeddings failed: ${res.status} ${body}`)
+    }
     return orderedVectors((await res.json()) as ProviderResponse, texts.length)
   }
 }
@@ -108,7 +135,11 @@ export class OpenAiEmbeddingsClient implements EmbeddingsClient {
       headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
       body: JSON.stringify({ input: texts, model: this.model, dimensions: this.dimensions }),
     })
-    if (!res.ok) throw new Error(`OpenAI embeddings failed: ${res.status} ${await res.text()}`)
+    if (!res.ok) {
+      const body = await res.text()
+      if (isRetryableStatus(res.status)) throw new EmbeddingsRateLimitError(res.status, 'OpenAI', body)
+      throw new Error(`OpenAI embeddings failed: ${res.status} ${body}`)
+    }
     return orderedVectors((await res.json()) as ProviderResponse, texts.length)
   }
 }

@@ -138,6 +138,8 @@ export const summaryPayload = z.object({
 export const embedPayload = z.object({
   accountId: z.string().uuid(),
   messageId: z.string().uuid(),
+  /** How many times this embed was deferred due to provider rate-limiting (self-pacing bound). */
+  deferrals: z.number().int().nonnegative().optional(),
 })
 export const voiceProfilePayload = z.object({ userId: z.string().uuid() })
 export const agentRunPayload = z.object({

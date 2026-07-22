@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  EmbeddingsRateLimitError,
   FakeEmbeddingsClient,
   OpenAiEmbeddingsClient,
   VoyageEmbeddingsClient,
@@ -48,13 +49,23 @@ describe('VoyageEmbeddingsClient edge cases', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
-  it('throws with the status and body when the provider errors', async () => {
+  it('throws a typed EmbeddingsRateLimitError on 429 (retryable, so callers can defer)', async () => {
     const fetchImpl = vi.fn(
       async () =>
         ({ ok: false, status: 429, json: async () => ({}), text: async () => 'rate limited' }) as Response,
     )
     const client = new VoyageEmbeddingsClient({ apiKey: 'vk', fetchImpl })
-    await expect(client.embed(['a'])).rejects.toThrow(/429 rate limited/)
+    await expect(client.embed(['a'])).rejects.toBeInstanceOf(EmbeddingsRateLimitError)
+    await expect(client.embed(['a'])).rejects.toMatchObject({ status: 429, provider: 'Voyage' })
+  })
+
+  it('throws a plain error (not rate-limit) on a non-retryable status', async () => {
+    const fetchImpl = vi.fn(
+      async () => ({ ok: false, status: 500, text: async () => 'boom' }) as Response,
+    )
+    const client = new VoyageEmbeddingsClient({ apiKey: 'vk', fetchImpl })
+    await expect(client.embed(['a'])).rejects.toThrow(/Voyage embeddings failed: 500 boom/)
+    await expect(client.embed(['a'])).rejects.not.toBeInstanceOf(EmbeddingsRateLimitError)
   })
 })
 

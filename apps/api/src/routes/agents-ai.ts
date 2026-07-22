@@ -58,14 +58,23 @@ const clarifyResponseSchema = z.object({
 })
 const dryRunSchema = z.object({ plan: agentPlanSchema })
 
-/** JSON Schema forwarded to the model as a structured-output constraint. Mirrors `agentPlanSchema`. */
+/**
+ * JSON Schema forwarded to the model as a structured-output constraint. Mirrors
+ * `agentPlanSchema`, but written to satisfy OpenAI/Azure STRICT structured outputs
+ * (OpenRouter sends `strict: true` whenever a schema is present): EVERY property
+ * must appear in `required`, `additionalProperties` must be `false` (no open-ended
+ * maps), and `minItems`/`maxItems` are unsupported. Optional fields are expressed
+ * as nullable (`type: [..., 'null']`) and normalized back before Zod validation
+ * (see `normalizePlan`). This keeps shape enforcement AND works on every provider
+ * (an open `params` map or a missing-from-required `schedule` 400s on Azure).
+ */
 export const AGENT_PLAN_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: ['trigger', 'conditions', 'actions'],
+  required: ['trigger', 'schedule', 'conditions', 'actions'],
   properties: {
     trigger: { type: 'string', enum: ['new-mail', 'scheduled'] },
-    schedule: { type: 'string' },
+    schedule: { type: ['string', 'null'] },
     conditions: {
       type: 'array',
       items: {
@@ -87,15 +96,58 @@ export const AGENT_PLAN_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['type', 'label'],
+        required: ['type', 'label', 'params'],
         properties: {
           type: { type: 'string', enum: [...AGENT_ACTION_TYPES] },
           label: { type: 'string' },
-          params: { type: 'object', additionalProperties: { type: 'string' } },
+          // Fixed nullable shape (strict mode forbids open maps). `to` = forward
+          // destination; `label`/`value` = label target. Nulls stripped in `normalizePlan`.
+          params: {
+            type: ['object', 'null'],
+            additionalProperties: false,
+            required: ['to', 'label', 'value'],
+            properties: {
+              to: { type: ['string', 'null'] },
+              label: { type: ['string', 'null'] },
+              value: { type: ['string', 'null'] },
+            },
+          },
         },
       },
     },
   },
+}
+
+/**
+ * Reconcile a strict-schema model result with `agentPlanSchema`: drop null
+ * `schedule`, and collapse each action's fixed nullable `params` object into the
+ * sparse `Record<string,string>` the Zod schema expects (nulls/empties removed;
+ * an all-null params becomes absent).
+ */
+export function normalizePlan(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw
+  const plan = raw as Record<string, unknown>
+  const out: Record<string, unknown> = { ...plan }
+  if (out.schedule == null) delete out.schedule
+  if (Array.isArray(out.actions)) {
+    out.actions = out.actions.map((a) => {
+      if (!a || typeof a !== 'object') return a
+      const action = a as Record<string, unknown>
+      const next: Record<string, unknown> = { type: action.type, label: action.label }
+      const p = action.params
+      if (p && typeof p === 'object') {
+        const params: Record<string, string> = {}
+        for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
+          if (typeof v === 'string' && v !== '') params[k] = v
+        }
+        // Keep an explicit empty forward destination so the UI can prompt for it.
+        if ('to' in (p as object) && (p as Record<string, unknown>).to === '') params.to = ''
+        if (Object.keys(params).length > 0) next.params = params
+      }
+      return next
+    })
+  }
+  return out
 }
 
 export const COMPILE_SYSTEM = `You compile a Revido Mail user's natural-language inbox rule into a strict JSON agent plan. The plan has:
@@ -114,7 +166,6 @@ export const CLARIFY_JSON_SCHEMA: Record<string, unknown> = {
   properties: {
     questions: {
       type: 'array',
-      maxItems: CLARIFY_MAX_QUESTIONS,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -169,15 +220,11 @@ agentsAiRouter.post('/compile', async (c) => {
       },
     ],
     maxTokens: COMPILE_MAX_TOKENS,
-    // Plain JSON mode (not strict json_schema): the agent plan needs an open-ended
-    // `params` map, which OpenAI/Azure strict structured-outputs cannot express and
-    // reject with a 400. The shape is described in COMPILE_SYSTEM and enforced by
-    // `agentPlanSchema` below.
-    responseFormat: { type: 'json' },
+    responseFormat: { type: 'json', schema: AGENT_PLAN_JSON_SCHEMA },
     userId,
   })
 
-  const parsed = agentPlanSchema.safeParse(result.json)
+  const parsed = agentPlanSchema.safeParse(normalizePlan(result.json))
   if (!parsed.success) {
     throw new HttpError(422, 'compile_failed', 'The model did not return a valid agent plan.')
   }
@@ -196,9 +243,7 @@ agentsAiRouter.post('/clarify', async (c) => {
     system: CLARIFY_SYSTEM,
     messages: [{ role: 'user', content: `The user's rule idea:\n\n${description}` }],
     maxTokens: CLARIFY_MAX_TOKENS,
-    // Plain JSON mode — strict json_schema rejects `maxItems` (Azure 400). The shape
-    // is described in CLARIFY_SYSTEM and validated by `clarifyResponseSchema` below.
-    responseFormat: { type: 'json' },
+    responseFormat: { type: 'json', schema: CLARIFY_JSON_SCHEMA },
     userId,
   })
 

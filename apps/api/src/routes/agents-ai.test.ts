@@ -283,6 +283,42 @@ describe('POST /agents/compile with answers', () => {
   })
 })
 
+describe('normalizePlan (strict-schema → agentPlanSchema)', () => {
+  it('drops null schedule and collapses fixed nullable params to a sparse record', async () => {
+    const { normalizePlan } = await import('./agents-ai')
+    const strict = {
+      trigger: 'new-mail',
+      schedule: null,
+      conditions: [{ field: 'category', op: 'is', value: 'receipts' }],
+      actions: [
+        { type: 'forward', label: 'Forward', params: { to: 'a@b.co', label: null, value: null } },
+        { type: 'label', label: 'Tag', params: { to: null, label: 'Receipts', value: null } },
+      ],
+    }
+    const out = normalizePlan(strict) as {
+      schedule?: unknown
+      actions: { type: string; params?: Record<string, string> }[]
+    }
+    expect('schedule' in out).toBe(false)
+    expect(out.actions[0]?.params).toEqual({ to: 'a@b.co' })
+    expect(out.actions[1]?.params).toEqual({ label: 'Receipts' })
+    // The normalized result must satisfy the real Zod schema.
+    const { agentPlanSchema } = await import('@revido/core/agent-plan')
+    expect(agentPlanSchema.safeParse(out).success).toBe(true)
+  })
+
+  it('keeps an explicit empty forward destination so the UI can prompt for it', async () => {
+    const { normalizePlan } = await import('./agents-ai')
+    const out = normalizePlan({
+      trigger: 'new-mail',
+      schedule: null,
+      conditions: [],
+      actions: [{ type: 'forward', label: 'Forward', params: { to: '', label: null, value: null } }],
+    }) as { actions: { params?: Record<string, string> }[] }
+    expect(out.actions[0]?.params).toEqual({ to: '' })
+  })
+})
+
 describe('COMPILE_SYSTEM prompt', () => {
   it('documents the content field and the forward destination param', async () => {
     const { COMPILE_SYSTEM } = await import('./agents-ai')

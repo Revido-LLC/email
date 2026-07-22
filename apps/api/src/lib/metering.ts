@@ -24,6 +24,7 @@ export const UsageMetric = {
   aiDrafts: 'ai_drafts',
   chatQueries: 'chat_queries',
   agentCompiles: 'ai_compiles',
+  agentClarifies: 'ai_clarifies',
 } as const
 
 export type UsageMetricName = (typeof UsageMetric)[keyof typeof UsageMetric]
@@ -37,6 +38,7 @@ const CAP_CONFIG: Record<UsageMetricName, { env: string; fallback: number }> = {
   [UsageMetric.aiDrafts]: { env: 'AI_MONTHLY_CAP_DRAFTS', fallback: 1000 },
   [UsageMetric.chatQueries]: { env: 'AI_MONTHLY_CAP_CHAT', fallback: 1000 },
   [UsageMetric.agentCompiles]: { env: 'AI_MONTHLY_CAP_COMPILES', fallback: 200 },
+  [UsageMetric.agentClarifies]: { env: 'AI_MONTHLY_CAP_CLARIFIES', fallback: 300 },
 }
 
 /** Resolve the effective cap for a metric (≤ 0 ⇒ uncapped). */

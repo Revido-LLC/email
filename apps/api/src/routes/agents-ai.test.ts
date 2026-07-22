@@ -157,7 +157,7 @@ describe('POST /agents/compile', () => {
 })
 
 describe('POST /agents/dry-run', () => {
-  it('returns only the threads the plan predicate matches', async () => {
+  it('auto-matches metadata-only plans (no content clause)', async () => {
     h.results.set(threads, [
       threadRow({ id: 'match-1', category: 'to-reply' }),
       threadRow({ id: 'skip-1', category: 'fyi' }),
@@ -170,13 +170,116 @@ describe('POST /agents/dry-run', () => {
       },
     })
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { matches: { id: string }[] }
-    expect(body.matches.map((t) => t.id)).toEqual(['match-1'])
+    const body = (await res.json()) as { matched: { id: string }[]; excludedCount: number }
+    expect(body.matched.map((t) => t.id)).toEqual(['match-1'])
+    expect(body.excludedCount).toBe(0)
+  })
+
+  it('excludes dunning candidates for free and reports honest counts', async () => {
+    // A receipt-category rule with a content clause. The pre-filter drops the
+    // dunning subject for free (no AI); the plausible receipt is a candidate that
+    // needs the AI classifier. No messages are seeded, so the fail-closed classify
+    // returns false — proving the free exclusion + the new response shape.
+    h.results.set(threads, [
+      threadRow({ id: 'receipt-1', category: 'receipts', subjectCt: crypto.encrypt('Your receipt from Acme') }),
+      threadRow({
+        id: 'dunning-1',
+        category: 'receipts',
+        subjectCt: crypto.encrypt('FINAL NOTICE: update your payment'),
+      }),
+      threadRow({ id: 'off-1', category: 'fyi' }),
+    ])
+    const res = await post('/dry-run', {
+      plan: {
+        trigger: 'new-mail',
+        conditions: [
+          { field: 'category', op: 'is', value: 'receipts' },
+          { field: 'content', op: 'is', value: 'a receipt for a completed payment' },
+        ],
+        actions: [{ type: 'forward', label: 'Forward', params: { to: 'a@b.co' } }],
+      },
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      matched: { id: string }[]
+      candidateCount: number
+      excludedCount: number
+      excludedReasons: { label: string; count: number }[]
+      sampledCount: number
+      estimatedMatches: number
+    }
+    expect(body.excludedCount).toBe(1) // the dunning notice, dropped for free
+    expect(body.excludedReasons[0]?.count).toBe(1)
+    expect(body.candidateCount).toBe(2) // receipt + dunning (off-category filtered out)
+    expect(body.sampledCount).toBe(1) // the one receipt survivor was sampled
+    expect(typeof body.estimatedMatches).toBe('number')
   })
 
   it('400s on an invalid plan', async () => {
     const res = await post('/dry-run', { plan: { trigger: 'whenever', conditions: [], actions: [] } })
     expect(res.status).toBe(400)
+  })
+})
+
+describe('POST /agents/clarify', () => {
+  it('returns ≤3 pre-answered questions', async () => {
+    setLlmClient(
+      new FakeLlmClient({
+        respond: () =>
+          JSON.stringify({
+            questions: [
+              {
+                id: 'attachments',
+                question: 'Only messages with an attachment?',
+                options: [
+                  { id: 'yes', label: 'Only with an attachment' },
+                  { id: 'any', label: 'Any message' },
+                ],
+                multi: false,
+                defaultOptionIds: ['yes'],
+              },
+            ],
+          }),
+      }),
+    )
+    const res = await post('/clarify', { description: 'forward every receipt to accounting' })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      questions: { defaultOptionIds: string[] }[]
+    }
+    expect(body.questions.length).toBeLessThanOrEqual(3)
+    expect(body.questions[0]?.defaultOptionIds).toEqual(['yes'])
+  })
+
+  it('degrades gracefully to no questions on a bad model result', async () => {
+    // The default FakeLlmClient emits a triage-shaped payload (not clarify-shaped).
+    const res = await post('/clarify', { description: 'archive newsletters' })
+    expect(res.status).toBe(200)
+    expect((await res.json()) as { questions: unknown[] }).toEqual({ questions: [] })
+  })
+})
+
+describe('POST /agents/compile with answers', () => {
+  it('folds clarify answers into the model prompt', async () => {
+    let seenUserContent = ''
+    setLlmClient(
+      new FakeLlmClient({
+        respond: (req) => {
+          seenUserContent = req.messages.map((m) => m.content).join('\n')
+          return JSON.stringify({
+            trigger: 'new-mail',
+            conditions: [{ field: 'hasAttachments', op: 'is', value: 'true' }],
+            actions: [{ type: 'forward', label: 'Forward', params: { to: 'a@b.co' } }],
+          })
+        },
+      }),
+    )
+    const res = await post('/compile', {
+      description: 'forward every receipt',
+      answers: [{ question: 'Only with an attachment?', answer: 'Only with an attachment' }],
+    })
+    expect(res.status).toBe(200)
+    expect(seenUserContent).toContain('Only with an attachment')
   })
 })
 

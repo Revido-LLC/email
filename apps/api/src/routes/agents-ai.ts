@@ -38,14 +38,14 @@ import { enforceAiCap, recordAiUsage, UsageMetric } from '../lib/metering'
 import { rateLimit } from '../lib/rate-limit'
 import { requireUser, type Variables } from '../middleware/auth'
 
-const COMPILE_MAX_TOKENS = 1024
+const COMPILE_MAX_TOKENS = 1536
 /** Compile retries: the escalation model occasionally emits non-parseable output on
  * providers that don't enforce json_schema — a retry almost always lands a valid plan. */
 const COMPILE_MAX_ATTEMPTS = 3
 const CLARIFY_MAX_TOKENS = 512
 const CLARIFY_MAX_QUESTIONS = 3
-/** Loose email matcher for recovering a forward destination the PII-scrub redacted. */
-const EMAIL_RE = /[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+/
+/** Strict email matcher (no braces/brackets) for extracting a clean forward destination. */
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
 const PREVIEW_AI_CAP = 10
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 const COMPILE_RATE_WINDOW_MS = 60_000
@@ -173,9 +173,11 @@ function repairForwardDestination(plan: AgentPlan, description: string): AgentPl
     ...plan,
     actions: plan.actions.map((a) => {
       if (a.type !== 'forward') return a
-      const to = a.params?.to
-      if (to && EMAIL_RE.test(to)) return a
-      return { ...a, params: { ...(a.params ?? {}), to: fromDesc ?? '' } }
+      // Extract the first CLEAN email from the compiled `to` — the model can append
+      // junk (e.g. token-limit force-closes `…io}}]}]`) or the scrub can redact it.
+      // Fall back to the address in the user's own description, else empty for the UI.
+      const to = a.params?.to?.match(EMAIL_RE)?.[0] ?? fromDesc ?? ''
+      return { ...a, params: { ...(a.params ?? {}), to } }
     }),
   }
 }

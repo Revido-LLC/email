@@ -307,6 +307,27 @@ describe('normalizePlan (strict-schema → agentPlanSchema)', () => {
     expect(agentPlanSchema.safeParse(out).success).toBe(true)
   })
 
+  it('extracts a clean email when the model appends junk to the destination', async () => {
+    setLlmClient(
+      new FakeLlmClient({
+        respond: () =>
+          JSON.stringify({
+            trigger: 'new-mail',
+            schedule: null,
+            conditions: [{ field: 'content', op: 'is', value: 'a receipt' }],
+            // Token-limit force-close leaked into the string value.
+            actions: [
+              { type: 'forward', label: 'Forward', params: { to: 'accounting@revido.io}}]}]}] }', label: null, value: null } },
+            ],
+          }),
+      }),
+    )
+    const res = await post('/compile', { description: 'Forward receipts to accounting@revido.io' })
+    expect(res.status).toBe(200)
+    const plan = (await res.json()) as { actions: { params?: { to?: string } }[] }
+    expect(plan.actions[0]?.params?.to).toBe('accounting@revido.io')
+  })
+
   it('keeps an explicit empty forward destination so the UI can prompt for it', async () => {
     const { normalizePlan } = await import('./agents-ai')
     const out = normalizePlan({

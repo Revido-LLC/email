@@ -319,6 +319,26 @@ describe('normalizePlan (strict-schema → agentPlanSchema)', () => {
   })
 })
 
+describe('compile recovers a scrubbed forward destination', () => {
+  it('replaces a redacted [EMAIL] with the address from the description', async () => {
+    setLlmClient(
+      new FakeLlmClient({
+        respond: () =>
+          JSON.stringify({
+            trigger: 'new-mail',
+            schedule: null,
+            conditions: [{ field: 'content', op: 'is', value: 'a receipt' }],
+            actions: [{ type: 'forward', label: 'Forward', params: { to: '[EMAIL]', label: null, value: null } }],
+          }),
+      }),
+    )
+    const res = await post('/compile', { description: 'Forward every receipt to accounting@revido.io' })
+    expect(res.status).toBe(200)
+    const plan = (await res.json()) as { actions: { type: string; params?: { to?: string } }[] }
+    expect(plan.actions[0]?.params?.to).toBe('accounting@revido.io')
+  })
+})
+
 describe('COMPILE_SYSTEM prompt', () => {
   it('documents the content field and the forward destination param', async () => {
     const { COMPILE_SYSTEM } = await import('./agents-ai')

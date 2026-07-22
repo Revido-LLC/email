@@ -15,7 +15,12 @@
 import { Hono } from 'hono'
 import { withUser } from '@revido/db/client'
 import { threads } from '@revido/db/schema'
-import { AGENT_ACTION_TYPES, agentPlanSchema, contentClauses } from '@revido/core/agent-plan'
+import {
+  AGENT_ACTION_TYPES,
+  agentPlanSchema,
+  contentClauses,
+  type AgentPlan,
+} from '@revido/core/agent-plan'
 import {
   buildContentClassifierPrompt,
   CONTENT_CLASSIFIER_SCHEMA,
@@ -33,8 +38,13 @@ import { rateLimit } from '../lib/rate-limit'
 import { requireUser, type Variables } from '../middleware/auth'
 
 const COMPILE_MAX_TOKENS = 1024
+/** Compile retries: the escalation model occasionally emits non-parseable output on
+ * providers that don't enforce json_schema — a retry almost always lands a valid plan. */
+const COMPILE_MAX_ATTEMPTS = 3
 const CLARIFY_MAX_TOKENS = 512
 const CLARIFY_MAX_QUESTIONS = 3
+/** Loose email matcher for recovering a forward destination the PII-scrub redacted. */
+const EMAIL_RE = /[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+/
 const PREVIEW_AI_CAP = 10
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 const COMPILE_RATE_WINDOW_MS = 60_000
@@ -150,6 +160,25 @@ export function normalizePlan(raw: unknown): unknown {
   return out
 }
 
+/**
+ * The OpenRouter account PII-scrub can redact the forward address in the model's
+ * output to a placeholder (e.g. `[EMAIL]`). Recover the real destination from the
+ * user's own description (which we never send through the scrub-affected path) when
+ * the compiled `to` isn't a valid email, so the wizard pre-fills the right address.
+ */
+function repairForwardDestination(plan: AgentPlan, description: string): AgentPlan {
+  const fromDesc = description.match(EMAIL_RE)?.[0]
+  return {
+    ...plan,
+    actions: plan.actions.map((a) => {
+      if (a.type !== 'forward') return a
+      const to = a.params?.to
+      if (to && EMAIL_RE.test(to)) return a
+      return { ...a, params: { ...(a.params ?? {}), to: fromDesc ?? '' } }
+    }),
+  }
+}
+
 export const COMPILE_SYSTEM = `You compile a Revido Mail user's natural-language inbox rule into a strict JSON agent plan. The plan has:
 - "trigger": "new-mail" (evaluate each newly arrived thread) or "scheduled" (run on a cadence). Use "scheduled" only when the rule is explicitly time-based, and then also set "schedule" to a short cron-like or human cadence string.
 - "conditions": an array of {"field","op","value"} clauses, ALL of which must hold. Valid fields include category, subject, priority, priorityScore, from, participant, label, language, awaitingReply, unread, starred, hasAttachments, snoozed. Valid ops: is, is-not, contains, not-contains, matches (regex), gt, lt. Values are always strings. An empty array means "every thread".
@@ -210,34 +239,26 @@ agentsAiRouter.post('/compile', async (c) => {
         answers.map((a) => `- ${a.question} → ${a.answer}`).join('\n')
       : ''
 
-  const result = await getLlmClient().complete({
-    model: 'escalation',
-    system: COMPILE_SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: `Compile this inbox rule into an agent plan:\n\n${description}${clarifications}`,
-      },
-    ],
-    maxTokens: COMPILE_MAX_TOKENS,
-    responseFormat: { type: 'json', schema: AGENT_PLAN_JSON_SCHEMA },
-    userId,
-  })
-
-  const parsed = agentPlanSchema.safeParse(normalizePlan(result.json))
-  if (!parsed.success) {
-    // TEMP DIAGNOSTIC: surface the exact model output + validation issues so a prod
-    // compile 422 can be diagnosed. Remove once the escalation-tier shape is stable.
-    console.error(
-      '[compile] invalid plan raw=' +
-        JSON.stringify(result.json).slice(0, 700) +
-        ' issues=' +
-        JSON.stringify(parsed.error.issues.slice(0, 6)),
-    )
+  const userContent = `Compile this inbox rule into an agent plan:\n\n${description}${clarifications}`
+  const llm = getLlmClient()
+  let plan: AgentPlan | null = null
+  for (let attempt = 0; attempt < COMPILE_MAX_ATTEMPTS && !plan; attempt++) {
+    const result = await llm.complete({
+      model: 'escalation',
+      system: COMPILE_SYSTEM,
+      messages: [{ role: 'user', content: userContent }],
+      maxTokens: COMPILE_MAX_TOKENS,
+      responseFormat: { type: 'json', schema: AGENT_PLAN_JSON_SCHEMA },
+      userId,
+    })
+    const parsed = agentPlanSchema.safeParse(normalizePlan(result.json))
+    if (parsed.success) plan = parsed.data
+  }
+  if (!plan) {
     throw new HttpError(422, 'compile_failed', 'The model did not return a valid agent plan.')
   }
   await recordAiUsage(userId, UsageMetric.agentCompiles)
-  return c.json(parsed.data)
+  return c.json(repairForwardDestination(plan, description))
 })
 
 /** POST /agents/clarify — grounded, pre-answered refining questions (cheap model). */
@@ -246,18 +267,22 @@ agentsAiRouter.post('/clarify', async (c) => {
   const { description } = await readJson(c, clarifySchema)
   await enforceAiCap(userId, UsageMetric.agentClarifies)
 
-  const result = await getLlmClient().complete({
-    model: 'summary',
-    system: CLARIFY_SYSTEM,
-    messages: [{ role: 'user', content: `The user's rule idea:\n\n${description}` }],
-    maxTokens: CLARIFY_MAX_TOKENS,
-    responseFormat: { type: 'json', schema: CLARIFY_JSON_SCHEMA },
-    userId,
-  })
-
-  const parsed = clarifyResponseSchema.safeParse(result.json)
-  // Graceful degradation: a bad/empty result simply skips the step (no questions).
-  const questions = parsed.success ? parsed.data.questions.slice(0, CLARIFY_MAX_QUESTIONS) : []
+  const llm = getLlmClient()
+  let questions: z.infer<typeof clarifyResponseSchema>['questions'] = []
+  // Retry once if the model returns nothing usable (provider json_schema variance).
+  for (let attempt = 0; attempt < 2 && questions.length === 0; attempt++) {
+    const result = await llm.complete({
+      model: 'summary',
+      system: CLARIFY_SYSTEM,
+      messages: [{ role: 'user', content: `The user's rule idea:\n\n${description}` }],
+      maxTokens: CLARIFY_MAX_TOKENS,
+      responseFormat: { type: 'json', schema: CLARIFY_JSON_SCHEMA },
+      userId,
+    })
+    const parsed = clarifyResponseSchema.safeParse(result.json)
+    if (parsed.success) questions = parsed.data.questions.slice(0, CLARIFY_MAX_QUESTIONS)
+  }
+  // Graceful degradation: still empty ⇒ the wizard simply skips the Refine step.
   await recordAiUsage(userId, UsageMetric.agentClarifies)
   return c.json({ questions })
 })

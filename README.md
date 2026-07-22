@@ -14,7 +14,7 @@ A pnpm + Turbo monorepo of 7 workspaces:
 - **`apps/api`** (`@revido/api`) — Hono API on Node: CRUD over threads/messages/accounts/agents/etc., Better Auth (sessions + Google & Microsoft OAuth), AI SSE endpoints, provider webhooks, image proxy.
 - **`apps/worker`** (`@revido/worker`) — background consumers off a Postgres-backed job queue: mailbox sync (Gmail + Outlook), triage, enrichment + embeddings, inbox agents, digests, reminders/chasers, outbound send.
 - **`packages/core`** (`@revido/core`) — provider-neutral domain logic: the LLM seam (`LlmClient`, over OpenRouter), embeddings seam, prompt builders, Gmail/Outlook adapters, agent planning, storage seam, language detection. No provider SDKs (REST over injected `fetch`).
-- **`packages/db`** (`@revido/db`) — Drizzle schema + raw-SQL migrations (`0000`–`0005`), GUC Row-Level-Security, pgvector, per-user envelope-encryption crypto, domain types + Zod.
+- **`packages/db`** (`@revido/db`) — Drizzle schema + raw-SQL migrations (`0000`–`0006`), GUC Row-Level-Security, pgvector, per-user envelope-encryption crypto, domain types + Zod.
 - **`packages/mock-data`** (`@revido/mock-data`) — the typed fake mailbox the UI renders against in dev; mirrors `@revido/db` domain types field-for-field (the shared data contract).
 - **`packages/ui`** (`@revido/ui`) — design tokens (Tailwind v4 CSS variables) + the component library.
 

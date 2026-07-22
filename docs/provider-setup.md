@@ -91,6 +91,15 @@ Retrieval/RAG needs an embedding provider (1024-dim, to match the `pgvector` col
 
 Get a **no-retention / no-train** agreement, to match the privacy posture of the LLM path.
 
+**Add a payment method on the provider** even though the free token grant covers early usage:
+without a card on file Voyage caps the account at **3 requests/min · 10K tokens/min**, which throttles
+the `embed` queue (the cap lifts a few minutes after you add one — the tokens stay free). The worker
+tolerates this by design — on a `429`/`529` the `embed` consumer raises `EmbeddingsRateLimitError` and
+**defers** the job (capped backoff, up to 30 retries) rather than dead-lettering, so the queue
+self-paces under any limit and drains once it lifts. Embeddings back semantic search / "Chat with your
+inbox" only; a message with no vector yet is simply absent from results (never an error), so triage,
+agents, and forwarding are unaffected regardless of embedding backlog.
+
 ---
 
 ## 4. Attachment storage — S3 / R2, or a Railway volume?

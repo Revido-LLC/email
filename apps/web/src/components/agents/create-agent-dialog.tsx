@@ -66,6 +66,9 @@ const STEPS: { id: Step; label: string }[] = [
   { id: 'name', label: 'Enable' },
 ]
 
+/** Cap on dry-run rows rendered at once — a large match set must not jank the modal. */
+const MAX_PREVIEW_ROWS = 50
+
 const SUGGESTIONS = [
   'Label all invoices and receipts, then mark them FYI',
   'Chase people who never replied after 4 days',
@@ -229,7 +232,10 @@ function WizardBody({
   }
 
   return (
-    <div className="flex flex-col">
+    // `w-full min-w-0` binds the body to the dialog's max-w-xl. Without it the Radix
+    // grid dialog sizes this to max-content — the 5-step stepper + dry-run list then
+    // balloon the modal past its width and overflow the right edge.
+    <div className="flex w-full min-w-0 flex-col">
       {/* Header + stepper */}
       <div className="border-b border-border px-6 pb-4 pt-6">
         <div className="flex items-center gap-2">
@@ -608,7 +614,7 @@ function DryRun({ result, loading }: { result: DryRunResult | null; loading: boo
           </div>
           <ScrollArea className="max-h-52">
             <div className="divide-y divide-border">
-              {matched.map((t) => (
+              {matched.slice(0, MAX_PREVIEW_ROWS).map((t) => (
                 <Link
                   key={t.id}
                   to="/app/thread/$threadId"
@@ -624,6 +630,11 @@ function DryRun({ result, loading }: { result: DryRunResult | null; loading: boo
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                 </Link>
               ))}
+              {matched.length > MAX_PREVIEW_ROWS && (
+                <p className="px-3 py-2 text-center text-xs text-muted-foreground">
+                  + {matched.length - MAX_PREVIEW_ROWS} more
+                </p>
+              )}
             </div>
           </ScrollArea>
         </div>

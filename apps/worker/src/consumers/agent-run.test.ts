@@ -260,6 +260,29 @@ describe('forwarding rules', () => {
     expect(h.jobs[0]?.queue).toBe('forward')
   })
 
+  it('drops a dunning candidate for free — never classifies or forwards it', async () => {
+    const plan: AgentPlan = {
+      trigger: 'new-mail',
+      conditions: [
+        { field: 'category', op: 'is', value: 'receipts' },
+        { field: 'content', op: 'is', value: 'a receipt for a completed payment' },
+      ],
+      actions: [{ type: 'forward', label: 'fwd', params: { to: 'accounting@revido.co' } }],
+    }
+    const h = harness(plan, {
+      trusted: true,
+      threads: [threadWithMessage({ category: 'receipts', subject: 'FINAL NOTICE: update your payment' })],
+      threadText: 'ignored — should never be loaded',
+      classifierMatch: true,
+    })
+    const getThread = vi.spyOn(h.deps.mail, 'getThread')
+
+    await makeAgentRunConsumer(h.deps)(PAYLOAD, JOB)
+
+    expect(getThread).not.toHaveBeenCalled() // pre-filter excluded it before any AI
+    expect(h.jobs).toHaveLength(0) // nothing forwarded
+  })
+
   it('skips a forward with no valid destination', async () => {
     const plan: AgentPlan = {
       trigger: 'new-mail',

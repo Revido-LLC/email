@@ -23,10 +23,10 @@ import {
   actionNeedsApproval,
   buildContentClassifierPrompt,
   buildDraftPrompt,
-  compilePredicate,
   contentClauses,
   CONTENT_CLASSIFIER_SCHEMA,
   forwardDestination,
+  planContentEvaluation,
   type AgentCondition,
   type CompiledAgentAction,
   type LlmThinking,
@@ -103,19 +103,18 @@ export function makeAgentRunConsumer(deps: AgentRunDeps): JobConsumer {
     if (plan.actions.length === 0) return
 
     const threads = await deps.mail.listAgentThreads(userId, user.crypto, { threadIds })
-    const predicate = compilePredicate(plan)
-    const candidates = threads.filter(predicate)
-    if (candidates.length === 0) return // nothing to act on; skip an empty run row.
-
-    // Stage 2 (hybrid): a rule with `content` clauses only forwards a candidate the
-    // AI classifier confirms. The paid check runs ONLY on candidates the cheap
-    // structured predicate already passed, and is fail-closed (any error ⇒ drop).
+    // Shared pipeline (identical to the server dry-run): metadata predicate, then the
+    // free deterministic pre-filter. `autoMatched` need no AI; `needsAi` survived the
+    // pre-filter but still need the paid classifier; excluded candidates (e.g. dunning
+    // notices masquerading as receipts) are dropped for free — never classified, never
+    // forwarded.
+    const { autoMatched, needsAi } = planContentEvaluation(plan, threads)
     const clauses = contentClauses(plan)
-    const matched: Thread[] = []
-    for (const thread of candidates) {
-      if (clauses.length === 0 || (await classifyThreadContent(deps, user, thread, clauses))) {
-        matched.push(thread)
-      }
+    const matched: Thread[] = [...autoMatched]
+    // Stage 2 (hybrid): only forward a candidate the AI classifier confirms. The paid
+    // check is fail-closed (any error ⇒ drop) so uncertain mail never auto-forwards.
+    for (const thread of needsAi) {
+      if (await classifyThreadContent(deps, user, thread, clauses)) matched.push(thread)
     }
     if (matched.length === 0) return
 

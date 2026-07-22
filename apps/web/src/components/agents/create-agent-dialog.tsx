@@ -1,5 +1,5 @@
 // i18n-todo: extract hardcoded copy in this component to the en/nl catalogs (see apps/web/src/i18n)
-import type { AgentDef, Thread } from '@revido/db'
+import type { AgentDef } from '@revido/db'
 import type { AgentPlan } from '@revido/core'
 import {
   AiTag,
@@ -29,8 +29,14 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { Icon } from '@/lib/icons'
-import { useThreadsByCategory } from '@/lib/hooks'
-import { useCompileAgent } from '@/lib/hooks/agents'
+import {
+  useClarifyAgent,
+  useCompileAgent,
+  useDryRunAgent,
+  type ClarifyAnswer,
+  type ClarifyQuestion,
+  type DryRunResult,
+} from '@/lib/hooks/agents'
 import {
   compilePlan,
   forwardActionTo,
@@ -50,10 +56,11 @@ export type CreateAgentInput = {
 }
 export type WizardSeed = { kind: 'nl'; text: string } | { kind: 'agent'; agent: AgentDef }
 
-type Step = 'describe' | 'plan' | 'dryrun' | 'name'
+type Step = 'describe' | 'refine' | 'plan' | 'dryrun' | 'name'
 
 const STEPS: { id: Step; label: string }[] = [
   { id: 'describe', label: 'Describe' },
+  { id: 'refine', label: 'Refine' },
   { id: 'plan', label: 'Plan' },
   { id: 'dryrun', label: 'Dry-run' },
   { id: 'name', label: 'Enable' },
@@ -130,24 +137,50 @@ function WizardBody({
   const [trusted, setTrusted] = React.useState(false)
   const [forwardTo, setForwardTo] = React.useState('')
   const compile = useCompileAgent()
+  const clarify = useClarifyAgent()
+  const dryRun = useDryRunAgent()
+  const [questions, setQuestions] = React.useState<ClarifyQuestion[]>([])
+  // answerState: questionId → selected option ids (seeded from the model's defaults).
+  const [answerState, setAnswerState] = React.useState<Record<string, string[]>>({})
+  const [dryRunResult, setDryRunResult] = React.useState<DryRunResult | null>(null)
 
   const isForward = apiPlan != null && planHasForward(apiPlan)
-
-  // Dry-run preview over the user's real mail in the plan's category.
-  const { data: candidates } = useThreadsByCategory(plan.category)
-  const matches = React.useMemo(
-    () => (candidates ?? []).filter(plan.predicate),
-    [candidates, plan],
-  )
   const stepIndex = STEPS.findIndex((s) => s.id === step)
   const alreadyActive = fromAgent && seed.agent.enabled
 
-  async function compileAndAdvance() {
-    // Server-side natural-language compile (Opus). Any rule the user can describe
-    // — including "forward invoices to accounting@…" — compiles here. Fall back to
-    // the offline preview compiler only if the call fails.
+  /**
+   * Fetch grounded, pre-answered refining questions before compiling. When the
+   * model returns none (or the call fails), skip straight to the compile.
+   */
+  async function fetchClarify() {
     try {
-      const compiled = await compile.mutateAsync({ description })
+      const { questions } = await clarify.mutateAsync({ description })
+      setQuestions(questions)
+      setAnswerState(Object.fromEntries(questions.map((q) => [q.id, q.defaultOptionIds])))
+      if (questions.length === 0) await compileAndAdvance()
+      else setStep('refine')
+    } catch {
+      await compileAndAdvance()
+    }
+  }
+
+  /** Resolve the current selections into human-readable answers for the compiler. */
+  function selectedAnswers(): ClarifyAnswer[] {
+    return questions.map((q) => ({
+      question: q.question,
+      answer: (answerState[q.id] ?? [])
+        .map((id) => q.options.find((o) => o.id === id)?.label)
+        .filter(Boolean)
+        .join(', '),
+    }))
+  }
+
+  async function compileAndAdvance() {
+    // Server-side natural-language compile (Opus), steered by the clarify answers.
+    // Any rule the user can describe — including "forward invoices to accounting@…"
+    // — compiles here. Fall back to the offline preview compiler only if it fails.
+    try {
+      const compiled = await compile.mutateAsync({ description, answers: selectedAnswers() })
       setApiPlan(compiled)
       setPlan(planToDisplay(compiled, description.trim().slice(0, 40) || 'New agent'))
       setForwardTo(forwardActionTo(compiled) ?? '')
@@ -156,6 +189,16 @@ function WizardBody({
       setPlan(compilePlan(description))
     }
     setStep('plan')
+  }
+
+  /** Run the honest server dry-run for the plan we would actually submit. */
+  async function runDryRun() {
+    setStep('dryrun')
+    try {
+      setDryRunResult(await dryRun.mutateAsync({ plan: submitPlan() }))
+    } catch {
+      setDryRunResult(null)
+    }
   }
 
   function finish() {
@@ -264,6 +307,50 @@ function WizardBody({
           </div>
         )}
 
+        {step === 'refine' && (
+          <div className="space-y-4">
+            <AiTag label="A few quick questions" />
+            {questions.map((q) => (
+              <div key={q.id} className="space-y-2">
+                <p className="text-sm font-medium">{q.question}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {q.options.map((o) => {
+                    const selected = (answerState[q.id] ?? []).includes(o.id)
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() =>
+                          setAnswerState((prev) => {
+                            const cur = prev[q.id] ?? []
+                            const next = q.multi
+                              ? selected
+                                ? cur.filter((x) => x !== o.id)
+                                : [...cur, o.id]
+                              : [o.id]
+                            return { ...prev, [q.id]: next }
+                          })
+                        }
+                        className={cn(
+                          'rounded-full border px-3 py-1 text-xs transition-colors',
+                          selected
+                            ? 'border-ai bg-ai/10 text-ai'
+                            : 'border-border bg-muted/50 text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Pre-filled with our best guesses — tweak anything, or just continue.
+            </p>
+          </div>
+        )}
+
         {step === 'plan' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -315,7 +402,7 @@ function WizardBody({
           </div>
         )}
 
-        {step === 'dryrun' && <DryRun plan={plan} matches={matches} />}
+        {step === 'dryrun' && <DryRun result={dryRunResult} loading={dryRun.isPending} />}
 
         {step === 'name' && (
           <div className="space-y-4">
@@ -418,14 +505,19 @@ function WizardBody({
         {step === 'describe' && (
           <Button
             variant="ai"
-            onClick={compileAndAdvance}
-            disabled={description.trim().length < 4 || compile.isPending}
+            onClick={fetchClarify}
+            disabled={description.trim().length < 4 || clarify.isPending}
           >
+            <Sparkles /> {clarify.isPending ? 'Thinking…' : 'Continue'}
+          </Button>
+        )}
+        {step === 'refine' && (
+          <Button variant="ai" onClick={compileAndAdvance} disabled={compile.isPending}>
             <Sparkles /> {compile.isPending ? 'Compiling…' : 'Compile plan'}
           </Button>
         )}
         {step === 'plan' && (
-          <Button onClick={() => setStep('dryrun')}>
+          <Button onClick={runDryRun}>
             <FlaskConical /> Dry-run on history
           </Button>
         )}
@@ -478,25 +570,45 @@ function PlanRow({
   )
 }
 
-function DryRun({ plan, matches }: { plan: CompiledPlan; matches: Thread[] }) {
+function DryRun({ result, loading }: { result: DryRunResult | null; loading: boolean }) {
+  if (loading || !result) {
+    return (
+      <div className="space-y-3">
+        <AiTag label="Dry-run · last 30 days" />
+        <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">
+          {loading ? 'Testing against your real mail…' : 'No preview available.'}
+        </p>
+      </div>
+    )
+  }
+  const { matched, estimatedMatches, sampledCount, excludedCount, excludedReasons } = result
+  const more = Math.max(0, estimatedMatches - matched.length)
   return (
     <div className="space-y-3">
       <AiTag label="Dry-run · last 30 days" />
       <div className="rounded-2xl border border-ai/20 bg-ai/5 p-4 text-center">
-        <div className="text-2xl font-semibold tabular-nums text-ai">{matches.length}</div>
+        <div className="text-2xl font-semibold tabular-nums text-ai">{estimatedMatches}</div>
         <p className="mt-1 text-sm text-muted-foreground">
-          {matches.length === 1 ? 'email' : 'emails'} this would have handled — {plan.matchLabel}
+          {estimatedMatches === 1 ? 'email' : 'emails'} this would handle
+          {sampledCount > 0 && more > 0 ? ` · checked ${sampledCount}, ~${more} more likely` : ''}
         </p>
       </div>
 
-      {matches.length > 0 ? (
+      {excludedCount > 0 && (
+        <div className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{excludedCount} excluded</span> —{' '}
+          {excludedReasons.map((r) => r.label.toLowerCase()).join('; ')}. Filtered for free before any AI.
+        </div>
+      )}
+
+      {matched.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-border">
           <div className="border-b border-border bg-muted/40 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-            What it would have caught
+            Confirmed matches
           </div>
           <ScrollArea className="max-h-52">
             <div className="divide-y divide-border">
-              {matches.map((t) => (
+              {matched.map((t) => (
                 <Link
                   key={t.id}
                   to="/app/thread/$threadId"

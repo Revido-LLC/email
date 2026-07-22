@@ -8,6 +8,30 @@ import type { AgentPlan } from '@revido/core'
 import { api } from '@/lib/api'
 import { invalidateAgentCaches, queryKeys } from '@/lib/query-keys'
 
+export interface ClarifyOption {
+  id: string
+  label: string
+}
+export interface ClarifyQuestion {
+  id: string
+  question: string
+  options: ClarifyOption[]
+  multi: boolean
+  defaultOptionIds: string[]
+}
+export interface ClarifyAnswer {
+  question: string
+  answer: string
+}
+export interface DryRunResult {
+  matched: Thread[]
+  candidateCount: number
+  excludedCount: number
+  excludedReasons: { label: string; count: number }[]
+  sampledCount: number
+  estimatedMatches: number
+}
+
 // ---------- Reads ----------
 
 /** `GET /agents` — the full gallery seed. */
@@ -47,18 +71,26 @@ export function useAgentRuns(agentId?: string) {
 
 // ---------- Writes ----------
 
-/** `POST /agents/compile` — natural-language description → compiled plan. */
-export function useCompileAgent() {
+/** `POST /agents/clarify` — grounded, pre-answered refining questions. */
+export function useClarifyAgent() {
   return useMutation({
-    mutationFn: (input: { description: string }) => api.post<AgentPlan>('/agents/compile', input),
+    mutationFn: (input: { description: string }) =>
+      api.post<{ questions: ClarifyQuestion[] }>('/agents/clarify', input),
   })
 }
 
-/** `POST /agents/dry-run` — preview which threads a plan would match. */
+/** `POST /agents/compile` — natural-language description (+ clarify answers) → plan. */
+export function useCompileAgent() {
+  return useMutation({
+    mutationFn: (input: { description: string; answers?: ClarifyAnswer[] }) =>
+      api.post<AgentPlan>('/agents/compile', input),
+  })
+}
+
+/** `POST /agents/dry-run` — honest preview (shared pipeline). */
 export function useDryRunAgent() {
   return useMutation({
-    mutationFn: (input: { plan: AgentPlan }) =>
-      api.post<{ matches: Thread[] }>('/agents/dry-run', input),
+    mutationFn: (input: { plan: AgentPlan }) => api.post<DryRunResult>('/agents/dry-run', input),
   })
 }
 

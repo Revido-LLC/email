@@ -28,7 +28,7 @@ import {
 import * as React from 'react'
 import { capture } from '@/lib/analytics'
 import { useAppState } from '@/lib/app-state'
-import { useAiChat } from '@/lib/hooks/ai'
+import { useAiChat, type Citation } from '@/lib/hooks/ai'
 import { useMessages, useNeedsYou, useThread, useToday, useToggleExtractedFact } from '@/lib/hooks'
 
 const factIcon: Record<ExtractedFact['type'], React.ReactNode> = {
@@ -331,8 +331,16 @@ function Stat({ n, label, tone }: { n: number; label: string; tone: string }) {
 interface ChatMsg {
   role: 'user' | 'ai'
   text: string
-  citations?: { threadId: string; label: string }[]
+  citations?: Citation[]
 }
+
+/** Starter prompts shown in the empty chat, and after an answer as follow-ups. */
+const CHAT_SUGGESTIONS = [
+  'What needs a reply today?',
+  'Summarize my latest invoice',
+  'What did I promise this week?',
+  'Any unanswered questions waiting on me?',
+] as const
 
 function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: boolean }) {
   const { aiChatQuery, setAiChatQuery } = useAppState()
@@ -352,12 +360,17 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
       if (!q || isStreaming) return
       // Content-free: the fact a question was asked + which surface — never the text.
       capture('chat_query_sent', { surface })
+      // Prior turns (this session) go with the query so follow-ups keep context.
+      const history = messages.map((m) => ({
+        role: m.role === 'ai' ? ('assistant' as const) : ('user' as const),
+        content: m.text,
+      }))
       setMessages((prev) => [...prev, { role: 'user', text: q }])
       setInput('')
       committedRef.current = false
-      void start({ threadId, message: q })
+      void start({ threadId, message: q, history })
     },
-    [isStreaming, start, threadId],
+    [isStreaming, start, threadId, messages],
   )
 
   // Commit the streamed answer (with its citations) once the stream ends.
@@ -383,16 +396,26 @@ function ChatTab({ threadId, consumeQuery }: { threadId?: string; consumeQuery: 
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-4">
           {messages.length === 0 && !isStreaming && (
-            <div className="rounded-xl border border-ai/20 bg-ai/5 p-3 text-sm text-muted-foreground">
-              <AiTag className="mb-1.5" />
-              <p>
-                Ask about your inbox — “what did I promise Priya?” or “find that $48k proposal.”
-              </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-ai/20 bg-ai/5 p-3 text-sm text-muted-foreground">
+                <AiTag className="mb-1.5" />
+                <p>
+                  Ask about your inbox — “what did I promise Priya?” or “find that $48k proposal.”
+                  Follow-ups keep context.
+                </p>
+              </div>
+              <SuggestionChips onPick={(q) => send(q)} />
             </div>
           )}
           {messages.map((m, i) => (
             <ChatBubble key={i} message={m} />
           ))}
+          {/* Follow-up chips after a settled answer keep the conversation moving. */}
+          {messages.length > 0 &&
+            !isStreaming &&
+            messages[messages.length - 1]?.role === 'ai' && (
+              <SuggestionChips onPick={(q) => send(q)} />
+            )}
           {isStreaming && (
             <div className="flex justify-start">
               <div className="min-w-0 max-w-full break-words rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm sm:max-w-sm">
@@ -461,15 +484,44 @@ function ChatBubble({ message }: { message: ChatMsg }) {
                 key={c.threadId}
                 to="/app/thread/$threadId"
                 params={{ threadId: c.threadId }}
-                className="inline-flex items-center gap-1 rounded-full bg-ai/12 px-2 py-0.5 text-2xs font-medium text-ai hover:brightness-95"
+                title={c.snippet ? `${c.snippet}${c.date ? ` · ${formatCitationDate(c.date)}` : ''}` : undefined}
+                className="inline-flex max-w-full items-center gap-1 rounded-full bg-ai/12 px-2 py-0.5 text-2xs font-medium text-ai hover:brightness-95"
               >
-                <Link2 className="size-3" />
-                {c.label}
+                <Link2 className="size-3 shrink-0" />
+                <span className="truncate">{c.label}</span>
+                {c.date && (
+                  <span className="shrink-0 text-ai/60">· {formatCitationDate(c.date)}</span>
+                )}
               </Link>
             ))}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Short, locale-aware date for a citation pill (e.g. "Jul 22"). Empty on bad input. */
+function formatCitationDate(iso: string): string {
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return ''
+  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+/** Clickable prompt chips — starters when the chat is empty, follow-ups after answers. */
+function SuggestionChips({ onPick }: { onPick: (q: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {CHAT_SUGGESTIONS.map((q) => (
+        <button
+          key={q}
+          type="button"
+          onClick={() => onPick(q)}
+          className="rounded-full border border-border bg-card px-2.5 py-1 text-2xs text-muted-foreground transition-colors hover:border-ai/40 hover:text-foreground"
+        >
+          {q}
+        </button>
+      ))}
     </div>
   )
 }

@@ -38,6 +38,7 @@ import type {
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getEmbeddingsClient, getLlmClient } from '../lib/ai'
+import { rankChunks, type RankableChunk } from '../lib/chat-rank'
 import { loadThreadForPrompt, loadUserAiContext, type UserAiContext } from '../lib/ai-context'
 import { getUserCrypto, type UserCrypto } from '../lib/crypto'
 import { errorHandler, notFound, readJson } from '../lib/http'
@@ -50,8 +51,14 @@ const WRITE_MODEL = 'summary'
 const DRAFT_MAX_TOKENS = 1024
 const CHAT_MAX_TOKENS = 1024
 const QUICK_REPLIES_MAX_TOKENS = 512
-/** How many message chunks the RAG retriever pulls before answering. */
+/** How many chunks the model finally sees (after re-ranking). */
 const RETRIEVAL_K = 8
+/** Wider ANN candidate pool re-ranked (recency + keyword) down to RETRIEVAL_K. */
+const CANDIDATE_K = 24
+/** Max prior turns of conversation history accepted for multi-turn follow-ups. */
+const MAX_HISTORY = 8
+/** Chars of body kept as a citation preview snippet. */
+const SNIPPET_LEN = 140
 /** Per-IP AI budget: bursts allowed, sustained abuse rejected. */
 const AI_RATE_WINDOW_MS = 60_000
 const AI_RATE_MAX = 40
@@ -71,6 +78,10 @@ const quickRepliesSchema = z.object({ threadId: z.string().min(1) })
 const chatSchema = z.object({
   threadId: z.string().optional(),
   message: z.string().min(1),
+  /** Prior turns (oldest→newest) for multi-turn follow-ups; capped server-side. */
+  history: z
+    .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1) }))
+    .optional(),
 })
 
 /** Strict-JSON shape asked of the model for quick replies. */
@@ -284,62 +295,83 @@ aiRouter.post('/quick-replies', async (c) => {
 // ---------------------------------------------------------------------------
 
 /** A retrieved, decrypted message chunk + its thread for citation. */
-interface Chunk {
+interface Chunk extends RankableChunk {
   threadId: string
   subject: string
   text: string
+  date: string
+  distance: number
 }
 
 interface RetrievalRow {
   threadId: string
+  date: string | Date
   textCt: Ciphertext | null
   subjectCt: Ciphertext | null
+  distance: number
+}
+
+/** A citation the UI can open + preview: thread, subject, date, and a snippet. */
+interface Citation {
+  threadId: string
+  label: string
+  date?: string
+  snippet?: string
 }
 
 /**
- * Top-K retrieval by pgvector cosine distance over `message_embeddings`,
- * RLS-scoped inside the caller's `withUser` transaction; the message body and
- * thread subject are decrypted for the prompt + citation.
- *
- * Note: message bodies are ciphertext at rest, so a Postgres FTS leg over the
- * content is not possible under the storage-at-rest boundary — retrieval is
- * vector-ANN only until a blind-index/tokenized lexical structure is added.
+ * Retrieve chat context: pull a wide ANN candidate pool by pgvector cosine
+ * distance over `message_embeddings` (RLS-scoped), decrypt it, then re-rank down
+ * to RETRIEVAL_K with recency + keyword signals (see `chat-rank`). Bodies +
+ * subjects are ciphertext at rest, so the lexical/recency legs run here after
+ * decryption rather than in SQL; `messages.date` is plaintext, so the ANN query
+ * carries it through for the recency signal.
  */
 async function retrieveChunks(
   tx: DbTransaction,
   crypto: UserCrypto,
   userId: string,
   queryVector: number[],
+  query: string,
 ): Promise<Chunk[]> {
   const literal = `[${queryVector.join(',')}]`
   const result = await tx.execute(sql`
     select
       m.thread_id as "threadId",
+      m.date as "date",
       m.text_ct as "textCt",
-      t.subject_ct as "subjectCt"
+      t.subject_ct as "subjectCt",
+      (me.embedding <=> ${literal}::vector) as "distance"
     from message_embeddings me
     join messages m on m.id = me.message_id
     join threads t on t.id = m.thread_id
     where me.user_id = ${userId}
     order by me.embedding <=> ${literal}::vector
-    limit ${RETRIEVAL_K}
+    limit ${CANDIDATE_K}
   `)
   const rows = result as unknown as RetrievalRow[]
-  return rows.map((r) => ({
+  const candidates: Chunk[] = rows.map((r) => ({
     threadId: r.threadId,
+    date: r.date instanceof Date ? r.date.toISOString() : String(r.date),
     subject: crypto.decrypt(r.subjectCt),
     text: crypto.decrypt(r.textCt),
+    distance: Number(r.distance),
   }))
+  return rankChunks(candidates, query, { finalK: RETRIEVAL_K })
 }
 
-/** One citation per distinct source thread, in retrieval order. */
-function dedupeCitations(chunks: Chunk[]): { threadId: string; label: string }[] {
+/** One citation per distinct source thread, in ranked order, with date + snippet. */
+function dedupeCitations(chunks: Chunk[]): Citation[] {
   const seen = new Set<string>()
-  const out: { threadId: string; label: string }[] = []
+  const out: Citation[] = []
   for (const ch of chunks) {
     if (!ch.threadId || seen.has(ch.threadId)) continue
     seen.add(ch.threadId)
-    out.push({ threadId: ch.threadId, label: ch.subject || ch.threadId })
+    const citation: Citation = { threadId: ch.threadId, label: ch.subject || ch.threadId }
+    if (ch.date) citation.date = ch.date
+    const snippet = ch.text.trim().replace(/\s+/g, ' ').slice(0, SNIPPET_LEN)
+    if (snippet) citation.snippet = snippet
+    out.push(citation)
   }
   return out
 }
@@ -347,13 +379,14 @@ function dedupeCitations(chunks: Chunk[]): { threadId: string; label: string }[]
 function toRetrievedChunk(ch: Chunk): RetrievedChunk {
   const chunk: RetrievedChunk = { text: ch.text }
   if (ch.subject) chunk.source = ch.subject
+  if (ch.date) chunk.date = ch.date
   return chunk
 }
 
 /** POST /ai/chat — grounded RAG answer over the user's mailbox, with citations. */
 aiRouter.post('/chat', async (c) => {
   const userId = c.get('userId')
-  const { message } = await readJson(c, chatSchema)
+  const { message, history } = await readJson(c, chatSchema)
   await enforceAiCap(userId, UsageMetric.chatQueries)
   const crypto = await getUserCrypto(userId)
 
@@ -361,13 +394,19 @@ aiRouter.post('/chat', async (c) => {
 
   const { ai, chunks } = await withUser(userId, async (tx) => {
     const context = await loadUserAiContext(tx, crypto, userId)
-    const retrieved = queryVector ? await retrieveChunks(tx, crypto, userId, queryVector) : []
+    const retrieved = queryVector
+      ? await retrieveChunks(tx, crypto, userId, queryVector, message)
+      : []
     return { ai: context, chunks: retrieved }
   })
 
-  const built = buildChatPrompt(message, chunks.map(toRetrievedChunk), {
-    outputLanguage: ai.outputLanguage,
-  })
+  const priorTurns = (history ?? []).slice(-MAX_HISTORY)
+  const built = buildChatPrompt(
+    message,
+    chunks.map(toRetrievedChunk),
+    { outputLanguage: ai.outputLanguage },
+    priorTurns,
+  )
   const citations = dedupeCitations(chunks)
 
   await recordAiUsage(userId, UsageMetric.chatQueries)

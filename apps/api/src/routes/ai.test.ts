@@ -144,9 +144,9 @@ describe('POST /ai/draft', () => {
 describe('POST /ai/chat', () => {
   it('streams tokens then a citations event assembled from retrieved chunks', async () => {
     h.execRows = [
-      { threadId: 'th-1', textCt: crypto.encrypt('The invoice is due Friday.'), subjectCt: crypto.encrypt('Invoice #42') },
-      { threadId: 'th-1', textCt: crypto.encrypt('Reminder about the invoice.'), subjectCt: crypto.encrypt('Invoice #42') },
-      { threadId: 'th-2', textCt: crypto.encrypt('Lunch on Thursday?'), subjectCt: crypto.encrypt('Lunch') },
+      { threadId: 'th-1', date: '2026-01-10T00:00:00.000Z', distance: 0.10, textCt: crypto.encrypt('The invoice is due Friday.'), subjectCt: crypto.encrypt('Invoice #42') },
+      { threadId: 'th-1', date: '2026-01-09T00:00:00.000Z', distance: 0.15, textCt: crypto.encrypt('Reminder about the invoice.'), subjectCt: crypto.encrypt('Invoice #42') },
+      { threadId: 'th-2', date: '2026-01-08T00:00:00.000Z', distance: 0.40, textCt: crypto.encrypt('Lunch on Thursday?'), subjectCt: crypto.encrypt('Lunch') },
     ]
     const res = await post('/chat', { message: 'When is the invoice due?' })
     expect(res.status).toBe(200)
@@ -157,11 +157,17 @@ describe('POST /ai/chat', () => {
 
     const line = text.split('\n').find((l) => l.startsWith('data: [{'))
     expect(line).toBeDefined()
-    const citations = JSON.parse(line!.slice('data: '.length)) as { threadId: string; label: string }[]
-    // Deduped to one citation per distinct thread, in retrieval order.
+    const citations = JSON.parse(line!.slice('data: '.length)) as {
+      threadId: string
+      label: string
+      date?: string
+      snippet?: string
+    }[]
+    // Deduped to one citation per distinct thread, in re-ranked order, now
+    // carrying the message date + a body snippet the UI can preview.
     expect(citations).toEqual([
-      { threadId: 'th-1', label: 'Invoice #42' },
-      { threadId: 'th-2', label: 'Lunch' },
+      { threadId: 'th-1', label: 'Invoice #42', date: '2026-01-10T00:00:00.000Z', snippet: 'The invoice is due Friday.' },
+      { threadId: 'th-2', label: 'Lunch', date: '2026-01-08T00:00:00.000Z', snippet: 'Lunch on Thursday?' },
     ])
   })
 

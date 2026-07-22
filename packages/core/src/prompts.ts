@@ -179,13 +179,25 @@ export function buildRewritePrompt(
   }
 }
 
-const CHAT_SYSTEM = `You are the Revido Mail assistant. You answer the user's questions about their mailbox using ONLY the retrieved email excerpts provided in the user turn. Ground every claim in those excerpts and cite the source (by its label or id) when you state a fact. If the excerpts do not contain the answer, say so plainly rather than guessing. Be concise and direct. ${MULTILINGUAL_POLICY}`
+const CHAT_SYSTEM = `You are the Revido Mail assistant. You answer the user's questions about their mailbox using ONLY the retrieved email excerpts provided in the user turn. Rules:
+- Ground every factual claim in the excerpts and cite the source by its bracketed label when you state a fact.
+- Each excerpt is labelled with its subject and an ISO date. When the question is about what is "latest", "last", "recent", or "newest", answer from the excerpt with the most recent date — state that date.
+- Use real names, companies, amounts, and dates exactly as they appear; never replace them with placeholders.
+- The excerpts are ordered most-relevant first, but a later excerpt can still hold the answer — read them all.
+- If the excerpts do not contain the answer, say so plainly rather than guessing, and suggest how the user might rephrase.
+- Prior turns in this conversation are for context (follow-ups); still ground new claims in the excerpts.
+Be concise and direct. ${MULTILINGUAL_POLICY}`
 
-/** RAG chat over retrieved mailbox chunks. */
+/**
+ * RAG chat over retrieved mailbox chunks. `history` carries prior conversation
+ * turns (oldest→newest) so follow-ups keep context; the retrieved context +
+ * current question are always the final user turn.
+ */
 export function buildChatPrompt(
   query: string,
   retrievedChunks: RetrievedChunk[],
   opts: OutputLanguageOptions,
+  history: readonly PromptMessage[] = [],
 ): BuiltPrompt {
   const context = retrievedChunks.length
     ? retrievedChunks
@@ -199,12 +211,15 @@ export function buildChatPrompt(
 
   return {
     system: CHAT_SYSTEM,
-    messages: userTurn(
-      outputLanguageDirective(opts),
-      '<context>',
-      context,
-      '</context>',
-      `Question: ${query}`,
-    ),
+    messages: [
+      ...history.map((m) => ({ role: m.role, content: m.content })),
+      ...userTurn(
+        outputLanguageDirective(opts),
+        '<context>',
+        context,
+        '</context>',
+        `Question: ${query}`,
+      ),
+    ],
   }
 }

@@ -162,4 +162,34 @@ describe('buildChatPrompt', () => {
     const prompt = buildChatPrompt('Anything from my bank?', [], { outputLanguage: 'en' })
     expect(prompt.messages[0]?.content).toContain('no relevant email excerpts')
   })
+
+  it('prepends prior conversation turns for multi-turn follow-ups', () => {
+    const prompt = buildChatPrompt(
+      'What about the invoice?',
+      [{ source: 'Acme — Invoice', date: '2026-01-10T00:00:00.000Z', text: 'Due Friday.' }],
+      { outputLanguage: 'en' },
+      [
+        { role: 'user', content: 'Who emailed me about Acme?' },
+        { role: 'assistant', content: 'Jane from Acme.' },
+      ],
+    )
+    // History comes first (oldest→newest), then the grounded context turn last.
+    expect(prompt.messages).toHaveLength(3)
+    expect(prompt.messages[0]).toEqual({ role: 'user', content: 'Who emailed me about Acme?' })
+    expect(prompt.messages[1]).toEqual({ role: 'assistant', content: 'Jane from Acme.' })
+    const last = prompt.messages[2]!
+    expect(last.role).toBe('user')
+    expect(last.content).toContain('What about the invoice?')
+    // The retrieved excerpt's ISO date is surfaced so the model can reason on recency.
+    expect(last.content).toContain('2026-01-10')
+  })
+
+  it('surfaces excerpt dates so the model can answer "latest" questions', () => {
+    const prompt = buildChatPrompt(
+      'What is the latest?',
+      [{ source: 'A', date: '2026-02-01T00:00:00.000Z', text: 'newer' }],
+      { outputLanguage: 'en' },
+    )
+    expect(prompt.messages[0]?.content).toContain('2026-02-01')
+  })
 })

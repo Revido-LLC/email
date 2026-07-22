@@ -19,6 +19,16 @@ import { api, apiStream } from '@/lib/api'
 export interface Citation {
   threadId: string
   label: string
+  /** ISO date of the cited message, when known. */
+  date?: string
+  /** Short body preview for the citation. */
+  snippet?: string
+}
+
+/** A prior conversation turn sent for multi-turn follow-ups. */
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
 }
 
 interface TextStreamState {
@@ -109,7 +119,7 @@ export function useAiQuickReplies() {
 
 export interface ChatStream extends TextStreamState {
   citations: Citation[]
-  start: (input: { threadId?: string; message: string }) => Promise<void>
+  start: (input: { threadId?: string; message: string; history?: ChatTurn[] }) => Promise<void>
   reset: () => void
 }
 
@@ -134,8 +144,9 @@ export function useAiChat(): ChatStream {
     setState({ text: '', isStreaming: false, error: null, citations: [] })
   }, [])
 
-  const start = React.useCallback(async (input: { threadId?: string; message: string }) => {
-    abortRef.current?.abort()
+  const start = React.useCallback(
+    async (input: { threadId?: string; message: string; history?: ChatTurn[] }) => {
+      abortRef.current?.abort()
     const ac = new AbortController()
     abortRef.current = ac
     setState({ text: '', isStreaming: true, error: null, citations: [] })
@@ -165,7 +176,9 @@ export function useAiChat(): ChatStream {
         error: err instanceof Error ? err.message : 'ai_stream_failed',
       }))
     }
-  }, [])
+    },
+    [],
+  )
 
   return { ...state, start, reset }
 }

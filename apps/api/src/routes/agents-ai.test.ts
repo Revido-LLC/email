@@ -319,6 +319,35 @@ describe('normalizePlan (strict-schema → agentPlanSchema)', () => {
   })
 })
 
+describe('compile pseudonymizes emails past the PII-scrub', () => {
+  it('sends an opaque token (not the real email) and decodes it back in the plan', async () => {
+    let seen = ''
+    setLlmClient(
+      new FakeLlmClient({
+        respond: (req) => {
+          seen = req.messages.map((m) => m.content).join('\n')
+          // The model only ever sees the token; it echoes it into the forward destination.
+          const token = seen.match(/Mailbox_\d+/)?.[0] ?? 'Mailbox_1'
+          return JSON.stringify({
+            trigger: 'new-mail',
+            schedule: null,
+            conditions: [{ field: 'content', op: 'is', value: 'a receipt' }],
+            actions: [{ type: 'forward', label: 'Forward', params: { to: token, label: null, value: null } }],
+          })
+        },
+      }),
+    )
+    const res = await post('/compile', { description: 'Forward every receipt to accounting@revido.io' })
+    expect(res.status).toBe(200)
+    // The real email must NOT have been sent to the model...
+    expect(seen).not.toContain('accounting@revido.io')
+    expect(seen).toMatch(/Mailbox_\d+/)
+    // ...but the compiled plan carries the real, decoded address.
+    const plan = (await res.json()) as { actions: { params?: { to?: string } }[] }
+    expect(plan.actions[0]?.params?.to).toBe('accounting@revido.io')
+  })
+})
+
 describe('compile recovers a scrubbed forward destination', () => {
   it('replaces a redacted [EMAIL] with the address from the description', async () => {
     setLlmClient(

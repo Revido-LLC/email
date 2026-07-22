@@ -30,6 +30,7 @@ import { desc, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import { getLlmClient } from '../lib/ai'
 import { loadThreadForPrompt } from '../lib/ai-context'
+import { makePseudonymizer } from '../lib/pii-pseudonymize'
 import { getUserCrypto } from '../lib/crypto'
 import { errorHandler, HttpError, readJson } from '../lib/http'
 import { assembleThreads } from '../lib/mappers'
@@ -240,18 +241,32 @@ agentsAiRouter.post('/compile', async (c) => {
       : ''
 
   const userContent = `Compile this inbox rule into an agent plan:\n\n${description}${clarifications}`
+  // Pseudonymize emails in the rule before the model (and the account PII-scrub) see
+  // them: each becomes an opaque `Mailbox_N` token the scrub passes through, and we
+  // decode the plan's string fields back afterwards. So the compiled `to`/sender values
+  // are the real ones regardless of the scrub setting — not a placeholder to recover.
+  const pseudo = makePseudonymizer([])
+  const safeContent = pseudo.encode(userContent)
   const llm = getLlmClient()
   let plan: AgentPlan | null = null
   for (let attempt = 0; attempt < COMPILE_MAX_ATTEMPTS && !plan; attempt++) {
     const result = await llm.complete({
       model: 'escalation',
       system: COMPILE_SYSTEM,
-      messages: [{ role: 'user', content: userContent }],
+      messages: [{ role: 'user', content: safeContent }],
       maxTokens: COMPILE_MAX_TOKENS,
       responseFormat: { type: 'json', schema: AGENT_PLAN_JSON_SCHEMA },
       userId,
     })
-    const parsed = agentPlanSchema.safeParse(normalizePlan(result.json))
+    let decoded: unknown = result.json
+    if (decoded != null && pseudo.size() > 0) {
+      try {
+        decoded = JSON.parse(pseudo.decode(JSON.stringify(decoded)))
+      } catch {
+        decoded = result.json
+      }
+    }
+    const parsed = agentPlanSchema.safeParse(normalizePlan(decoded))
     if (parsed.success) plan = parsed.data
   }
   if (!plan) {

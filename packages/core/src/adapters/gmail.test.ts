@@ -96,6 +96,32 @@ describe('GmailAdapter.incremental', () => {
     expect(delta.deletedProviderMessageIds).toContain('msg-old')
     expect(delta.nextCursor).toBe('800100')
   })
+
+  it('skips a message that 404s between history.list and fetch instead of failing the delta', async () => {
+    // The history names msg-3 as added, but it vanished (deleted/moved) before we
+    // could fetch it — Gmail returns 404. The delta must still succeed: the dead
+    // message is skipped, deletes are still reported, and the cursor advances so
+    // the job never dead-letters or strands sync.
+    const { fetchImpl } = makeFakeFetch([
+      { when: (u) => u.includes('/history'), json: history },
+      { when: (u) => u.includes('/messages/msg-3'), status: 404, json: { error: 'Not Found' } },
+    ])
+    const adapter = new GmailAdapter({ fetchImpl })
+    const delta = await adapter.incremental(creds, '800000')
+
+    expect(delta.upserted).toEqual([])
+    expect(delta.deletedProviderMessageIds).toContain('msg-old')
+    expect(delta.nextCursor).toBe('800100')
+  })
+
+  it('still propagates a non-404 error while fetching a delta message', async () => {
+    const { fetchImpl } = makeFakeFetch([
+      { when: (u) => u.includes('/history'), json: history },
+      { when: (u) => u.includes('/messages/msg-3'), status: 500, json: { error: 'boom' } },
+    ])
+    const adapter = new GmailAdapter({ fetchImpl })
+    await expect(adapter.incremental(creds, '800000')).rejects.toThrow(/500/)
+  })
 })
 
 describe('GmailAdapter.send', () => {

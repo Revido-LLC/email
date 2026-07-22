@@ -26,7 +26,7 @@ import type {
   SyncCursor,
   WatchRegistration,
 } from '../provider-adapter'
-import { authedJson, type FetchImpl } from './http'
+import { authedJson, ProviderHttpError, type FetchImpl } from './http'
 import {
   buildRfc822,
   decodeBase64Url,
@@ -142,11 +142,12 @@ export class GmailAdapter implements ProviderAdapter {
       `${GMAIL_BASE}/messages?${params.toString()}`,
     )
     const ids = list.messages ?? []
-    const messages = await mapWithConcurrency(
+    const fetched = await mapWithConcurrency(
       ids,
       this.opts.messageFetchConcurrency ?? 4,
-      (message) => this.getMessage(creds, message.id),
+      (message) => this.getMessageOrNull(creds, message.id),
     )
+    const messages = fetched.filter((m): m is RawFetchedMessage => m !== null)
     return { messages, nextCursor: list.nextPageToken ?? null }
   }
 
@@ -175,11 +176,12 @@ export class GmailAdapter implements ProviderAdapter {
 
     // A message added then deleted within the window is a net delete.
     for (const id of deleted) upsertedIds.delete(id)
-    const upserted = await mapWithConcurrency(
+    const fetched = await mapWithConcurrency(
       [...upsertedIds],
       this.opts.messageFetchConcurrency ?? 4,
-      (id) => this.getMessage(creds, id),
+      (id) => this.getMessageOrNull(creds, id),
     )
+    const upserted = fetched.filter((m): m is RawFetchedMessage => m !== null)
     return {
       upserted,
       deletedProviderMessageIds: [...deleted],
@@ -197,6 +199,25 @@ export class GmailAdapter implements ProviderAdapter {
       `${GMAIL_BASE}/messages/${encodeURIComponent(providerMessageId)}?format=full`,
     )
     return parseGmailMessage(raw)
+  }
+
+  /**
+   * Fetch a message, tolerating a 404. A message named by a `history.list` /
+   * `messages.list` response can vanish (deleted or moved out of scope) before we
+   * fetch it — a net no-op for sync. Skipping it keeps one dead message from
+   * failing the whole delta (which would also strand the cursor and force a retry
+   * storm); any non-404 error still propagates.
+   */
+  private async getMessageOrNull(
+    creds: ProviderCredentials,
+    providerMessageId: string,
+  ): Promise<RawFetchedMessage | null> {
+    try {
+      return await this.getMessage(creds, providerMessageId)
+    } catch (err) {
+      if (err instanceof ProviderHttpError && err.status === 404) return null
+      throw err
+    }
   }
 
   async send(

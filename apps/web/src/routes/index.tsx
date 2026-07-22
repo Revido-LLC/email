@@ -113,7 +113,7 @@ function Hero() {
             <OAuthButtons size="lg" stacked />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/app">
+                <Link to="/app" search={{ demo: true }}>
                   {t('landing.hero.seeItLive')} <ArrowRight className="size-3.5" />
                 </Link>
               </Button>

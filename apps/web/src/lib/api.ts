@@ -16,6 +16,7 @@
  */
 import { hc } from 'hono/client'
 import type { AppType } from '@revido/api/rpc'
+import { DEMO_CHAT_ANSWER, isDemo, resolveDemo } from '@/lib/demo'
 
 /** Base origin for the API. Empty string == same-origin (the default deploy). */
 export const API_BASE: string = import.meta.env.VITE_API_URL ?? ''
@@ -60,6 +61,8 @@ async function parseBody(res: Response): Promise<unknown> {
  * (e.g. `/threads/abc`); the caller supplies the expected response type.
  */
 export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T> {
+  // Demo mode: serve synthetic seed data, never touch the network or a real mailbox.
+  if (isDemo()) return resolveDemo(path, (init?.method ?? 'GET').toUpperCase()) as T
   const isForm = init?.body instanceof FormData
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
@@ -103,6 +106,17 @@ export async function apiStream(
   body: unknown,
   handlers: SSEStreamHandlers,
 ): Promise<void> {
+  // Demo mode: replay a canned answer word-by-word instead of hitting the LLM.
+  if (isDemo()) {
+    for (const word of DEMO_CHAT_ANSWER.split(' ')) {
+      if (handlers.signal?.aborted) return
+      handlers.onEvent('token', { text: `${word} ` })
+      await new Promise((r) => setTimeout(r, 18))
+    }
+    if (path.includes('/chat')) handlers.onEvent('citations', [])
+    handlers.onEvent('done', { stopReason: 'end_turn', model: 'demo' })
+    return
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     credentials: 'include',

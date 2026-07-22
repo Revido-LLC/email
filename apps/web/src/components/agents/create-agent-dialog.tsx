@@ -180,14 +180,24 @@ function WizardBody({
 
   async function compileAndAdvance() {
     // Server-side natural-language compile (Opus), steered by the clarify answers.
-    // Any rule the user can describe — including "forward invoices to accounting@…"
-    // — compiles here. Fall back to the offline preview compiler only if it fails.
-    try {
-      const compiled = await compile.mutateAsync({ description, answers: selectedAnswers() })
+    // The escalation model occasionally emits an invalid plan (provider json_schema
+    // variance) even with the server's own retries; retry the whole call a couple
+    // more times before dropping to the offline preview compiler, since that fallback
+    // is a metadata-only plan that can't run the content pre-filter/classifier.
+    const answers = selectedAnswers()
+    let compiled: AgentPlan | null = null
+    for (let attempt = 0; attempt < 3 && !compiled; attempt++) {
+      try {
+        compiled = await compile.mutateAsync({ description, answers })
+      } catch {
+        compiled = null
+      }
+    }
+    if (compiled) {
       setApiPlan(compiled)
       setPlan(planToDisplay(compiled, description.trim().slice(0, 40) || 'New agent'))
       setForwardTo(forwardActionTo(compiled) ?? '')
-    } catch {
+    } else {
       setApiPlan(null)
       setPlan(compilePlan(description))
     }

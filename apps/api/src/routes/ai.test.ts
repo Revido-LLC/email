@@ -19,6 +19,8 @@ const crypto = makeUserCrypto(DEK)
 const h = vi.hoisted(() => ({
   results: new Map<unknown, unknown[]>(),
   execRows: [] as unknown[],
+  /** When set, successive `execute()` calls return these result-sets in order. */
+  execQueue: null as null | unknown[][],
   session: { value: null as null | { user: { id: string } } },
 }))
 
@@ -71,6 +73,7 @@ vi.mock('@revido/db/client', () => {
       return this
     }
     async execute(): Promise<unknown[]> {
+      if (h.execQueue && h.execQueue.length > 0) return h.execQueue.shift() ?? []
       return h.execRows
     }
     then(onFulfilled: (value: unknown[]) => unknown, onRejected?: (reason: unknown) => unknown): unknown {
@@ -100,6 +103,7 @@ function fakeLlm(): FakeLlmClient {
 beforeEach(() => {
   h.results.clear()
   h.execRows = []
+  h.execQueue = null
   h.session.value = { user: { id: USER_ID } }
   setLlmClient(fakeLlm())
   setEmbeddingsClient(new FakeEmbeddingsClient())
@@ -178,6 +182,51 @@ describe('POST /ai/chat', () => {
     const text = await res.text()
     expect(text).toContain('event: citations')
     expect(text).toContain('data: []')
+  })
+
+  it('pseudonymizes PII to the model and restores real names in the stream', async () => {
+    // The model must NEVER see real names/emails (the gateway would scrub them);
+    // it sees opaque tokens, and we restore the real values as the answer streams.
+    let seenByModel = ''
+    setLlmClient(
+      new FakeLlmClient({
+        respond: (req) => {
+          seenByModel = JSON.stringify({ system: req.system, messages: req.messages })
+          // Echo the pseudonym the model would have seen for the sender.
+          return 'The last email is from Contact_1 (john was cc-ed).'
+        },
+      }),
+    )
+    // 1st execute() = ANN chunks; 2nd = thread contacts.
+    h.execQueue = [
+      [
+        {
+          threadId: 'th-9',
+          date: '2026-02-01T00:00:00.000Z',
+          distance: 0.1,
+          textCt: crypto.encrypt('John Ryan asked to add Sarah Chen (john@readi.com) to Slack.'),
+          subjectCt: crypto.encrypt('Re: Signups'),
+        },
+      ],
+      [{ name: 'John Ryan', email: 'john@readi.com' }],
+    ]
+    const res = await post('/chat', { message: 'whats the last email from John Ryan?' })
+    expect(res.status).toBe(200)
+    const text = await res.text()
+
+    // The model turn carried tokens, never the real name/email.
+    expect(seenByModel).toMatch(/Contact_\d+/)
+    expect(seenByModel).not.toContain('John Ryan')
+    expect(seenByModel).not.toContain('john@readi.com')
+
+    // The streamed answer restored the real name from the token.
+    const answer = text
+      .split('\n')
+      .filter((l) => l.startsWith('data: {"text"'))
+      .map((l) => JSON.parse(l.slice('data: '.length)).text as string)
+      .join('')
+    expect(answer).toContain('John Ryan')
+    expect(answer).not.toMatch(/Contact_\d+/)
   })
 })
 

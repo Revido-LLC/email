@@ -39,6 +39,7 @@ import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getEmbeddingsClient, getLlmClient } from '../lib/ai'
 import { rankChunks, type RankableChunk } from '../lib/chat-rank'
+import { makePseudonymizer, type EntityInput } from '../lib/pii-pseudonymize'
 import { loadThreadForPrompt, loadUserAiContext, type UserAiContext } from '../lib/ai-context'
 import { getUserCrypto, type UserCrypto } from '../lib/crypto'
 import { errorHandler, notFound, readJson } from '../lib/http'
@@ -383,6 +384,26 @@ function toRetrievedChunk(ch: Chunk): RetrievedChunk {
   return chunk
 }
 
+/**
+ * The plaintext contacts of the retrieved threads — the real names/emails to
+ * pseudonymize before the prompt reaches the model. Contacts are plaintext
+ * (identity metadata), so no decryption is needed.
+ */
+async function loadThreadContacts(
+  tx: DbTransaction,
+  userId: string,
+  threadIds: string[],
+): Promise<EntityInput[]> {
+  if (threadIds.length === 0) return []
+  const rows = (await tx.execute(sql`
+    select distinct c.name as "name", c.email as "email"
+    from thread_participants tp
+    join contacts c on c.id = tp.contact_id
+    where tp.user_id = ${userId} and tp.thread_id = any(${threadIds}::uuid[])
+  `)) as unknown as EntityInput[]
+  return rows
+}
+
 /** POST /ai/chat — grounded RAG answer over the user's mailbox, with citations. */
 aiRouter.post('/chat', async (c) => {
   const userId = c.get('userId')
@@ -392,27 +413,42 @@ aiRouter.post('/chat', async (c) => {
 
   const [queryVector] = await getEmbeddingsClient().embed([message], { inputType: 'query' })
 
-  const { ai, chunks } = await withUser(userId, async (tx) => {
+  const { ai, chunks, contacts } = await withUser(userId, async (tx) => {
     const context = await loadUserAiContext(tx, crypto, userId)
     const retrieved = queryVector
       ? await retrieveChunks(tx, crypto, userId, queryVector, message)
       : []
-    return { ai: context, chunks: retrieved }
+    const people = await loadThreadContacts(tx, userId, [
+      ...new Set(retrieved.map((r) => r.threadId)),
+    ])
+    return { ai: context, chunks: retrieved, contacts: people }
   })
 
-  const priorTurns = (history ?? []).slice(-MAX_HISTORY)
+  // Pseudonymize every real name/email BEFORE the model sees it (the gateway
+  // scrubs real PII to placeholders; opaque tokens pass through). Encode the
+  // whole prompt — context, question, and history — so a mention in any of them
+  // maps to the same token, then restore real values as the answer streams back.
+  const pseud = makePseudonymizer(contacts)
+  const priorTurns = (history ?? [])
+    .slice(-MAX_HISTORY)
+    .map((t) => ({ role: t.role, content: pseud.encode(t.content) }))
+  const promptChunks = chunks.map((ch) =>
+    toRetrievedChunk({ ...ch, text: pseud.encode(ch.text), subject: pseud.encode(ch.subject) }),
+  )
   const built = buildChatPrompt(
-    message,
-    chunks.map(toRetrievedChunk),
+    pseud.encode(message),
+    promptChunks,
     { outputLanguage: ai.outputLanguage },
     priorTurns,
   )
+  // Citations are rendered by the app, not the model, so they keep the real subjects.
   const citations = dedupeCitations(chunks)
 
   await recordAiUsage(userId, UsageMetric.chatQueries)
 
   const llm = getLlmClient()
   return streamSSE(c, async (stream) => {
+    const decoder = pseud.decoder()
     try {
       for await (const event of llm.stream({
         model: WRITE_MODEL,
@@ -422,8 +458,11 @@ aiRouter.post('/chat', async (c) => {
         userId,
       })) {
         if (event.type === 'text') {
-          await stream.writeSSE({ event: 'token', data: JSON.stringify({ text: event.text }) })
+          const text = decoder.push(event.text)
+          if (text) await stream.writeSSE({ event: 'token', data: JSON.stringify({ text }) })
         } else {
+          const tail = decoder.flush()
+          if (tail) await stream.writeSSE({ event: 'token', data: JSON.stringify({ text: tail }) })
           await stream.writeSSE({ event: 'citations', data: JSON.stringify(citations) })
           await stream.writeSSE({
             event: 'done',

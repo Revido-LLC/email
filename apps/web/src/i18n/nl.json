@@ -47,7 +47,7 @@
         },
         "agents": {
           "title": "Agents doen de rest",
-          "copy": "Stellen antwoorden op, jagen onbeantwoorde mails na, archiveren bonnetjes, bundelen nieuwsbrieven — jij keurt alleen goed."
+          "copy": "Beschrijf een regel in gewone taal — “stuur bonnetjes door naar de boekhouding,” “jaag onbeantwoorde mails na,” “meld me af van de ruis.” Bekijk het eerst op echte mail, keur dan elke keer goed of laat het lopen."
         }
       }
     },
@@ -65,8 +65,8 @@
           "copy": "Concepten die echt klinken als jij — toon, formulering en afsluiting geleerd van je verzonden mail."
         },
         "agents": {
-          "title": "Inbox-agents",
-          "copy": "Zet-en-vergeet-agents melden je af, jagen onbeantwoorde mails na, archiveren facturen en bundelen de ruis."
+          "title": "Agents, in gewone taal",
+          "copy": "Beschrijf een regel en die wordt een echte workflow: labelen, archiveren, afmelden, opstellen of doorsturen. “Stuur elke factuur naar mijn boekhouder” — gebeurt, inclusief bijlagen. Bekijk het op je inbox, laat het dan automatisch lopen of keur elke keer goed."
         },
         "chat": {
           "title": "Chat met je inbox",

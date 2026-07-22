@@ -47,7 +47,7 @@
         },
         "agents": {
           "title": "Agents handle the rest",
-          "copy": "Draft replies, chase no-answers, file receipts, bundle newsletters — you just approve."
+          "copy": "Describe a rule in plain English — “forward receipts to accounting,” “chase no-replies,” “unsubscribe from the noise.” Preview it on real mail, then approve each time or let it run."
         }
       }
     },
@@ -65,8 +65,8 @@
           "copy": "Drafts that actually sound like you — tone, phrasing, and sign-off learned from your sent mail."
         },
         "agents": {
-          "title": "Inbox agents",
-          "copy": "Set-and-forget agents unsubscribe, chase no-replies, file invoices, and bundle the noise."
+          "title": "Agents, in plain English",
+          "copy": "Describe any rule and it compiles into a real workflow: label, archive, unsubscribe, draft, or forward. “Send every invoice to my bookkeeper” — done, attachments and all. Preview on your inbox, then auto-run or approve each."
         },
         "chat": {
           "title": "Chat with your inbox",

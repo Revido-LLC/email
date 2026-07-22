@@ -226,6 +226,14 @@ agentsAiRouter.post('/compile', async (c) => {
 
   const parsed = agentPlanSchema.safeParse(normalizePlan(result.json))
   if (!parsed.success) {
+    // TEMP DIAGNOSTIC: surface the exact model output + validation issues so a prod
+    // compile 422 can be diagnosed. Remove once the escalation-tier shape is stable.
+    console.error(
+      '[compile] invalid plan raw=' +
+        JSON.stringify(result.json).slice(0, 700) +
+        ' issues=' +
+        JSON.stringify(parsed.error.issues.slice(0, 6)),
+    )
     throw new HttpError(422, 'compile_failed', 'The model did not return a valid agent plan.')
   }
   await recordAiUsage(userId, UsageMetric.agentCompiles)

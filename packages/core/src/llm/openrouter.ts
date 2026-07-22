@@ -82,7 +82,7 @@ export interface OpenRouterLlmClientOptions {
   models?: Partial<Record<LlmModelTier, string>>
   /** Force a zero-data-retention / no-train route per request (default true). */
   enforceZdr?: boolean
-  /** OpenRouter app attribution, sent as `HTTP-Referer` (default `https://mail.revido.co`). */
+  /** OpenRouter app attribution, sent as `HTTP-Referer` (default `https://email.revido.co`). */
   referer?: string
   /** OpenRouter app attribution, sent as `X-Title` (default `Revido Mail`). */
   title?: string
@@ -143,7 +143,7 @@ export class OpenRouterLlmClient implements LlmClient, LlmBatchClient {
     this.endpoint = `${baseUrl}/chat/completions`
     this.models = { ...DEFAULT_OPENROUTER_MODELS, ...(opts.models ?? {}) }
     this.enforceZdr = opts.enforceZdr ?? true
-    this.referer = opts.referer ?? 'https://mail.revido.co'
+    this.referer = opts.referer ?? 'https://email.revido.co'
     this.title = opts.title ?? 'Revido Mail'
     this.fetchImpl = opts.fetchImpl ?? (globalThis.fetch as FetchImpl)
   }

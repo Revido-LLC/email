@@ -47,7 +47,7 @@ describe('OpenRouterLlmClient.complete request shape', () => {
 
     const headers = init!.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer or-key')
-    expect(headers['HTTP-Referer']).toBe('https://mail.revido.co')
+    expect(headers['HTTP-Referer']).toBe('https://email.revido.co')
     expect(headers['X-Title']).toBe('Revido Mail')
 
     const body = bodyOf(fetchImpl)

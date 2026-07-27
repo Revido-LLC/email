@@ -16,7 +16,7 @@ const copy: Record<'en' | 'nl', LegalPageCopy> = {
     contents: 'On this page',
     back: 'Back to Revido Mail',
     promises: [
-      { value: '30 days', label: 'Imported when you first connect' },
+      { value: '100 emails', label: 'Newest messages imported when you first connect' },
       { value: 'Encrypted', label: 'Mailbox content at rest' },
       { value: 'Your choice', label: 'Disconnect and delete anytime' },
     ],
@@ -55,7 +55,7 @@ const copy: Record<'en' | 'nl', LegalPageCopy> = {
         id: 'mailbox-window',
         title: '4. Mailbox import and retention',
         paragraphs: [
-          'When you first connect a mailbox, Revido Mail imports only the preceding 30 days. After that, it keeps synchronizing new messages while the account remains connected. The 30-day limit applies to the initial import; messages synchronized afterward can remain in your Revido Mail account until you delete them or disconnect the mailbox.',
+          'When you first connect a mailbox, Revido Mail imports only your 100 newest emails. After that, it keeps synchronizing new messages while the account remains connected. The 100-email limit applies to the initial import; messages synchronized afterward can remain in your Revido Mail account until you delete them or disconnect the mailbox.',
           'Disconnecting an account or using Delete everything removes the mailbox content and related indexes we control. Some limited records may remain temporarily where required for security, legal compliance, fraud prevention, or backup expiry.',
         ],
       },
@@ -111,7 +111,7 @@ const copy: Record<'en' | 'nl', LegalPageCopy> = {
     contents: 'Op deze pagina',
     back: 'Terug naar Revido Mail',
     promises: [
-      { value: '30 dagen', label: 'Geïmporteerd bij de eerste koppeling' },
+      { value: '100 e-mails', label: 'Nieuwste berichten geïmporteerd bij de eerste koppeling' },
       { value: 'Versleuteld', label: 'Mailboxinhoud in opslag' },
       { value: 'Jouw keuze', label: 'Altijd loskoppelen en verwijderen' },
     ],
@@ -150,7 +150,7 @@ const copy: Record<'en' | 'nl', LegalPageCopy> = {
         id: 'mailboxperiode',
         title: '4. Mailboximport en bewaartermijn',
         paragraphs: [
-          'Wanneer je een mailbox voor het eerst koppelt, importeert Revido Mail alleen de voorafgaande 30 dagen. Daarna blijven nieuwe berichten synchroniseren zolang het account gekoppeld is. De limiet van 30 dagen geldt voor de eerste import; later gesynchroniseerde berichten kunnen blijven staan totdat je ze verwijdert of de mailbox loskoppelt.',
+          'Wanneer je een mailbox voor het eerst koppelt, importeert Revido Mail alleen je 100 nieuwste e-mails. Daarna blijven nieuwe berichten synchroniseren zolang het account gekoppeld is. De limiet van 100 e-mails geldt voor de eerste import; later gesynchroniseerde berichten kunnen blijven staan totdat je ze verwijdert of de mailbox loskoppelt.',
           'Bij loskoppelen of Alles verwijderen wissen we de mailboxinhoud en gerelateerde indexen die wij beheren. Beperkte gegevens kunnen tijdelijk blijven bestaan wanneer dat nodig is voor beveiliging, wettelijke naleving, fraudepreventie of het verlopen van back-ups.',
         ],
       },

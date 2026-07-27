@@ -119,7 +119,6 @@ function harness(
     },
     // Default OFF so the base tests exercise the real-time fallback fan-out.
     batchTriage: opts.batchTriage ?? false,
-    now: () => new Date('2026-07-20T00:00:00Z'),
     saveCredentials: () => Promise.resolve(),
   }
   return { deps, persisted, enqueued, progress, syncLabels, submittedBatches }
@@ -128,7 +127,7 @@ function harness(
 const PAYLOAD = { accountId: ACCOUNT_ID }
 
 describe('makeBackfillConsumer', () => {
-  it('persists a page, triages new inbound only, and re-enqueues itself when more remain', async () => {
+  it('persists the newest page, triages new inbound only, and never requests an older page', async () => {
     const page: BackfillPage = {
       messages: [
         fakeMessage({ providerMessageId: 'in', providerThreadId: 'ta', outbound: false }),
@@ -164,11 +163,11 @@ describe('makeBackfillConsumer', () => {
     expect(h.progress[0]).toEqual({
       accountId: ACCOUNT_ID,
       userId: USER_ID,
-      backfillCursor: 'page-2',
-      backfillComplete: false,
+      backfillCursor: null,
+      backfillComplete: true,
     })
-    expect(h.enqueued.some((e) => e.queue === QUEUE.backfill)).toBe(true)
-    expect(h.enqueued.some((e) => e.queue === QUEUE.renewWatch)).toBe(false)
+    expect(h.enqueued.some((e) => e.queue === QUEUE.backfill)).toBe(false)
+    expect(h.enqueued.some((e) => e.queue === QUEUE.renewWatch)).toBe(true)
 
     // Fallback (batchTriage off) never touches the Batches API.
     expect(h.submittedBatches).toHaveLength(0)
@@ -197,7 +196,7 @@ describe('makeBackfillConsumer', () => {
     expect(h.enqueued.some((e) => e.queue === QUEUE.backfill)).toBe(false)
   })
 
-  it('imports only the last 30 days, then registers the watch for new mail', async () => {
+  it('keeps fewer than 100 messages regardless of age and registers incremental sync', async () => {
     const page: BackfillPage = {
       messages: [
         fakeMessage({
@@ -223,11 +222,38 @@ describe('makeBackfillConsumer', () => {
       maxAttempts: 5,
     })
 
-    expect(h.persisted.map((message) => message.providerMessageId)).toEqual(['recent'])
+    expect(h.persisted.map((message) => message.providerMessageId)).toEqual(['recent', 'old'])
     expect(h.progress[0]).toMatchObject({
       backfillCursor: null,
       backfillComplete: true,
     })
+    expect(h.enqueued.some((entry) => entry.queue === QUEUE.backfill)).toBe(false)
+    expect(h.enqueued.some((entry) => entry.queue === QUEUE.renewWatch)).toBe(true)
+  })
+
+  it('imports at most 100 unique messages in newest-first order', async () => {
+    const messages = Array.from({ length: 105 }, (_, index) =>
+      fakeMessage({
+        providerMessageId: `m-${index}`,
+        providerThreadId: `t-${index}`,
+        date: new Date(Date.UTC(2026, 6, 1, 0, index)).toISOString(),
+      }),
+    )
+    messages.push({ ...messages[104]! })
+    const h = harness({ messages: messages.reverse(), nextCursor: 'older-page' })
+
+    await makeBackfillConsumer(h.deps)(PAYLOAD, {
+      id: 'j',
+      queue: 'backfill',
+      payload: PAYLOAD,
+      attempts: 0,
+      maxAttempts: 5,
+    })
+
+    expect(h.persisted).toHaveLength(100)
+    expect(h.persisted[0]?.providerMessageId).toBe('m-104')
+    expect(h.persisted[99]?.providerMessageId).toBe('m-5')
+    expect(new Set(h.persisted.map((message) => message.providerMessageId)).size).toBe(100)
     expect(h.enqueued.some((entry) => entry.queue === QUEUE.backfill)).toBe(false)
     expect(h.enqueued.some((entry) => entry.queue === QUEUE.renewWatch)).toBe(true)
   })

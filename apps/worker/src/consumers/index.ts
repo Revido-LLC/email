@@ -42,7 +42,6 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       ...syncDeps,
       llm: ctx.llm,
       batchTriage: ctx.batchTriage,
-      now: ctx.now,
     }),
     [QUEUE.incremental]: makeIncrementalConsumer({ ...syncDeps, logger: ctx.logger }),
     [QUEUE.send]: makeSendConsumer({

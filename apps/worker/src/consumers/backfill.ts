@@ -1,9 +1,9 @@
 /**
  * `backfill` consumer — newest-first progressive import via the core adapter.
  *
- * One job imports one adapter page, newest first, until it reaches the 30-day
- * onboarding boundary: refresh creds → `adapter.backfill(cursor)` → idempotent
- * upsert of each in-window message (contacts/threads/messages/attachments,
+ * One job imports at most the 100 newest messages from one provider page:
+ * refresh creds → `adapter.backfill()` → idempotent upsert
+ * (contacts/threads/messages/attachments,
  * content encrypted at rest) → embed every NEW message → advance `sync_state`.
  *
  * Triage of the page's NEW inbound mail is BULK, historical work, so — unlike the
@@ -16,9 +16,9 @@
  * Setting `batchTriage: false` (env `ANTHROPIC_BATCHES_DISABLED`) falls back to the
  * per-message real-time `triage` + `summary` fan-out, making the path reversible.
  *
- * If the page has a next cursor the consumer re-enqueues itself; when the backfill
- * completes it enqueues `renew_watch` to register push notifications and seed the
- * incremental cursor. Re-running a page is a no-op because upserts key on provider ids.
+ * The consumer deliberately ignores any next cursor, marks the initial import
+ * complete, and enqueues `renew_watch` to register push notifications and seed the
+ * incremental cursor. Re-running the page is a no-op because upserts key on provider ids.
  */
 
 import type { ProviderCredentials, RawFetchedMessage } from '@revido/core'
@@ -31,7 +31,6 @@ import type { JobConsumer } from '../queue/runner'
 import {
   QUEUE,
   backfillPayload,
-  type BackfillPayload,
   type EmbedPayload,
   type RenewWatchPayload,
   type SummaryPayload,
@@ -41,8 +40,7 @@ import {
 } from '../queue/jobs'
 import { buildTriageRequest, triageInputFromRawMessage } from './triage-core'
 
-const DEFAULT_BACKFILL_DAYS = 30
-const DAY_MS = 24 * 60 * 60 * 1000
+export const INITIAL_IMPORT_LIMIT = 100
 
 export interface BackfillDeps {
   loadAccount(accountId: string): Promise<AccountContext>
@@ -59,9 +57,6 @@ export interface BackfillDeps {
    * `ANTHROPIC_BATCHES_DISABLED` — fall back to per-message real-time `triage`.
    */
   batchTriage: boolean
-  /** Clock and retention window are injectable for deterministic boundary tests. */
-  now?(): Date
-  backfillDays?: number
   /** Persist refreshed OAuth tokens after `adapter.connect(...)`. */
   saveCredentials(account: AccountContext, creds: ProviderCredentials): Promise<void>
 }
@@ -78,12 +73,16 @@ export function makeBackfillConsumer(deps: BackfillDeps): JobConsumer {
     const state = await deps.mail.getSyncState(accountId)
     if (state?.backfillComplete) return
 
-    const cursor = state?.backfillCursor ?? undefined
-    const page = await adapter.backfill(creds, cursor)
-    const now = (deps.now ?? ((): Date => new Date()))()
-    const cutoff = now.getTime() - (deps.backfillDays ?? DEFAULT_BACKFILL_DAYS) * DAY_MS
-    const inWindow = page.messages.filter((message) => Date.parse(message.date) >= cutoff)
-    const reachedCutoff = page.messages.some((message) => Date.parse(message.date) < cutoff)
+    const page = await adapter.backfill(creds)
+    const newest = [...page.messages]
+      .sort((left, right) => Date.parse(right.date) - Date.parse(left.date))
+      .filter(
+        (message, index, messages) =>
+          messages.findIndex(
+            (candidate) => candidate.providerMessageId === message.providerMessageId,
+          ) === index,
+      )
+      .slice(0, INITIAL_IMPORT_LIMIT)
 
     // New inbound messages whose triage this page will submit as one batch.
     const batch: { customId: string; request: ReturnType<typeof buildTriageRequest> }[] = []
@@ -91,7 +90,7 @@ export function makeBackfillConsumer(deps: BackfillDeps): JobConsumer {
     // Real-time fallback only: at most one summary per thread that gained a message.
     const summarizedThreads = new Set<string>()
 
-    for (const msg of inWindow) {
+    for (const msg of newest) {
       const persisted = await deps.mail.persistMessage(
         { accountId, userId: account.userId, crypto: account.crypto },
         msg,
@@ -139,29 +138,18 @@ export function makeBackfillConsumer(deps: BackfillDeps): JobConsumer {
       await deps.jobs.enqueue(QUEUE.triageBatch, pollJob)
     }
 
-    // Provider backfill pages are newest-first. Once a page crosses the cutoff,
-    // older pages are intentionally not fetched; incremental sync handles all
-    // newly-arriving mail after the watch is registered.
-    const complete = page.nextCursor === null || reachedCutoff
     await deps.mail.saveBackfillProgress({
       accountId,
       userId: account.userId,
-      backfillCursor: complete ? null : page.nextCursor,
-      backfillComplete: complete,
+      backfillCursor: null,
+      backfillComplete: true,
     })
-    await deps.mail.setSyncProgress(
-      accountId,
-      complete ? 1 : 0.5,
-      complete ? 'Synced' : 'Importing…',
-    )
+    await deps.mail.setSyncProgress(accountId, 1, 'Synced')
 
-    if (!complete) {
-      const next: BackfillPayload = { accountId }
-      await deps.jobs.enqueue(QUEUE.backfill, next)
-    } else {
-      const watch: RenewWatchPayload = { accountId }
-      await deps.jobs.enqueue(QUEUE.renewWatch, watch)
-    }
+    // Never follow the provider's older-page cursor. Incremental sync handles
+    // genuinely new arrivals after the watch is registered.
+    const watch: RenewWatchPayload = { accountId }
+    await deps.jobs.enqueue(QUEUE.renewWatch, watch)
   }
 }
 

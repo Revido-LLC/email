@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
+const feedbackOrigin = 'https://feedback-api-production-5148.up.railway.app'
+
 /**
  * Origin of the API, derived from the build-time `VITE_API_URL`. Empty for a
  * same-origin deploy (where `'self'` already covers the API). Added to
@@ -22,25 +24,25 @@ const apiOrigin = (() => {
 /**
  * Content-Security-Policy for the SPA.
  *
- *  - `script-src 'self'` — the production build emits only same-origin module
- *    scripts (no inline scripts), so no `'unsafe-inline'`/`'unsafe-eval'` needed.
+ *  - `script-src` — the production build emits same-origin module scripts and
+ *    loads the Revido feedback widget from its dedicated service.
  *  - `style-src 'unsafe-inline'` — Tailwind + component libs inject runtime styles;
  *    plus the Google Fonts stylesheet host.
  *  - `img-src … https:` — sender avatars come from arbitrary provider CDNs. This is
  *    app CHROME only; the tracking-pixel surface (email bodies) is isolated in the
  *    render iframe with its own, far stricter `img-src` (see email-frame.tsx).
- *  - `connect-src` — same origin plus the API origin for fetch/SSE + Better Auth.
+ *  - `connect-src` — same origin plus the API and feedback origins.
  *  - `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` — lock the rest.
  *
  * `frame-ancestors`/HSTS can't ride in a `<meta>`, so they're header-only (below).
  */
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self'",
+  `script-src 'self' ${feedbackOrigin}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
-  `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ''}`,
+  `connect-src 'self' ${feedbackOrigin}${apiOrigin ? ` ${apiOrigin}` : ''}`,
   "frame-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",

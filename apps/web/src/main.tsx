@@ -13,6 +13,15 @@ import { SessionProvider } from './lib/session'
 import { routeTree } from './routeTree.gen'
 import './styles.css'
 
+declare const RevidoFeedback: {
+  init(config: { token: string; apiUrl: string }): void
+}
+
+RevidoFeedback.init({
+  token: 'fb_proj_2829d4482d68a3723046269f3b60277c',
+  apiUrl: 'https://feedback-api-production-5148.up.railway.app',
+})
+
 // Content-free product analytics. A complete no-op unless VITE_POSTHOG_KEY is set.
 initAnalytics()
 

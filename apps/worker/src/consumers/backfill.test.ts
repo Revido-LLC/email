@@ -282,7 +282,13 @@ describe('makeBackfillConsumer', () => {
     expect(h.submittedBatches[0]?.map((r) => r.customId)).toEqual(['db-in1', 'db-in2'])
     // Each request is a real triage request (strict JSON, cheap tier).
     expect(h.submittedBatches[0]?.[0]?.request.model).toBe('triage')
-    expect(h.submittedBatches[0]?.[0]?.request.responseFormat).toEqual({ type: 'json' })
+    expect(h.submittedBatches[0]?.[0]?.request.responseFormat).toMatchObject({
+      type: 'json',
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+      },
+    })
 
     // No real-time triage/summary jobs in batch mode — those are deferred to the poller.
     expect(h.enqueued.some((e) => e.queue === QUEUE.triage)).toBe(false)

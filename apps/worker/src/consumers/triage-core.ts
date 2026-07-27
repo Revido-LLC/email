@@ -40,6 +40,19 @@ const triageResultSchema: z.ZodType<TriageResult> = z.object({
   language: z.string().min(1),
 })
 
+export const TRIAGE_RESULT_JSON_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['category', 'priorityScore', 'priority', 'tldr', 'language'],
+  properties: {
+    category: { type: 'string', enum: [...CATEGORY_IDS] },
+    priorityScore: { type: 'integer', minimum: 0, maximum: 100 },
+    priority: { type: 'string', enum: ['urgent', 'high', 'normal', 'low'] },
+    tldr: { type: 'string', minLength: 1 },
+    language: { type: 'string', minLength: 1 },
+  },
+}
+
 /** Validate an LLM JSON payload into a `TriageResult` (throws on mismatch). */
 export function parseTriageResult(json: unknown): TriageResult {
   return triageResultSchema.parse(json)
@@ -66,7 +79,7 @@ export function buildTriageRequest(input: TriageInput, userId: string): LlmCompl
     system: prompt.system,
     messages: prompt.messages,
     maxTokens: TRIAGE_MAX_TOKENS,
-    responseFormat: { type: 'json' },
+    responseFormat: { type: 'json', schema: TRIAGE_RESULT_JSON_SCHEMA },
     // thinking omitted ⇒ disabled (triage is high-volume and must stay cheap).
     userId,
   }

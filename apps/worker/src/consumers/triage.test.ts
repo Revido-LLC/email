@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { FakeLlmClient } from '@revido/core'
 import type { AccountContext, AccountCrypto } from '../db/accounts'
 import type { ApplyTriageInput, TriageInput } from '../mail/store'
+import { buildTriageRequest, TRIAGE_RESULT_JSON_SCHEMA } from './triage-core'
 import { makeTriageConsumer, parseTriageResult, type TriageDeps } from './triage'
 
 const passthroughCrypto: AccountCrypto = {
@@ -66,7 +67,10 @@ describe('makeTriageConsumer', () => {
     // The LLM request used the cheap tier, strict JSON, and no thinking (disabled).
     const call = llm.calls[0]
     expect(call?.model).toBe('triage')
-    expect(call?.responseFormat).toEqual({ type: 'json' })
+    expect(call?.responseFormat).toEqual({
+      type: 'json',
+      schema: TRIAGE_RESULT_JSON_SCHEMA,
+    })
     expect(call?.thinking).toBeUndefined()
     expect(call?.system).toContain('triage engine')
 
@@ -113,5 +117,30 @@ describe('parseTriageResult', () => {
     ).toMatchObject({ category: 'to-reply', priorityScore: 74 })
 
     expect(() => parseTriageResult({ category: 'nope', priorityScore: 999 })).toThrow()
+  })
+})
+
+describe('buildTriageRequest', () => {
+  it('requires the provider to return the strict triage object shape', () => {
+    const request = buildTriageRequest(
+      {
+        subject: 'Invoice',
+        from: { name: 'Vendor', email: 'vendor@example.com' },
+        to: [{ name: 'Me', email: 'me@example.com' }],
+        body: 'Your receipt is attached.',
+        date: '2026-07-27T00:00:00Z',
+      },
+      fakeAccount().userId,
+    )
+
+    expect(request.responseFormat).toEqual({
+      type: 'json',
+      schema: TRIAGE_RESULT_JSON_SCHEMA,
+    })
+    expect(TRIAGE_RESULT_JSON_SCHEMA).toMatchObject({
+      type: 'object',
+      additionalProperties: false,
+      required: ['category', 'priorityScore', 'priority', 'tldr', 'language'],
+    })
   })
 })

@@ -13,6 +13,7 @@
  * via `./triage-core`, so a batched result is produced and stored identically.
  */
 
+import type { TriageResult } from '@revido/core'
 import type { AccountContext } from '../db/accounts'
 import type { MailStore } from '../mail/store'
 import type { WorkerLlmClient } from '../llm'
@@ -37,9 +38,22 @@ export function makeTriageConsumer(deps: TriageDeps): JobConsumer {
     const input = await deps.mail.getTriageInput(account.userId, messageId, account.crypto)
     if (!input) return // message was deleted between enqueue and run — nothing to triage.
 
-    const result = await deps.llm.complete(buildTriageRequest(input, account.userId))
-
-    const triage = parseTriageResult(result.json)
+    const request = buildTriageRequest(input, account.userId)
+    let triage: TriageResult | null = null
+    for (let attempt = 0; attempt < 2 && triage === null; attempt += 1) {
+      const result = await deps.llm.complete(request)
+      const parsed = triageResultOrNull(result.json)
+      if (parsed) triage = parsed
+    }
+    if (!triage) {
+      // A provider can occasionally return an empty/refusal payload even with a
+      // strict response schema. Do not strand the email or poison the queue:
+      // persist a conservative classification that the user can still correct.
+      console.warn('[worker] triage model returned invalid JSON twice; using safe fallback', {
+        messageId,
+      })
+      triage = safeTriageFallback(input.subject)
+    }
     await persistTriageResult(deps.mail, {
       userId: account.userId,
       threadId,
@@ -47,5 +61,23 @@ export function makeTriageConsumer(deps: TriageDeps): JobConsumer {
       crypto: account.crypto,
       result: triage,
     })
+  }
+}
+
+function triageResultOrNull(json: unknown): TriageResult | null {
+  try {
+    return parseTriageResult(json)
+  } catch {
+    return null
+  }
+}
+
+function safeTriageFallback(subject: string): TriageResult {
+  return {
+    category: 'fyi',
+    priorityScore: 25,
+    priority: 'normal',
+    tldr: subject.trim() || 'Email received',
+    language: 'und',
   }
 }

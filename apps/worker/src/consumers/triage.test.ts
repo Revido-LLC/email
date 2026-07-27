@@ -102,6 +102,55 @@ describe('makeTriageConsumer', () => {
     })
     expect(applyTriage).not.toHaveBeenCalled()
   })
+
+  it('retries malformed model output, then persists a safe fallback without failing the job', async () => {
+    const applyTriage = vi.fn()
+    const complete = vi.fn().mockResolvedValue({
+      text: '',
+      json: undefined,
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+      },
+      stopReason: null,
+      model: 'triage',
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const deps: TriageDeps = {
+      loadAccount: () => Promise.resolve(fakeAccount()),
+      mail: {
+        getTriageInput: () => Promise.resolve(TRIAGE_INPUT),
+        applyTriage,
+        increment: vi.fn(),
+      },
+      llm: { complete },
+    }
+
+    await makeTriageConsumer(deps)(PAYLOAD, {
+      id: 'j',
+      queue: 'triage',
+      payload: PAYLOAD,
+      attempts: 0,
+      maxAttempts: 5,
+    })
+
+    expect(complete).toHaveBeenCalledTimes(2)
+    expect(applyTriage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: {
+          category: 'fyi',
+          priorityScore: 25,
+          priority: 'normal',
+          tldr: TRIAGE_INPUT.subject,
+          language: 'und',
+        },
+      }),
+    )
+    expect(warn).toHaveBeenCalledOnce()
+    warn.mockRestore()
+  })
 })
 
 describe('parseTriageResult', () => {

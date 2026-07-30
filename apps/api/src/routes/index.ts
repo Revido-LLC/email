@@ -23,11 +23,14 @@ import { aiRouter } from './ai'
 import { approvalsRouter } from './approvals'
 import { attachmentsRouter } from './attachments'
 import { categoriesRouter } from './categories'
+import { calendarRouter } from './calendar'
 import { commitmentsRouter } from './commitments'
 import { imageProxyRouter } from './image-proxy'
 import { leadsRouter } from './leads'
+import { labelsRouter } from './labels'
 import { meRouter } from './me'
 import { messagesRouter } from './messages'
+import { meetingsRouter, recordingsRouter } from './meetings'
 import { oauthRouter } from './oauth'
 import { onboardingRouter } from './onboarding'
 import { remindersRouter } from './reminders'
@@ -37,6 +40,7 @@ import { threadsRouter } from './threads'
 import { todayRouter } from './today'
 import { usageRouter } from './usage'
 import { webhooksRouter } from './webhooks'
+import { workspacesRouter } from './workspaces'
 
 export interface RouterEntry {
   path: string
@@ -65,6 +69,11 @@ export const routers: RouterEntry[] = [
   { path: '/account', router: accountMgmtRouter },
   { path: '/messages', router: messagesRouter },
   { path: '/attachments', router: attachmentsRouter },
+  { path: '/calendar', router: calendarRouter },
+  { path: '/labels', router: labelsRouter },
+  { path: '/workspaces', router: workspacesRouter },
+  { path: '/meetings', router: meetingsRouter },
+  { path: '/recordings', router: recordingsRouter },
   // SSRF-guarded remote-image relay (session-gated + per-IP rate limited).
   { path: '/image-proxy', router: imageProxyRouter },
   // AI surface (api-ai): self-managed rate limiting; the agents-ai router shares

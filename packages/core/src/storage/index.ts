@@ -13,10 +13,8 @@
  *  - {@link LocalFsStorageProvider} — the dev/CI backing: writes under a base dir
  *    (`STORAGE_LOCAL_DIR`); the object ref is the relative path. Real, works today.
  *  - {@link FakeStorageProvider} — in-memory, deterministic; for unit tests.
- *  - {@link S3StorageProvider} — the PRODUCTION SWAP POINT (S3 / Cloudflare R2).
- *    Intentionally a stub: its methods throw until an SDK backing is added, so no
- *    cloud SDK dependency is pulled into `@revido/core` yet. Selecting it (setting
- *    `STORAGE_S3_BUCKET`) fails loudly rather than silently dropping bytes.
+ *  - {@link S3StorageProvider} — production S3 / Cloudflare R2 backing using the
+ *    AWS SDK v3, including custom endpoints and path-style requests.
  *
  * The stored ref itself is opaque to callers; the API encrypts it under the user
  * DEK before persisting, so the object store never sees plaintext refs and the
@@ -25,6 +23,13 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+  type S3ClientConfig,
+} from '@aws-sdk/client-s3'
 
 /** Per-object write hints. Cloud backings map these to object metadata. */
 export interface PutOptions {
@@ -126,39 +131,69 @@ export interface S3StorageOptions {
   secretAccessKey?: string
 }
 
-const CLOUD_STORAGE_UNIMPLEMENTED =
-  'S3StorageProvider is not implemented yet. To enable cloud attachment storage, add an ' +
-  '@aws-sdk/client-s3 (or S3-compatible) dependency and implement put/get/delete here. ' +
-  'Until then, unset STORAGE_S3_BUCKET to fall back to the local filesystem provider.'
+export interface S3CommandClient {
+  send(command: PutObjectCommand | GetObjectCommand | DeleteObjectCommand): Promise<unknown>
+}
 
 /**
  * The production swap point — S3 / Cloudflare R2 backed object storage.
- *
- * Deliberately a stub so `@revido/core` stays SDK-free: constructing it is fine
- * (the factory does so when `STORAGE_S3_BUCKET` is set), but every I/O method
- * throws with a clear message. Wiring the real backing is a self-contained change
- * confined to these three methods — the interface, the API upload path, and the
- * worker download path all stay exactly as they are.
  */
 export class S3StorageProvider implements StorageProvider {
-  constructor(private readonly options: S3StorageOptions) {}
+  private readonly client: S3CommandClient
 
-  async put(_key: string, _bytes: Uint8Array, _opts?: PutOptions): Promise<{ ref: string }> {
-    throw new Error(`${CLOUD_STORAGE_UNIMPLEMENTED} (bucket: ${this.options.bucket})`)
+  constructor(
+    private readonly options: S3StorageOptions,
+    client?: S3CommandClient,
+  ) {
+    const config: S3ClientConfig = {
+      region: options.region ?? 'auto',
+      ...(options.endpoint ? { endpoint: options.endpoint, forcePathStyle: true } : {}),
+      ...(options.accessKeyId && options.secretAccessKey
+        ? {
+            credentials: {
+              accessKeyId: options.accessKeyId,
+              secretAccessKey: options.secretAccessKey,
+            },
+          }
+        : {}),
+    }
+    this.client = client ?? new S3Client(config)
   }
 
-  async get(_ref: string): Promise<Uint8Array> {
-    throw new Error(`${CLOUD_STORAGE_UNIMPLEMENTED} (bucket: ${this.options.bucket})`)
+  async put(key: string, bytes: Uint8Array, opts?: PutOptions): Promise<{ ref: string }> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.options.bucket,
+        Key: key,
+        Body: bytes,
+        ...(opts?.contentType ? { ContentType: opts.contentType } : {}),
+      }),
+    )
+    return { ref: key }
   }
 
-  async delete(_ref: string): Promise<void> {
-    throw new Error(`${CLOUD_STORAGE_UNIMPLEMENTED} (bucket: ${this.options.bucket})`)
+  async get(ref: string): Promise<Uint8Array> {
+    const response = (await this.client.send(
+      new GetObjectCommand({ Bucket: this.options.bucket, Key: ref }),
+    )) as {
+      Body?: {
+        transformToByteArray(): Promise<Uint8Array>
+      }
+    }
+    if (!response.Body) throw new Error(`S3 object has no body: ${ref}`)
+    return Uint8Array.from(await response.Body.transformToByteArray())
+  }
+
+  async delete(ref: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.options.bucket, Key: ref }),
+    )
   }
 }
 
 /**
  * Select a storage provider from the environment: the S3/R2 backing when
- * `STORAGE_S3_BUCKET` is set (the production swap — currently a loud stub), else
+ * `STORAGE_S3_BUCKET` is set, else
  * the local filesystem provider under `STORAGE_LOCAL_DIR` (or a temp-dir default).
  * Never throws for the local path, so it is safe as a lazy default.
  */

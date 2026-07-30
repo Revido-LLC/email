@@ -27,6 +27,7 @@ export const JobQueue = {
   backfill: 'backfill',
   incremental: 'incremental',
   chaser: 'chaser',
+  meetingProcess: 'meeting_process',
 } as const
 
 export interface ForwardJobPayload {

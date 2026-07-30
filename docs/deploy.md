@@ -17,7 +17,7 @@ runner.)
 | `@revido/web`    | GitHub `Revido-LLC/email`                      | `apps/web/railway.json`    | React SPA via `vite preview`. Already deployed.                                                               |
 | `@revido/api`    | `apps/api`                                     | `apps/api/railway.json`    | Hono API — CRUD, OAuth, AI SSE, webhooks. **Add at deploy.**                                                  |
 | `@revido/worker` | `apps/worker`                                  | `apps/worker/railway.json` | Background consumers: sync, enrichment, agents, digests. **Add at deploy.**                                   |
-| `Postgres`       | `ghcr.io/railwayapp-templates/postgres-ssl:18` | —                          | Railway Postgres 18 (pgvector 0.8.5 + pgcrypto). **Already provisioned + migrated (0000–0006) + RLS-proven.** |
+| `Postgres`       | `ghcr.io/railwayapp-templates/postgres-ssl:18` | —                          | Railway Postgres 18 (pgvector 0.8.5 + pgcrypto). **Already provisioned + migrated (0000–0007) + RLS-proven.** |
 
 Each app service points its "Config File Path" at its `railway.json` and keeps the Root Directory at
 the repo root (pnpm workspace filtering resolves from anywhere; the lockfile + hoisted `node_modules`
@@ -30,7 +30,9 @@ Schema is raw SQL under `packages/db/drizzle/` (`0000`–`0006`), split on `--> 
 `0000` = tables + `vector`/`pgcrypto` extensions; `0001` = the non-owner `app_user` role + GUC
 Row-Level-Security; `0002` = Better Auth + `jobs` (service-only); `0003` = `sync_state.subscription_id`;
 `0004` = nullable `attachments.message_id`; `0005` = `users.theme`; `0006` = agent forwarding
-(`agent_actions.params`, `agents.trusted`, `approvals.params`/`message_id`).
+(`agent_actions.params`, `agents.trusted`, `approvals.params`/`message_id`); `0007` adds workspaces,
+calendar, meetings/transcripts, custom labels, unified content embeddings, artifacts, and billing
+webhook state.
 
 **Status: all seven are already applied to the live staging + production DBs, and GUC-RLS is runtime-proven.** To
 apply migrations to a fresh DB (e.g. a prod cutover), export the target's public proxy URL and run the
@@ -103,7 +105,7 @@ invokes `vite preview` directly (bypassing the `preview` script's hardcoded `--p
 ## CI gate
 
 `.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile` then `pnpm build && typecheck &&
-lint && test` on every push/PR. Current status: **green — 406 tests**.
+lint && test` on every push/PR.
 
 ## Go-live checklist (the human-gated steps)
 
@@ -139,5 +141,5 @@ Revido-LLC/email` and the same for `@revido/worker`; set each Config File Path t
 - Delete the deprecated `revido-mail-staging` project (it only held the old, now-replaced Postgres).
   This is 2FA-gated: do it in the Railway dashboard → project → Settings → Delete, or via an
   interactive `railway delete`.
-- `S3StorageProvider` is a documented stub (like the AWS-KMS swap behind `DevKmsProvider`): wiring it
-  needs an S3/R2 bucket + the SDK; the ≤10 MB inline attachment path works without it.
+- `S3StorageProvider` is backed by AWS SDK v3 and supports AWS S3 or Cloudflare R2. Meeting recording
+  chunks fall back to per-user encrypted Postgres ciphertext when S3/R2 is not configured.

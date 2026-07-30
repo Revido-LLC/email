@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Video,
   X,
 } from 'lucide-react'
 import * as React from 'react'
@@ -278,6 +279,12 @@ export function NavRail() {
             to="/app/reminders"
             icon={<Bell />}
             label={t('shell.nav.reminders')}
+            collapsed={navCollapsed}
+          />
+          <NavLink
+            to="/app/meetings"
+            icon={<Video />}
+            label="Meetings"
             collapsed={navCollapsed}
           />
           <NavLink

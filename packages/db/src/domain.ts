@@ -239,3 +239,91 @@ export interface Signature {
   name: string
   html: string
 }
+
+// ---------- Calendar / meetings / unified intelligence ----------
+
+export type WorkspaceRole = 'owner' | 'admin' | 'member'
+export type WorkspacePlan = 'trial' | 'plus' | 'enterprise'
+
+export interface Workspace {
+  id: string
+  name: string
+  slug: string
+  role: WorkspaceRole
+  plan: WorkspacePlan
+  trialEndsAt?: string
+  subscriptionStatus?: string
+  retentionDays: number
+  featureFlags: Record<string, boolean>
+}
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  description?: string
+  location?: string
+  joinUrl?: string
+  startsAt: string
+  endsAt: string
+  timezone?: string
+  status: string
+  attendees: Contact[]
+}
+
+export type MeetingStatus = 'queued' | 'uploading' | 'processing' | 'ready' | 'failed'
+
+export interface MeetingActionItem {
+  text: string
+  owner?: string
+  dueAt?: string
+}
+
+export interface TranscriptSegment {
+  id: string
+  sequence: number
+  startsAtMs: number
+  endsAtMs: number
+  speaker?: string
+  text: string
+  language?: string
+  confidence?: number
+}
+
+export interface Meeting {
+  id: string
+  calendarEventId?: string
+  title: string
+  status: MeetingStatus
+  source: 'web' | 'extension'
+  meetingProvider?: 'google-meet' | 'zoom' | 'teams' | 'in-person' | string
+  recordingMode: 'tab-and-mic' | 'mic-only'
+  language?: string
+  durationMs?: number
+  startedAt?: string
+  endedAt?: string
+  summary?: string
+  decisions: string[]
+  questions: string[]
+  actionItems: MeetingActionItem[]
+  transcript?: TranscriptSegment[]
+  errorCode?: string
+}
+
+export interface CustomLabel {
+  id: string
+  name: string
+  description: string
+  color: string
+  icon: string
+  priority: number
+  enabled: boolean
+}
+
+export interface Artifact {
+  id: string
+  name: string
+  mime: string
+  status: 'draft' | 'review' | 'approved' | 'rejected'
+  latestVersion: number
+  updatedAt: string
+}

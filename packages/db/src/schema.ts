@@ -12,6 +12,7 @@
  *                   attachments, extracted_facts, thread_badges, message_embeddings.
  *  - agents       — agents, agent_actions, agent_runs, approvals.
  *  - productivity — reminders, commitments, signatures.
+ *  - intelligence — workspaces, calendars, meetings, labels, artifacts, unified RAG.
  *  - system       — leads, usage_counters, audit_log.
  *  - auth         — Better Auth session, account, verification (user → users).
  *  - jobs         — the background job queue (replaces pgmq).
@@ -30,6 +31,7 @@ export * from './schema/identity'
 export * from './schema/mail'
 export * from './schema/agents'
 export * from './schema/productivity'
+export * from './schema/intelligence'
 export * from './schema/system'
 export * from './schema/auth'
 export * from './schema/jobs'

@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import {
   FakeStorageProvider,
   LocalFsStorageProvider,
@@ -83,12 +84,38 @@ describe('FakeStorageProvider', () => {
   })
 })
 
-describe('S3StorageProvider (unimplemented cloud swap)', () => {
-  it('constructs but throws a clear message on every I/O method', async () => {
-    const store = new S3StorageProvider({ bucket: 'revido-mail' })
-    await expect(store.put('k', new Uint8Array([1]))).rejects.toThrow(/not implemented/i)
-    await expect(store.get('k')).rejects.toThrow(/revido-mail/)
-    await expect(store.delete('k')).rejects.toThrow(/not implemented/i)
+describe('S3StorageProvider', () => {
+  it('maps put/get/delete onto S3 commands and preserves opaque refs', async () => {
+    const commands: unknown[] = []
+    const client = {
+      async send(command: unknown): Promise<unknown> {
+        commands.push(command)
+        if (command instanceof GetObjectCommand) {
+          return { Body: { transformToByteArray: async () => new Uint8Array([4, 5, 6]) } }
+        }
+        return {}
+      },
+    }
+    const store = new S3StorageProvider({ bucket: 'revido-mail' }, client)
+
+    await expect(
+      store.put('recordings/u1/chunk.webm', new Uint8Array([1, 2, 3]), {
+        contentType: 'audio/webm',
+      }),
+    ).resolves.toEqual({ ref: 'recordings/u1/chunk.webm' })
+    await expect(store.get('recordings/u1/chunk.webm')).resolves.toEqual(
+      new Uint8Array([4, 5, 6]),
+    )
+    await expect(store.delete('recordings/u1/chunk.webm')).resolves.toBeUndefined()
+
+    expect(commands[0]).toBeInstanceOf(PutObjectCommand)
+    expect((commands[0] as PutObjectCommand).input).toMatchObject({
+      Bucket: 'revido-mail',
+      Key: 'recordings/u1/chunk.webm',
+      ContentType: 'audio/webm',
+    })
+    expect(commands[1]).toBeInstanceOf(GetObjectCommand)
+    expect(commands[2]).toBeInstanceOf(DeleteObjectCommand)
   })
 })
 

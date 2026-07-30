@@ -24,6 +24,7 @@ import { makeEmbedConsumer } from './embed'
 import { makeVoiceProfileConsumer } from './voice-profile'
 import { makeAgentRunConsumer } from './agent-run'
 import { makeChaserConsumer } from './chaser'
+import { createTranscriber, makeMeetingProcessConsumer } from './meeting-process'
 
 export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
   const saveCreds = (account: AccountContext, creds: ProviderCredentials): Promise<void> =>
@@ -110,6 +111,12 @@ export function buildConsumers(ctx: WorkerContext): ConsumerRegistry {
       loadUser: ctx.loadUser,
       mail: ctx.mail,
       email: ctx.email,
+    }),
+    [QUEUE.meetingProcess]: makeMeetingProcessConsumer({
+      db: ctx.db,
+      storage: ctx.storage,
+      loadUser: ctx.loadUser,
+      transcribe: createTranscriber(),
     }),
   }
 }

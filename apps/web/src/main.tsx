@@ -22,6 +22,30 @@ RevidoFeedback.init({
   apiUrl: 'https://feedback-api-production-5148.up.railway.app',
 })
 
+// The widget intentionally docks at mid-screen on mobile. Keep it reachable but
+// move it away from page copy and app controls.
+requestAnimationFrame(() => {
+  const host = document.getElementById('revido-feedback-widget')
+  const root = host?.shadowRoot
+  if (!root) return
+  const style = document.createElement('style')
+  style.textContent = `
+    @media (max-width: 640px) {
+      .rf-trigger {
+        top: auto !important;
+        right: 12px !important;
+        bottom: 12px !important;
+        left: auto !important;
+        transform: none !important;
+        border-radius: 9999px !important;
+      }
+      .rf-trigger:hover { transform: scale(1.05) !important; }
+      .rf-trigger:active { transform: scale(.97) !important; }
+    }
+  `
+  root.appendChild(style)
+})
+
 // Content-free product analytics. A complete no-op unless VITE_POSTHOG_KEY is set.
 initAnalytics()
 

@@ -28,9 +28,12 @@ import { onMailboxLinked } from './lib/mailbox-link'
 import { webOrigins } from './lib/origins'
 
 /** Gmail scope that permits reading + modifying (send/label/trash) mail. */
-const GOOGLE_MAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+const GOOGLE_MAIL_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/calendar.events',
+]
 /** Microsoft Graph mail scopes + offline access for a refresh token. */
-const MS_MAIL_SCOPES = ['Mail.ReadWrite', 'Mail.Send', 'offline_access']
+const MS_MAIL_SCOPES = ['Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'offline_access']
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,

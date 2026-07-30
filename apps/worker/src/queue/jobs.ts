@@ -68,6 +68,7 @@ export const QUEUE = {
   renewWatch: 'renew_watch',
   reconcile: 'reconcile',
   digest: 'digest',
+  meetingProcess: 'meeting_process',
 } as const
 
 export type QueueName = (typeof QUEUE)[keyof typeof QUEUE]
@@ -155,6 +156,10 @@ export const chaserPayload = z.object({
 export const renewWatchPayload = z.object({ accountId: z.string().uuid() })
 export const reconcilePayload = z.object({ accountId: z.string().uuid() })
 export const digestPayload = z.object({ userId: z.string().uuid() })
+export const meetingProcessPayload = z.object({
+  userId: z.string().uuid(),
+  meetingId: z.string().uuid(),
+})
 
 export type BackfillPayload = z.infer<typeof backfillPayload>
 export type IncrementalPayload = z.infer<typeof incrementalPayload>
@@ -171,3 +176,4 @@ export type ChaserPayload = z.infer<typeof chaserPayload>
 export type RenewWatchPayload = z.infer<typeof renewWatchPayload>
 export type ReconcilePayload = z.infer<typeof reconcilePayload>
 export type DigestPayload = z.infer<typeof digestPayload>
+export type MeetingProcessPayload = z.infer<typeof meetingProcessPayload>

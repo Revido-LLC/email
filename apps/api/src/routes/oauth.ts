@@ -45,7 +45,13 @@ const PROVIDERS: Record<Provider, ProviderConfig> = {
     betterAuthId: 'google',
     authorizeUrl: () => 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: () => 'https://oauth2.googleapis.com/token',
-    scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.modify'],
+    scopes: [
+      'openid',
+      'email',
+      'profile',
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/calendar.events',
+    ],
     clientId: () => process.env.GOOGLE_CLIENT_ID,
     clientSecret: () => process.env.GOOGLE_CLIENT_SECRET,
     userInfo: async (accessToken) => {
@@ -69,6 +75,7 @@ const PROVIDERS: Record<Provider, ProviderConfig> = {
       'offline_access',
       'https://graph.microsoft.com/Mail.ReadWrite',
       'https://graph.microsoft.com/Mail.Send',
+      'https://graph.microsoft.com/Calendars.ReadWrite',
     ],
     clientId: () => process.env.MS_CLIENT_ID,
     clientSecret: () => process.env.MS_CLIENT_SECRET,

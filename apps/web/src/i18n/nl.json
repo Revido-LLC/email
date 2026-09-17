@@ -133,6 +133,14 @@
   "onboarding": {
     "footer": "Gebouwd door Revido · wij bouwen op maat gemaakte AI-tools",
     "progress": "Voortgang van de configuratie",
+    "auth": {
+      "title": "Log in of maak een account aan",
+      "subtitle": "Koppel Gmail of Outlook en start je gratis proefperiode van 7 dagen. Geen kaart nodig.",
+      "terms": "Door verder te gaan, ga je akkoord met onze",
+      "termsLink": "Voorwaarden",
+      "and": "en ons",
+      "privacyLink": "Privacybeleid"
+    },
     "appearance": {
       "title": "Maak het van jou",
       "subtitle": "Kies een uiterlijk voor Revido Mail — je kunt dit altijd wijzigen.",

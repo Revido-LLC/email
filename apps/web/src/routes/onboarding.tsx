@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import type { AgentProposal } from '@revido/db'
 import {
   AiTag,
@@ -17,11 +17,12 @@ import { ArrowRight, Check, Loader2, Monitor, Moon, Sparkles, Sun } from 'lucide
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/language-toggle'
+import { OAuthButtons } from '@/components/landing/oauth-buttons'
 import { Icon } from '@/lib/icons'
 import { capture } from '@/lib/analytics'
-import { authClient } from '@/lib/auth-client'
 import { formatNumber } from '@/i18n/format'
 import { useAppState, type ThemePreference } from '@/lib/app-state'
+import { useAuth } from '@/lib/session'
 import {
   useAccounts,
   useAgentProposals,
@@ -31,15 +32,6 @@ import {
 } from '@/lib/hooks'
 
 export const Route = createFileRoute('/onboarding')({
-  beforeLoad: async () => {
-    try {
-      const { data } = await authClient.getSession()
-      if (data) return
-    } catch {
-      // The redirect below is the fail-closed path.
-    }
-    throw redirect({ to: '/' })
-  },
   component: OnboardingScreen,
 })
 
@@ -47,6 +39,77 @@ const STAGES = ['appearance', 'connecting', 'reading', 'ready', 'proposals'] as 
 type Stage = (typeof STAGES)[number]
 
 function OnboardingScreen() {
+  const { isAuthenticated, isPending } = useAuth()
+
+  if (isPending) return <OnboardingLoading />
+  if (!isAuthenticated) return <AuthenticationGate />
+
+  return <AuthenticatedOnboarding />
+}
+
+function AuthenticationGate() {
+  const { t } = useTranslation()
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-8 sm:px-6">
+        <header className="flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5" aria-label={t('common.brand')}>
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+              <Sparkles className="size-5" />
+            </div>
+            <span className="text-lg font-semibold tracking-tight">{t('common.brand')}</span>
+          </Link>
+          <LanguageToggle compact />
+        </header>
+
+        <main className="flex flex-1 items-center justify-center py-10">
+          <Card className="w-full p-6 shadow-soft sm:p-8">
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Sparkles className="size-6" />
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.auth.title')}</h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {t('onboarding.auth.subtitle')}
+              </p>
+            </div>
+
+            <OAuthButtons stacked size="lg" />
+
+            <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
+              {t('onboarding.auth.terms')}{' '}
+              <Link to="/terms" className="underline underline-offset-4 hover:text-foreground">
+                {t('onboarding.auth.termsLink')}
+              </Link>{' '}
+              {t('onboarding.auth.and')}{' '}
+              <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground">
+                {t('onboarding.auth.privacyLink')}
+              </Link>
+              .
+            </p>
+          </Card>
+        </main>
+
+        <footer className="flex items-center justify-center gap-1.5 pb-1 text-2xs text-muted-foreground/70">
+          <Sparkles className="size-3 text-ai/70" />
+          {t('onboarding.footer')}
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+function OnboardingLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background" role="status">
+      <Loader2 className="size-6 animate-spin text-primary" />
+      <span className="sr-only">Loading</span>
+    </div>
+  )
+}
+
+function AuthenticatedOnboarding() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // Appearance is user-driven; all mailbox stages follow actual account state.

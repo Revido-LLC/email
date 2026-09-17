@@ -133,6 +133,14 @@
   "onboarding": {
     "footer": "Built by Revido · we build custom AI tools",
     "progress": "Setup progress",
+    "auth": {
+      "title": "Sign in or create your account",
+      "subtitle": "Connect Gmail or Outlook to start your free 7-day trial. No card required.",
+      "terms": "By continuing, you agree to our",
+      "termsLink": "Terms",
+      "and": "and",
+      "privacyLink": "Privacy Policy"
+    },
     "appearance": {
       "title": "Make it yours",
       "subtitle": "Pick a look for Revido Mail — you can change it anytime.",

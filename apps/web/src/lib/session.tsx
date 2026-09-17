@@ -7,6 +7,7 @@
  * provider just exposes who is signed in (and a `signOut` helper).
  */
 import * as React from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authClient } from './auth-client'
 
 type SessionResult = ReturnType<typeof authClient.useSession>
@@ -26,6 +27,13 @@ const SessionContext = React.createContext<SessionContextValue | null>(null)
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { data, isPending } = authClient.useSession()
+  const queryClient = useQueryClient()
+
+  const signOut = React.useCallback(async () => {
+    await authClient.signOut()
+    queryClient.clear()
+    window.location.assign('/')
+  }, [queryClient])
 
   const value = React.useMemo<SessionContextValue>(
     () => ({
@@ -33,9 +41,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       user: data?.user ?? null,
       isPending,
       isAuthenticated: Boolean(data),
-      signOut: () => authClient.signOut().then(() => undefined),
+      signOut,
     }),
-    [data, isPending],
+    [data, isPending, signOut],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

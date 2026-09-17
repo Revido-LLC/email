@@ -15,7 +15,7 @@
 import { asService, withUser } from '@revido/db/client'
 import { accounts, users } from '@revido/db/schema'
 import type { Provider } from '@revido/db'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { ProviderAccount } from '../auth'
 import { ensureUserKey, getUserCrypto } from './crypto'
 import { enqueueJob, JobQueue } from './jobs'
@@ -37,24 +37,64 @@ export interface LinkMailboxInput {
   scopes?: string[] | null
 }
 
+export interface LinkMailboxResult {
+  accountId: string
+  /** False when this address was already connected for the user. */
+  created: boolean
+}
+
+/** Provider user-info casing is not stable enough to use as mailbox identity. */
+export function normalizeMailboxEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 /**
  * Upsert a connected mailbox (encrypting its tokens) and enqueue an initial
- * backfill. Returns the account id.
+ * backfill. Returns the canonical account id and whether it was newly created.
  */
-export async function linkMailbox(userId: string, input: LinkMailboxInput): Promise<string> {
+export async function linkMailbox(userId: string, input: LinkMailboxInput): Promise<LinkMailboxResult> {
   await ensureUserKey(userId)
   const crypto = await getUserCrypto(userId)
+  const email = normalizeMailboxEmail(input.email)
 
   const accessTokenCt = input.accessToken ? crypto.encrypt(input.accessToken) : null
   const refreshTokenCt = input.refreshToken ? crypto.encrypt(input.refreshToken) : null
 
-  const accountId = await withUser(userId, async (tx) => {
+  const result = await withUser(userId, async (tx) => {
+    const existing = (
+      await tx
+        .select({ id: accounts.id, provider: accounts.provider })
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.email, email)))
+        .limit(1)
+    ).at(0)
+
+    if (existing) {
+      // A same-provider reconnect refreshes credentials, but it is not a new
+      // mailbox and must not enqueue another initial backfill. An address that
+      // somehow resolves through another provider remains attached to its
+      // original connector rather than receiving incompatible credentials.
+      if (existing.provider === input.provider) {
+        await tx
+          .update(accounts)
+          .set({
+            accessTokenCt,
+            refreshTokenCt,
+            tokenExpiresAt: input.tokenExpiresAt ?? null,
+            scopes: input.scopes ?? null,
+            name: input.name ?? null,
+          })
+          .where(eq(accounts.id, existing.id))
+      }
+      return { accountId: existing.id, created: false }
+    }
+
     const rows = await tx
       .insert(accounts)
       .values({
         userId,
         provider: input.provider,
-        email: input.email,
+        email,
         name: input.name ?? null,
         accessTokenCt,
         refreshTokenCt,
@@ -63,24 +103,32 @@ export async function linkMailbox(userId: string, input: LinkMailboxInput): Prom
         syncProgress: 0,
         syncLabel: 'Queued',
       })
-      .onConflictDoUpdate({
-        target: [accounts.userId, accounts.provider, accounts.email],
-        set: {
-          accessTokenCt,
-          refreshTokenCt,
-          tokenExpiresAt: input.tokenExpiresAt ?? null,
-          scopes: input.scopes ?? null,
-          name: input.name ?? null,
-        },
-      })
+      .onConflictDoNothing({ target: [accounts.userId, accounts.email] })
       .returning({ id: accounts.id })
     const row = rows.at(0)
-    if (!row) throw new Error('failed to upsert account')
-    return row.id
+    if (row) return { accountId: row.id, created: true }
+
+    // A concurrent callback won the insert. Resolve the canonical row and
+    // report the operation as idempotent.
+    const raced = (
+      await tx
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.email, email)))
+        .limit(1)
+    ).at(0)
+    if (!raced) throw new Error('failed to link account')
+    return { accountId: raced.id, created: false }
   })
 
-  await enqueueJob(JobQueue.backfill, { userId, accountId, provider: input.provider })
-  return accountId
+  if (result.created) {
+    await enqueueJob(JobQueue.backfill, {
+      userId,
+      accountId: result.accountId,
+      provider: input.provider,
+    })
+  }
+  return result
 }
 
 /**

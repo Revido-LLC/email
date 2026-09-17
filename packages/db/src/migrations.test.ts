@@ -9,6 +9,7 @@ const rls = read('0001_rls_policies.sql')
 const authJobs = read('0002_auth_jobs.sql')
 const attachmentsPending = read('0004_attachments_pending.sql')
 const usersTheme = read('0005_users_theme.sql')
+const uniqueMailbox = read('0008_unique_mailbox_per_user.sql')
 
 describe('0001 RLS migration (plain Postgres + GUC)', () => {
   it('creates the non-owner app_user role and grants it schema/table access', () => {
@@ -82,5 +83,15 @@ describe('0005 users theme migration', () => {
     // Nullable — no NOT NULL, so an un-set preference reads as null (client
     // falls back to its localStorage cache).
     expect(usersTheme).not.toContain('NOT NULL')
+  })
+})
+
+describe('0008 unique mailbox per user migration', () => {
+  it('normalizes addresses and makes mailbox identity provider-independent', () => {
+    expect(uniqueMailbox).toContain('lower(trim("email"))')
+    expect(uniqueMailbox).toContain('DROP INDEX IF EXISTS "accounts_user_provider_email_uq"')
+    expect(uniqueMailbox).toContain(
+      'CREATE UNIQUE INDEX "accounts_user_email_uq" ON "accounts" USING btree ("user_id","email")',
+    )
   })
 })

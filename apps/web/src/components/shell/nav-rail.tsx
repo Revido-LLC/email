@@ -8,6 +8,8 @@ import {
   ChevronsLeft,
   Home,
   Inbox,
+  Loader2,
+  LogOut,
   Monitor,
   Moon,
   PanelLeft,
@@ -22,6 +24,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/language-toggle'
 import { useAppState, type ThemePreference } from '@/lib/app-state'
+import { useAuth } from '@/lib/session'
 import { CATEGORY_LIST } from '@/lib/categories'
 import {
   useAccounts,
@@ -164,6 +167,8 @@ export function NavRail() {
   const { t } = useTranslation()
   const { navCollapsed, toggleNav } = useAppState()
   const [revidoDismissed, setRevidoDismissed] = React.useState(false)
+  const [signingOut, setSigningOut] = React.useState(false)
+  const { signOut } = useAuth()
 
   // Reactive reads — these must re-render as caches invalidate (archive updates
   // counts, an approval resolves the badge, etc.), so they're hooks, not module
@@ -331,6 +336,23 @@ export function NavRail() {
             </SimpleTooltip>
           )}
         </div>
+
+        <SimpleTooltip label={t('shell.nav.logout')} side={navCollapsed ? 'right' : 'bottom'}>
+          <Button
+            variant="ghost"
+            size={navCollapsed ? 'icon-sm' : 'sm'}
+            className={cn('mt-1 text-muted-foreground', !navCollapsed && 'w-full justify-start')}
+            disabled={signingOut}
+            onClick={() => {
+              setSigningOut(true)
+              void signOut().catch(() => setSigningOut(false))
+            }}
+            aria-label={t('shell.nav.logout')}
+          >
+            {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+            {!navCollapsed && <span>{t('shell.nav.logout')}</span>}
+          </Button>
+        </SimpleTooltip>
 
         {!navCollapsed && !revidoDismissed && (
           <div className="relative mt-3 overflow-hidden rounded-xl bg-muted/50 p-3">

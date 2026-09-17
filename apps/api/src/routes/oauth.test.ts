@@ -9,12 +9,15 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const h = vi.hoisted(() => ({ session: { value: null as null | { user: { id: string } } } }))
+const h = vi.hoisted(() => ({
+  session: { value: null as null | { user: { id: string } } },
+  linkMailbox: vi.fn(),
+}))
 
 vi.mock('../auth', () => ({
   auth: { api: { getSession: vi.fn(async () => h.session.value) } },
 }))
-vi.mock('../lib/mailbox-link', () => ({ linkMailbox: vi.fn(async () => {}) }))
+vi.mock('../lib/mailbox-link', () => ({ linkMailbox: h.linkMailbox }))
 
 const USER_A = '11111111-1111-4111-8111-111111111111'
 const USER_B = '22222222-2222-4222-8222-222222222222'
@@ -27,7 +30,11 @@ beforeEach(async () => {
   process.env.BETTER_AUTH_URL = 'https://api.example.test'
   process.env.GOOGLE_CLIENT_ID = 'gid'
   process.env.GOOGLE_CLIENT_SECRET = 'gsecret'
+  process.env.WEB_ORIGIN = 'https://web.example.test'
   h.session.value = null
+  h.linkMailbox.mockReset()
+  h.linkMailbox.mockResolvedValue({ accountId: 'account-1', created: true })
+  vi.unstubAllGlobals()
   ;({ oauthRouter } = await import('./oauth'))
 })
 
@@ -87,5 +94,47 @@ describe('oauth mailbox-link CSRF binding', () => {
     })
     expect(res.status).toBe(401)
     expect((await res.json()).error).toBe('oauth_state_mismatch')
+  })
+})
+
+describe('oauth mailbox identity', () => {
+  async function completeGoogleCallback(created: boolean): Promise<Response> {
+    const { state, nonce } = await startFlow()
+    h.session.value = { user: { id: USER_A } }
+    h.linkMailbox.mockResolvedValue({ accountId: 'account-1', created })
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ access_token: 'access', refresh_token: 'refresh', expires_in: 3600 }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ email: 'Person@Example.com', name: 'Person' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+    )
+    return oauthRouter.request(`/gmail/callback?code=x&state=${state}`, {
+      headers: { cookie: `rm_oauth_nonce=${nonce}` },
+    })
+  }
+
+  it('continues onboarding for a newly connected mailbox', async () => {
+    const res = await completeGoogleCallback(true)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('https://web.example.test/onboarding')
+  })
+
+  it('reports an existing mailbox instead of accepting it again', async () => {
+    const res = await completeGoogleCallback(false)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(
+      'https://web.example.test/app/settings?mailbox=already-connected',
+    )
   })
 })

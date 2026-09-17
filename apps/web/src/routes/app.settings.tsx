@@ -35,6 +35,7 @@ import {
   Languages,
   Loader2,
   Lock,
+  LogOut,
   Mail,
   Monitor,
   Moon,
@@ -51,6 +52,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/i18n/format'
 import { useAppState, useLocale, type ThemePreference } from '@/lib/app-state'
+import { useAuth } from '@/lib/session'
 import {
   useAccounts,
   useAiPreferences,
@@ -65,6 +67,10 @@ import {
 } from '@/lib/hooks'
 
 export const Route = createFileRoute('/app/settings')({
+  validateSearch: (search: Record<string, unknown>): { mailbox?: 'connected' | 'already-connected' } =>
+    search.mailbox === 'connected' || search.mailbox === 'already-connected'
+      ? { mailbox: search.mailbox }
+      : {},
   component: SettingsScreen,
 })
 
@@ -123,11 +129,27 @@ function SettingsScreen() {
 
 function AccountsTab() {
   const { t } = useTranslation()
+  const { mailbox } = Route.useSearch()
   const { data: accounts, isPending } = useAccounts()
   const startOAuth = useStartOAuth()
+  const { signOut } = useAuth()
+  const [signingOut, setSigningOut] = React.useState(false)
 
   return (
     <div className="space-y-4">
+      {mailbox && (
+        <div
+          role="status"
+          className={cn(
+            'rounded-xl border px-4 py-3 text-sm',
+            mailbox === 'connected'
+              ? 'border-ai/30 bg-ai/10 text-foreground'
+              : 'border-border bg-muted text-foreground',
+          )}
+        >
+          {t(`settings.accounts.${mailbox === 'connected' ? 'connected' : 'alreadyConnected'}`)}
+        </div>
+      )}
       {isPending ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="size-5 animate-spin" />
@@ -156,6 +178,19 @@ function AccountsTab() {
       <p className="text-center text-xs text-muted-foreground">
         {t('settings.accounts.supportNote')}
       </p>
+      <Separator />
+      <Button
+        variant="ghost"
+        className="w-full text-muted-foreground"
+        disabled={signingOut}
+        onClick={() => {
+          setSigningOut(true)
+          void signOut().catch(() => setSigningOut(false))
+        }}
+      >
+        {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+        {t('shell.nav.logout')}
+      </Button>
     </div>
   )
 }

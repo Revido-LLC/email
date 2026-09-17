@@ -187,6 +187,7 @@
       "collapse": "Collapse (⌘\\)",
       "collapseAria": "Collapse nav",
       "expandAria": "Expand nav",
+      "logout": "Log out",
       "compose": "Compose",
       "today": "Today",
       "needsYou": "Needs You",
@@ -252,6 +253,8 @@
     },
     "accounts": {
       "connectAnother": "Connect another account",
+      "connected": "Mailbox connected. Your first sync is starting now.",
+      "alreadyConnected": "That mailbox is already connected. We refreshed its authorization without importing it again.",
       "supportNote": "Gmail and Outlook supported. Your mail is end-to-end encrypted with a key only you hold.",
       "synced": "Synced",
       "syncing": "Syncing…",

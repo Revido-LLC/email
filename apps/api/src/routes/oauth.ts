@@ -248,7 +248,7 @@ oauthRouter.get('/:provider/callback', requireUser, async (c) => {
     ? new Date(Date.now() + tokens.expires_in * 1000)
     : null
 
-  await linkMailbox(claims.userId, {
+  const linked = await linkMailbox(claims.userId, {
     provider,
     email,
     name,
@@ -259,5 +259,6 @@ oauthRouter.get('/:provider/callback', requireUser, async (c) => {
   })
 
   const webOrigin = (process.env.WEB_ORIGIN ?? '').replace(/\/$/, '')
-  return c.redirect(`${webOrigin}/onboarding`)
+  if (linked.created) return c.redirect(`${webOrigin}/onboarding`)
+  return c.redirect(`${webOrigin}/app/settings?mailbox=already-connected`)
 })

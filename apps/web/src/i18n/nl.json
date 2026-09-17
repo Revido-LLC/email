@@ -187,6 +187,7 @@
       "collapse": "Inklappen (⌘\\)",
       "collapseAria": "Navigatie inklappen",
       "expandAria": "Navigatie uitklappen",
+      "logout": "Uitloggen",
       "compose": "Opstellen",
       "today": "Vandaag",
       "needsYou": "Vraagt Jou",
@@ -252,6 +253,8 @@
     },
     "accounts": {
       "connectAnother": "Nog een account koppelen",
+      "connected": "Mailbox gekoppeld. De eerste synchronisatie wordt nu gestart.",
+      "alreadyConnected": "Die mailbox is al gekoppeld. We hebben de autorisatie vernieuwd zonder alles opnieuw te importeren.",
       "supportNote": "Gmail en Outlook worden ondersteund. Je mail is end-to-end versleuteld met een sleutel die alleen jij hebt.",
       "synced": "Gesynchroniseerd",
       "syncing": "Synchroniseren…",

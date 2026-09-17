@@ -97,7 +97,7 @@ export const accounts = pgTable(
   },
   (t) => [
     index('accounts_user_id_idx').on(t.userId),
-    uniqueIndex('accounts_user_provider_email_uq').on(t.userId, t.provider, t.email),
+    uniqueIndex('accounts_user_email_uq').on(t.userId, t.email),
   ],
 )
 

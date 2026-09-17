@@ -48,7 +48,7 @@ export function OAuthButtons({
   className?: string
 }) {
   const { t } = useTranslation()
-  const buttonWidth = stacked ? 'w-full sm:w-auto' : ''
+  const buttonWidth = stacked ? 'w-full' : ''
   const [pending, setPending] = React.useState<'google' | 'microsoft' | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -76,7 +76,7 @@ export function OAuthButtons({
 
   return (
     <div className={className}>
-      <div className={cn('flex gap-2', stacked ? 'flex-col sm:flex-row' : 'flex-wrap')}>
+      <div className={cn('flex gap-2', stacked ? 'flex-col' : 'flex-wrap')}>
         <Button
           type="button"
           variant="primary"

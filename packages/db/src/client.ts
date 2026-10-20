@@ -28,6 +28,7 @@
 import { sql } from 'drizzle-orm'
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
+import { isStagingEnvironment } from './railway-environment'
 import * as schema from './schema'
 
 export type Schema = typeof schema
@@ -71,6 +72,8 @@ export function createDbClient(
   const client = postgres(connectionString, {
     max: options.max ?? 10,
     prepare: false,
+    // Release idle sockets before Railway's sleep window; the next query reconnects.
+    ...(isStagingEnvironment(env) ? { idle_timeout: 30 } : {}),
   })
   const db = drizzle(client, { schema })
   return { db, sql: client }

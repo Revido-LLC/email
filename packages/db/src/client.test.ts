@@ -1,6 +1,12 @@
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { describe, expect, it, vi } from 'vitest'
-import { asService, assertServiceRoleBypassesRls, type Database, withUser } from './client'
+import {
+  asService,
+  assertServiceRoleBypassesRls,
+  createDbClient,
+  type Database,
+  withUser,
+} from './client'
 
 const dialect = new PgDialect()
 
@@ -118,5 +124,41 @@ describe('assertServiceRoleBypassesRls', () => {
     const result = await assertServiceRoleBypassesRls(db, { warn })
     expect(result.bypasses).toBe(true)
     expect(warn).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('createDbClient', () => {
+  const connectionString = 'postgres://local:local@127.0.0.1:1/test'
+
+  it.each([
+    { RAILWAY_ENVIRONMENT_NAME: 'staging' },
+    { RAILWAY_ENVIRONMENT_NAME: 'email-pr-2' },
+    { RAILWAY_ENVIRONMENT_ID: 'f747e030-3070-4c93-b1b1-9982b28bd171' },
+  ])('releases idle staging/PR connections: %j', async (env) => {
+    const { sql } = createDbClient({ connectionString, env })
+    try {
+      expect(sql.options.idle_timeout).toBe(30)
+    } finally {
+      await sql.end()
+    }
+  })
+
+  it.each([
+    {},
+    { RAILWAY_ENVIRONMENT_NAME: 'production' },
+    {
+      RAILWAY_ENVIRONMENT_NAME: 'production',
+      RAILWAY_ENVIRONMENT_ID: 'f747e030-3070-4c93-b1b1-9982b28bd171',
+    },
+    { RAILWAY_ENVIRONMENT_NAME: 'my-production' },
+  ])('preserves existing pool settings outside known nonproduction: %j', async (env) => {
+    const { sql } = createDbClient({ connectionString, env })
+    try {
+      expect(sql.options.idle_timeout).toBeNull()
+      expect(sql.options.max).toBe(10)
+      expect(sql.options.prepare).toBe(false)
+    } finally {
+      await sql.end()
+    }
   })
 })

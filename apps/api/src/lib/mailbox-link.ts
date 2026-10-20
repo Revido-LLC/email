@@ -1,3 +1,4 @@
+import { assertBackgroundWorkEnabled } from './staging-background'
 /**
  * The `onMailboxLinked` seam implementation.
  *
@@ -89,6 +90,7 @@ export async function linkMailbox(userId: string, input: LinkMailboxInput): Prom
       return { accountId: existing.id, created: false }
     }
 
+    assertBackgroundWorkEnabled()
     const rows = await tx
       .insert(accounts)
       .values({

@@ -1,3 +1,4 @@
+import { stagingBackgroundGuard } from '../lib/staging-background'
 /**
  * Composer send path.
  *
@@ -42,7 +43,7 @@ function normalize(r: z.infer<typeof recipientSchema>): RecipientInput {
 export const messagesRouter = protectedRouter()
 
 /** POST /messages — compose + enqueue a deferred send. */
-messagesRouter.post('/', async (c) => {
+messagesRouter.post('/', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const body = await readJson(c, composeSchema)
   const crypto = await getUserCrypto(userId)

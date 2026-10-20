@@ -1,3 +1,4 @@
+import { assertBackgroundWorkEnabled } from './staging-background'
 /**
  * Enqueue helpers for the `jobs` table — the contract between api and worker.
  *
@@ -72,6 +73,7 @@ export async function enqueueJob(
   payload: object,
   options: { runAt?: Date } = {},
 ): Promise<{ id: string }> {
+  assertBackgroundWorkEnabled()
   return asService(async (tx) => {
     const rows = await tx
       .insert(jobs)

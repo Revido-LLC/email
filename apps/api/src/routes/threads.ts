@@ -1,3 +1,4 @@
+import { stagingBackgroundGuard } from '../lib/staging-background'
 /**
  * Threads & messages — the inbox surface.
  *
@@ -251,7 +252,7 @@ threadsRouter.patch('/:id/extracted/:index', async (c) => {
 })
 
 /** POST /threads/:id/reply — reply into the thread; enqueues a deferred send. */
-threadsRouter.post('/:id/reply', async (c) => {
+threadsRouter.post('/:id/reply', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
   const { html, attachmentIds } = await readJson(c, replySchema)

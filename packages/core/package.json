@@ -8,7 +8,9 @@
     "./adapters": "./src/provider-adapter.ts",
     "./prompts": "./src/prompts.ts",
     "./agent-plan": "./src/agent-plan.ts",
-    "./language": "./src/language.ts"
+    "./language": "./src/language.ts",
+    "./staging-background": "./src/staging-background.ts",
+    "./staging-worker": "./src/staging-worker.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

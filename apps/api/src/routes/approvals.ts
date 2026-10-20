@@ -1,3 +1,4 @@
+import { stagingBackgroundGuard } from '../lib/staging-background'
 /**
  * Approvals — the human-in-the-loop queue for consequential agent actions.
  *
@@ -96,7 +97,7 @@ async function forwardIntent(
 }
 
 /** POST /approvals/:id/approve — approve, or edit-then-approve with `editedPreview`. */
-approvalsRouter.post('/:id/approve', async (c) => {
+approvalsRouter.post('/:id/approve', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
   const { editedPreview } = await readJson(c, approveSchema)
@@ -131,7 +132,7 @@ approvalsRouter.post('/:id/reject', async (c) => {
 })
 
 /** POST /approvals/batch-approve — approve everything (or one agent's items). */
-approvalsRouter.post('/batch-approve', async (c) => {
+approvalsRouter.post('/batch-approve', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const { agentId } = await readJson(c, batchApproveSchema)
   const crypto = await getUserCrypto(userId)

@@ -1,3 +1,4 @@
+import { stagingBackgroundGuard, assertBackgroundWorkEnabled } from '../lib/staging-background'
 /**
  * OAuth connect flow for an ADDITIONAL mailbox.
  *
@@ -164,7 +165,7 @@ oauthRouter.onError(errorHandler)
 oauthRouter.use('*', rateLimit({ windowMs: 60_000, max: 30 }))
 
 /** POST /auth/oauth/:provider/start — build the provider authorize URL. */
-oauthRouter.post('/:provider/start', requireUser, (c) => {
+oauthRouter.post('/:provider/start', requireUser, stagingBackgroundGuard, (c) => {
   const provider = parseProvider(c.req.param('provider'))
   const config = PROVIDERS[provider]
   const userId = c.get('userId')
@@ -218,6 +219,7 @@ oauthRouter.get('/:provider/callback', requireUser, async (c) => {
   if (!cookieNonce || !safeEqual(cookieNonce, claims.nonce)) {
     throw new HttpError(401, 'oauth_state_mismatch')
   }
+  assertBackgroundWorkEnabled()
   deleteCookie(c, NONCE_COOKIE, { path: OAUTH_COOKIE_PATH })
 
   const clientId = requireEnv(config.clientId(), 'missing_client_id')

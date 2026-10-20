@@ -1,3 +1,4 @@
+import { stagingBackgroundGuard } from '../lib/staging-background'
 /**
  * Reminders — follow-up nudges and deadlines.
  *
@@ -31,7 +32,7 @@ remindersRouter.get('/', async (c) => {
 })
 
 /** POST /reminders/:id/send-chaser — enqueue a follow-up nudge. */
-remindersRouter.post('/:id/send-chaser', async (c) => {
+remindersRouter.post('/:id/send-chaser', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
   const exists = await withUser(userId, async (tx) => {

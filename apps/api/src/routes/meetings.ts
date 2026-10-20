@@ -1,3 +1,4 @@
+import { stagingBackgroundGuard } from '../lib/staging-background'
 import { createHash } from 'node:crypto'
 import { withUser } from '@revido/db/client'
 import {
@@ -31,7 +32,7 @@ const MAX_CHUNK_BYTES = 8 * 1024 * 1024
 export const meetingsRouter = protectedRouter()
 export const recordingsRouter = protectedRouter()
 
-recordingsRouter.post('/sessions', async (c) => {
+recordingsRouter.post('/sessions', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const input = await readJson(c, createSessionInput)
   const crypto = await getUserCrypto(userId)
@@ -124,7 +125,7 @@ recordingsRouter.post('/:id/chunks', async (c) => {
   }
 })
 
-recordingsRouter.post('/:id/complete', async (c) => {
+recordingsRouter.post('/:id/complete', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const input = await readJson(c, completeInput)
   const meetingId = c.req.param('id')
@@ -251,7 +252,7 @@ meetingsRouter.get('/:id', async (c) => {
   return result ? c.json(result) : notFound(c)
 })
 
-meetingsRouter.post('/:id/reprocess', async (c) => {
+meetingsRouter.post('/:id/reprocess', stagingBackgroundGuard, async (c) => {
   const userId = c.get('userId')
   const meetingId = c.req.param('id')
   const updated = await withUser(userId, async (tx) =>

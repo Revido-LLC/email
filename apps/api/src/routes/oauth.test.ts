@@ -7,7 +7,7 @@
  * callback can't attach a mailbox to another account. Every assertion here trips a
  * guard BEFORE the token exchange, so no provider network mocking is needed.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const h = vi.hoisted(() => ({
   session: { value: null as null | { user: { id: string } } },
@@ -49,6 +49,37 @@ async function startFlow(): Promise<{ state: string; nonce: string; setCookie: s
   const nonce = /rm_oauth_nonce=([^;]+)/.exec(setCookie)![1]!
   return { state, nonce, setCookie }
 }
+
+afterEach(() => vi.unstubAllEnvs())
+
+describe('oauth staging background policy', () => {
+  it('rejects mailbox-link start before creating a consent flow', async () => {
+    vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', 'staging')
+    h.session.value = { user: { id: USER_A } }
+    const result = await oauthRouter.request('/gmail/start', { method: 'POST' })
+    expect(result.status).toBe(503)
+    expect(result.headers.get('set-cookie')).toBeNull()
+  })
+  it('retains authentication checks while disabled', async () => {
+    vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', 'staging')
+    const result = await oauthRouter.request('/gmail/start', { method: 'POST' })
+    expect(result.status).toBe(401)
+  })
+  it('does not consume an authorized callback when staging becomes disabled', async () => {
+    vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', 'production')
+    const { state, nonce } = await startFlow()
+    vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', 'staging')
+    const provider = vi.fn().mockResolvedValue(new Response('{}', { status: 500 }))
+    vi.stubGlobal('fetch', provider)
+    const result = await oauthRouter.request(`/gmail/callback?code=x&state=${state}`, {
+      headers: { cookie: `rm_oauth_nonce=${nonce}` },
+    })
+    expect(result.status).toBe(503)
+    expect(result.headers.get('set-cookie')).toBeNull()
+    expect(provider).not.toHaveBeenCalled()
+    expect(h.linkMailbox).not.toHaveBeenCalled()
+  })
+})
 
 describe('oauth mailbox-link CSRF binding', () => {
   it('/start sets an httpOnly, SameSite=Lax nonce cookie', async () => {

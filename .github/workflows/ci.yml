@@ -4,14 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  draft-pending:
+    name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'Build · typecheck · lint · test' || 'Draft validation sentinel' }}
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          echo '::error::Draft PR: validation is deferred until ready for review.'
+          exit 1
+
   build:
-    name: Build · typecheck · lint · test
+    name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'Draft deferred - Build · typecheck · lint · test' || 'Build · typecheck · lint · test' }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,6 +40,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify CI routing
+        run: node --test scripts/ci-draft-policy.check.mjs
 
       - name: Build
         run: pnpm build
